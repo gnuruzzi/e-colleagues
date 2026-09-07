@@ -1,0 +1,7 @@
+# Rendered from personas/ by tools/gen.py; never hand-edited. See docs/design.md §3.
+dist/**                     linguist-generated=true
+agents/**                   linguist-generated=true
+skills/ec-tech-lead/**      linguist-generated=true
+
+# Vendor documentation snapshots taken at research time.
+docs/research/snapshots/**  linguist-vendored=true
