@@ -1,0 +1,50 @@
+# Codex CLI dialect. The only place Codex vocabulary appears.
+# Claim ids refer to docs/research/facts-digest.md; E-ids to docs/experiments.md.
+host: codex
+display: OpenAI Codex CLI
+min_version: "0.153.4"          # the version every claim below was confirmed at
+
+# A specialist role file accepts exactly these top-level keys. RawAgentRoleFileToml uses
+# deny_unknown_fields, and a rejected file is a silently missing persona, not an error [CX-02].
+agent_file:
+  path: "dist/codex/agents/{name}.toml"
+  allowed_keys: [name, description, sandbox_mode, approval_policy, developer_instructions]
+  required_keys: [name, description, developer_instructions]
+  # Never a symlink: Codex opens the role file O_NOFOLLOW at spawn, and a symlink fails with
+  # "agent type is currently not available" (E5).
+  real_files_only: true
+
+# sandbox_mode is ALWAYS written: an omitted key inherits the session sandbox [CX-02].
+capabilities:
+  edit_true:
+    sandbox_mode: workspace-write
+    approval_policy: never
+  edit_false:
+    sandbox_mode: read-only
+    # Mandatory. Under the default on-request the model may obtain an approved escalation
+    # that runs outside the sandbox [CX-02].
+    approval_policy: never
+
+# read-only blocks every write, including /tmp, $TMPDIR and $HOME (E4). A project whose tests
+# write anything needs this override, and read-only then stops being a guarantee.
+sandbox_override_key: "hosts.codex.sandbox_mode"
+
+# The tech-lead cannot be a custom agent [CX-06]; it ships as developer_instructions.
+primary:
+  profile_file: "dist/codex/e-colleagues.config.toml"     # codex --profile e-colleagues (E14)
+  project_snippet: "dist/codex/config.snippet.toml"       # managed region of .codex/config.toml (E22)
+
+# Delegation is prose on Codex; unknown types error loudly [CX-05].
+delegation:
+  style: prose
+  spawn_verb: "spawn a sub-agent"
+  address_form: "{name}"                 # bare names, proven in E5
+  unknown_type_error: "unknown agent_type '{name}'"
+  # V2 permits three concurrent children and REFUSES a fourth rather than queueing (E11).
+  concurrency_note: "max_concurrent_threads_per_session counts the primary; the default 4 permits three"
+
+skills:
+  plugin_dir: "skills/"
+  invoke: "$ec-init"                     # $ mention sigil [CX-07]
+  # Project skills are NOT trust-gated; project agents are (E12).
+  untrusted_ok: true

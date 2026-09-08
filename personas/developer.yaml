@@ -1,0 +1,19 @@
+name: developer
+display: Developer
+signature: "🛠️ Developer: "
+role: specialist
+description: >-
+  Use to implement a specified change and write its tests.
+  Do not use to review a change, to decide scope, or to post anywhere.
+capabilities:
+  edit: true
+  shell: true
+  web: false
+  delegate: []
+external_post: false
+lens:
+  name: build-and-test
+  paths_hint: ["Makefile", "justfile", "package.json", "pyproject.toml", "*.gradle*", "pom.xml", "Cargo.toml", "go.mod", "test/", "tests/"]
+  writes_knowledge: true
+model: inherit
+prompt: prompts/developer.md

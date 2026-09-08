@@ -2,7 +2,7 @@
 
 A team of AI personas — tech-lead, developer, reviewer, security, designer, platform — packaged so one repository installs into OpenAI Codex CLI, Claude Code, opencode and Google Antigravity, bootstraps any project's operating contract with `ec-init`, and learns an existing project from six angles with `ec-onboard`.
 
-**Status (2026-09-08): design revision 3 complete; the M0 sweep is done bar three visual checks.** All of tranche A and C and nearly all of tranche B have recorded verdicts — `docs/experiments.md` E4–E23. Read `docs/design.md` §0 (decisions of record), §15 (the sweep, with its status header) and §16 (milestones). **E17 supersedes E16's tool-list method**: seven Antigravity tool names AG-06 lists are not in the registry and abort the agent at startup, so `check.py --agy-tools` must validate against a list derived by running one agent per name, never by grepping the binary. `docs/handoff.md` carries provenance and the standing don't-do list.
+**Status (2026-09-08): M0 complete bar three visual checks; M1 met.** `docs/experiments.md` E4–E23 carries every verdict and `docs/SUPPORT-MATRIX.md` maps each claim id to the version it was last confirmed at. `team.yaml`, `personas/`, `hosts/codex.yaml`, `tools/{gen,check}.py` and CI are in place; `dist/codex/` and `skills/ec-tech-lead/` are generated. Next is **M2** (`ec-init` + `scripts/bootstrap.py`). Read `docs/design.md` §0, §15 and §16. **E17 supersedes E16's tool-list method**: seven Antigravity tool names AG-06 lists are not in the registry and abort the agent at startup, so `check.py --agy-tools` must validate against a list derived by running one agent per name, never by grepping the binary.
 
 ## Working rules for this repository
 

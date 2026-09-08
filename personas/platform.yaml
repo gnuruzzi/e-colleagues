@@ -1,0 +1,19 @@
+name: platform
+display: Platform
+signature: "⚙️ Platform: "
+role: specialist
+description: >-
+  Use for CI/CD, deployment, infrastructure and observability work.
+  Do not use for application logic or user-interface changes.
+capabilities:
+  edit: true
+  shell: true
+  web: false
+  delegate: []
+external_post: false
+lens:
+  name: ci-cd-and-infra
+  paths_hint: [".github/workflows/", ".gitlab-ci.yml", "**/Dockerfile*", "**/docker-compose*", "**/*.tf", "**/helm/", "**/k8s/", "Makefile", "**/deploy*"]
+  writes_knowledge: true
+model: inherit
+prompt: prompts/platform.md

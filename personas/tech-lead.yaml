@@ -1,0 +1,19 @@
+name: tech-lead
+display: Tech-Lead
+signature: "👨‍💻 Tech-Lead: "
+role: primary
+description: >-
+  Use to plan work, delegate it to the team, verify the result and speak to the user.
+  Do not use as a sub-agent; this persona is the root of the tree.
+capabilities:
+  edit: true
+  shell: true
+  web: true
+  delegate: [developer, reviewer, security, designer, platform]
+external_post: true
+lens:
+  name: architecture
+  paths_hint: ["README*", "docs/", "docs/adr/", "**/*.md", "src/", "lib/", "cmd/", "internal/"]
+  writes_knowledge: true
+model: inherit
+prompt: prompts/tech-lead.md

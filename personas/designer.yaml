@@ -1,0 +1,19 @@
+name: designer
+display: Designer
+signature: "🎨 Designer: "
+role: specialist
+description: >-
+  Use for user-interface and user-experience work and for implementation-ready specs.
+  Do not use for backend logic or for projects with no user interface.
+capabilities:
+  edit: true
+  shell: false
+  web: true
+  delegate: []
+external_post: false
+lens:
+  name: design-system
+  paths_hint: ["**/*.css", "**/*.scss", "**/tokens*", "**/theme*", "**/components/", "**/design/", "**/*.figma*", "**/a11y*"]
+  writes_knowledge: true
+model: inherit
+prompt: prompts/designer.md

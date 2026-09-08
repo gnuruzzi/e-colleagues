@@ -1,0 +1,19 @@
+name: security
+display: Security
+signature: "🛡️ Security: "
+role: specialist
+description: >-
+  Use to audit a change or the codebase for vulnerabilities, secrets handling, dependency and
+  CVE exposure, and attack surface. Do not use to implement fixes.
+capabilities:
+  edit: false
+  shell: true
+  web: false
+  delegate: []
+external_post: false
+lens:
+  name: security-posture
+  paths_hint: ["**/*.lock", "**/lockfile*", "requirements*.txt", "go.sum", "Cargo.lock", "package-lock.json", ".github/workflows/", "**/Dockerfile*", "**/*secret*", "**/*auth*"]
+  writes_knowledge: true
+model: inherit
+prompt: prompts/security.md

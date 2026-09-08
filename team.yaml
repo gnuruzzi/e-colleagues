@@ -1,0 +1,21 @@
+# The team catalog. Source of truth for the roster, profiles and signatures.
+# No tool vocabulary belongs here; that lives in hosts/*.yaml.
+version: 0.1.0
+
+# "ec-" for user-scope installs on machines that already have a `reviewer` [CX-02]
+name_prefix: ""
+
+catalog: [tech-lead, developer, reviewer, security, designer, platform]
+
+profiles:
+  default:  [tech-lead, developer, reviewer, security, designer, platform]
+  minimal:  [tech-lead, developer, reviewer]
+  library:  [tech-lead, developer, reviewer, security, platform]   # no user interface
+
+signatures:
+  tech-lead: "👨‍💻 Tech-Lead: "
+  developer: "🛠️ Developer: "
+  reviewer:  "🕵️ Reviewer: "
+  security:  "🛡️ Security: "
+  designer:  "🎨 Designer: "
+  platform:  "⚙️ Platform: "

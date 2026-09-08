@@ -1,0 +1,19 @@
+name: reviewer
+display: Reviewer
+signature: "🕵️ Reviewer: "
+role: specialist
+description: >-
+  Use for adversarial review of an in-review change: edge cases, races, leaks, coverage.
+  Do not use to implement fixes.
+capabilities:
+  edit: false
+  shell: true
+  web: false
+  delegate: []
+external_post: false
+lens:
+  name: standards-and-coverage
+  paths_hint: ["test/", "tests/", "**/*Test.*", "**/*_test.*", ".editorconfig", "**/lint*", "**/.pre-commit-config.yaml", "CONTRIBUTING*"]
+  writes_knowledge: true
+model: inherit
+prompt: prompts/reviewer.md
