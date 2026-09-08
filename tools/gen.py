@@ -8,6 +8,7 @@ users, such as the bootstrap script, stay standard-library only.
 from __future__ import annotations
 
 import argparse
+import json
 import pathlib
 import sys
 
@@ -157,6 +158,30 @@ def render_floor(personas, team, host, roster):
     }
 
 
+def render_team_json(personas, team, roster):
+    """Data for scripts that ship to users.
+
+    `bootstrap.py` is standard-library only (§6), so it cannot read YAML. Everything it
+    needs about the roster is rendered here as JSON instead.
+    """
+    doc = {
+        "version": team["version"],
+        "profile": None,          # filled by build()
+        "roster": list(roster),
+        "personas": {
+            n: {
+                "display": personas[n]["display"],
+                "signature": personas[n]["signature"],
+                "role": personas[n]["role"],
+                "spawn_name": n if personas[n]["role"] != "primary" else None,
+                "lens": personas[n]["lens"]["name"],
+            }
+            for n in roster
+        },
+    }
+    return doc
+
+
 def build(roster_name="default"):
     team, personas = load_team(), load_personas()
     host = yaml.safe_load((HOSTS / "codex.yaml").read_text())
@@ -164,6 +189,9 @@ def build(roster_name="default"):
     files = {}
     files.update(render_codex(personas, team, host, roster))
     files.update(render_floor(personas, team, host, roster))
+    doc = render_team_json(personas, team, roster)
+    doc["profile"] = roster_name
+    files["dist/team.json"] = json.dumps(doc, indent=2, ensure_ascii=False) + "\n"
     return files
 
 

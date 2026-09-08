@@ -31,7 +31,7 @@ These override the digest wherever they disagree.
 | `AG-06` | a list of Antigravity tool names, and that a bad name "may cause the subagent process to hang" | **seven of the names are not in the registry** and abort the agent at startup with `unknown component: tool "…" not found in registry` — loudly and before any model call, not a hang | E17 |
 | `CC-07` | `claude plugin validate` catches the frontmatter fail-open | it does **not**: a colon in the value triggers a repairing sanitizer, and `memory`, unknown keys and a colon in `name` all pass | E15 |
 | `CC-03` | a bare agent name resolves | true for the `--agent` flag, **false** for `Agent(...)`'s `subagent_type`, which needs `e-colleagues:<name>` | E10 |
-| `CC-10` | the `agent` key makes a persona the default | true, and it is **not trust-gated**, and an unresolvable value fails silently | E21 |
+| `CC-10` | the `agent` key makes a persona the default | true; it is **not trust-gated**, an unresolvable value fails silently, and **project scope beats user scope** | E21 |
 | `AG-11` | Antigravity walks `AGENTS.md` cwd→root | **no agy agent receives it** — not a custom agent, not the default one | E19 |
 | `AG-12` | a workspace agent definition ranks above plugin and global | **no workspace root delivers agents at all**, so the ranking is moot | E18 |
 | `AG-02` | the CLI and desktop share one engine | the `agents:` key exists in agy 1.1.27 and **not** in desktop 2.12.2 | E16 |

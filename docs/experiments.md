@@ -10,7 +10,7 @@ Tranches are defined in design §15: **A** automated, **B** interactive (needs a
 |---|---|---|---|
 | Q1 | A | Claude ignores the Antigravity-format root `agents/` when the manifest lists files explicitly | **settled** (E10) |
 | Q2 | A | bare names in `Agent(...)`'s `subagent_type` resolve to plugin agents under `--agent` | **settled** (E10) |
-| Q3 | B | project `.claude/settings.json` `agent` key: trust-gated, precedence, unresolvable value | **mostly settled** (E21); user-vs-project precedence untested |
+| Q3 | B | project `.claude/settings.json` `agent` key: trust-gated, precedence, unresolvable value | **settled** (E21) |
 | Q4 | A | Codex `O_NOFOLLOW`: symlinked role TOMLs fail at spawn | **settled** (E5) |
 | Q5 | A | Codex root-as-plugin marketplace entry `path: "./"` | **settled** (E6) |
 | Q6 | A | `agy plugin validate` / `install` on a tree carrying all three manifests | **settled** (E7) |
@@ -926,11 +926,32 @@ exit=0
 
 **Consequence**: a typo in the key is invisible, which is the same failure shape as the Codex `--profile` typo (E14). Both belong in `ec-status`: it should assert that the configured agent name actually resolves.
 
-### Not tested: precedence against a user-level `agent`
+### Precedence: a project `agent` key beats a user-level one
 
-The third half of Q3 needs a user-scope `agent` key. A throwaway `CLAUDE_CONFIG_DIR` was tried and is a dead end — credentials do not follow it (`Not logged in · Please run /login`), and `--settings`' precedence relative to project settings is itself undocumented, so it cannot stand in for user scope. The only sound test writes to the real `~/.claude/settings.json`, which on this machine is a stowed, git-tracked dotfile; it was left untouched pending the maintainer's explicit go-ahead.
+**Added 2026-09-08**, with the maintainer's explicit go-ahead to write the stowed
+`~/.claude/settings.json` temporarily. A probe agent `user-level` was placed in
+`~/.claude/agents/` (a plain directory; only its contents are symlinks) and `{"agent":
+"user-level"}` added to the user settings.
 
-**Why it still matters**: §7 offers a project `.claude/settings.json` `"agent"` as the opt-in route to a primary tech-lead. If a user's own `agent` key wins, that opt-in silently does nothing for precisely the users who customise their setup — the same undocumented-precedence gap CC-10 nuance 1 flags for plugin-vs-user.
+| folder | project `agent` | user `agent` | result |
+|---|---|---|---|
+| a scratch dir with no project settings | — | `user-level` | `Q3-USER-AGENT-ACTIVE` |
+| `m0b/q3-repo` | `tech-lead` | `user-level` | **`Q3-PROJECT-AGENT-ACTIVE`** |
+
+The first row is the control: without it, a project win could equally have meant the user key
+never applied at all.
+
+**Verdict**: **project scope beats user scope.** CC-10's nuance 1 flags the precedence of a
+*plugin's* `agent` key as undocumented; for project-versus-user the answer is now measured.
+
+**Consequence**: §7's opt-in project `.claude/settings.json` `"agent"` works even for the users
+most likely to have set their own default agent, which was the worry. It does **not** settle
+plugin-versus-user, and the standing don't-do list already forbids shipping a plugin
+`settings.json` with an `agent` key, so that gap stays closed by decision rather than by test.
+
+**Restoration**: `~/.claude/settings.json` was restored from a byte-exact backup and verified
+by `sha256sum` and `diff`; the probe agent was deleted. The dotfiles working tree afterwards
+showed only the maintainer's own pre-existing change.
 
 ---
 

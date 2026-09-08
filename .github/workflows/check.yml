@@ -18,3 +18,5 @@ jobs:
         run: python3 tools/check.py
       - name: The generated tree is current
         run: python3 tools/gen.py --check
+      - name: Bootstrap tests (standard library only, like the script)
+        run: python3 -m unittest discover -s tests -v

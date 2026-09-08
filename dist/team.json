@@ -1,0 +1,56 @@
+{
+  "version": "0.1.0",
+  "profile": "default",
+  "roster": [
+    "tech-lead",
+    "developer",
+    "reviewer",
+    "security",
+    "designer",
+    "platform"
+  ],
+  "personas": {
+    "tech-lead": {
+      "display": "Tech-Lead",
+      "signature": "👨‍💻 Tech-Lead: ",
+      "role": "primary",
+      "spawn_name": null,
+      "lens": "architecture"
+    },
+    "developer": {
+      "display": "Developer",
+      "signature": "🛠️ Developer: ",
+      "role": "specialist",
+      "spawn_name": "developer",
+      "lens": "build-and-test"
+    },
+    "reviewer": {
+      "display": "Reviewer",
+      "signature": "🕵️ Reviewer: ",
+      "role": "specialist",
+      "spawn_name": "reviewer",
+      "lens": "standards-and-coverage"
+    },
+    "security": {
+      "display": "Security",
+      "signature": "🛡️ Security: ",
+      "role": "specialist",
+      "spawn_name": "security",
+      "lens": "security-posture"
+    },
+    "designer": {
+      "display": "Designer",
+      "signature": "🎨 Designer: ",
+      "role": "specialist",
+      "spawn_name": "designer",
+      "lens": "design-system"
+    },
+    "platform": {
+      "display": "Platform",
+      "signature": "⚙️ Platform: ",
+      "role": "specialist",
+      "spawn_name": "platform",
+      "lens": "ci-cd-and-infra"
+    }
+  }
+}
