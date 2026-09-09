@@ -75,7 +75,8 @@ class TestFreshRepo(Base):
         lock = json.loads((self.root / ".e-colleagues/lock.json").read_text())
         team = json.loads(TEAM.read_text())
         self.assertEqual(lock["package_version"], team["version"])
-        self.assertEqual(lock["roster"], team["roster"])
+        self.assertEqual(lock["profile"], "default")
+        self.assertEqual(lock["roster"], team["profiles"]["default"])
         self.assertIn("AGENTS.md", lock["written"])
 
 
@@ -127,17 +128,25 @@ class TestRegionOwnership(Base):
 
     def test_roster_change_rewrites_only_the_package_region(self):
         self.bootstrapped_with_edits()
-        team = json.loads(TEAM.read_text())
-        team["profile"] = "minimal"
-        team["roster"] = ["tech-lead", "developer", "reviewer"]
-        team["personas"] = {k: v for k, v in team["personas"].items() if k in team["roster"]}
-        alt = self.root / "team-minimal.json"
-        alt.write_text(json.dumps(team))
-        subprocess.run([sys.executable, str(BOOTSTRAP), str(self.root), "--write",
-                        "--team-json", str(alt)], capture_output=True, text=True)
+        run(self.root, "--write", "--profile", "minimal")
         spawn = re.search(r"exactly these types: ([^.]*)", self.agents).group(1)
         self.assertEqual(spawn, "developer, reviewer")
         self.assertIn("GitLab board 'X'", self.agents)   # bindings survive a roster change
+
+    def test_profile_selects_the_roster_and_is_recorded_in_the_lock(self):
+        """The package ships every profile; the project picks one at init time (D3)."""
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        run(self.root, "--write", "--profile", "library")
+        self.assertNotIn("| Designer |", self.agents)     # no UI, so no designer
+        lock = json.loads((self.root / ".e-colleagues/lock.json").read_text())
+        self.assertEqual(lock["profile"], "library")
+        self.assertNotIn("designer", lock["roster"])
+
+    def test_an_unknown_profile_is_rejected(self):
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        r = run(self.root, "--write", "--profile", "nonsense")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("unknown profile", r.stdout + r.stderr)
 
 
 class TestForeignFilesUntouched(Base):
@@ -187,11 +196,27 @@ class TestBudgets(Base):
         self.assertEqual(run(self.root, "--write").returncode, 0)
         self.assertIn(BEGIN, self.agents)
 
-    def test_the_managed_block_stays_under_2kb(self):
+    def test_the_package_region_stays_under_2kb(self):
         self.seed(**{"AGENTS.md": "# proj\n"})
         run(self.root, "--write")
+        pkg = re.search(re.escape(BEGIN) + r".*?" + re.escape(INDEX), self.agents, re.S)
+        self.assertLess(len(pkg.group(0).encode()), 2048)
+
+    def test_a_long_bindings_section_does_not_breach_the_2kb_budget(self):
+        """§5.1 budgets the PACKAGE region at 2 KB. The project-bindings region is the
+        team's to write and is bounded only by the 30 KiB total. Measuring the whole block
+        against 2 KB rejected a perfectly legal contract — found by dogfooding (M4)."""
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        run(self.root, "--write")
+        s = self.agents.replace(
+            "### Workflow and permissions\n",
+            "### Workflow and permissions\n\n" + ("A real team writes real rules here. " * 40) + "\n")
+        (self.root / "AGENTS.md").write_text(s)
         block = re.search(re.escape(BEGIN) + r".*?" + re.escape(END), self.agents, re.S)
-        self.assertLess(len(block.group(0).encode()), 2048)
+        self.assertGreater(len(block.group(0).encode()), 2048, "fixture must exceed 2 KB")
+        r = run(self.root, "--check")
+        self.assertNotIn("over 2048", r.stdout)
+        self.assertNotIn("package-owned region is", r.stdout)
 
 
 class TestBlockContent(Base):
@@ -221,3 +246,53 @@ class TestBlockContent(Base):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestUserScopeInstall(Base):
+    """§9 route A: personas reach ~/.codex/agents as REAL FILES, never symlinks (E5)."""
+
+    def install(self, home, profile="library"):
+        env = {**__import__("os").environ, "HOME": str(home)}
+        return subprocess.run(
+            [sys.executable, str(BOOTSTRAP), str(self.root), "--write", "--scope", "user",
+             "--profile", profile, "--team-json", str(TEAM),
+             "--dist", str(ROOT / "dist" / "codex" / "agents")],
+            capture_output=True, text=True, env=env)
+
+    def test_installs_real_files_not_symlinks(self):
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        home = self.root / "fakehome"
+        (home / ".codex" / "agents").mkdir(parents=True)
+        self.assertEqual(self.install(home).returncode, 0)
+        installed = sorted((home / ".codex/agents").glob("*.toml"))
+        self.assertTrue(installed)
+        for f in installed:
+            self.assertFalse(f.is_symlink(), f"{f.name} must be a real file [CX-02]/E5")
+
+    def test_replaces_an_existing_symlink_instead_of_writing_through_it(self):
+        """The stow layout put symlinks here. Writing through one would corrupt the source."""
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        home = self.root / "fakehome"
+        (home / ".codex" / "agents").mkdir(parents=True)
+        source = ROOT / "dist" / "codex" / "agents" / "reviewer.toml"
+        before = source.read_text()
+        (home / ".codex/agents/reviewer.toml").symlink_to(source)
+        self.install(home)
+        self.assertFalse((home / ".codex/agents/reviewer.toml").is_symlink())
+        self.assertEqual(source.read_text(), before, "the rendered source must be untouched")
+
+    def test_the_tech_lead_is_not_installed_as_a_role_file(self):
+        # a Codex custom agent can never be primary [CX-06]
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        home = self.root / "fakehome"
+        (home / ".codex" / "agents").mkdir(parents=True)
+        r = self.install(home)
+        self.assertFalse((home / ".codex/agents/tech-lead.toml").exists())
+        self.assertIn("developer_instructions", r.stdout)
+
+    def test_project_scope_touches_no_home_directory(self):
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        home = self.root / "fakehome"
+        (home / ".codex" / "agents").mkdir(parents=True)
+        run(self.root, "--write")          # default scope is project
+        self.assertEqual(list((home / ".codex/agents").glob("*.toml")), [])

@@ -29,7 +29,7 @@ END = "<!-- e-colleagues:end -->"
 # bootstrap.py --check FAILS above this. The bump to 65536 lives in the trust-gated project
 # config, and an untrusted teammate never gets it [CX-11][CX-03].
 AGENTS_MAX_BYTES = 30 * 1024
-BLOCK_MAX_BYTES = 2 * 1024          # the package-owned region only
+BLOCK_MAX_BYTES = 2 * 1024          # the package-owned region only, BEGIN..INDEX
 ANTIGRAVITY_CAUTION_CHARS = 12000   # printed as a caution, never enforced [AG-11]
 
 
@@ -46,12 +46,19 @@ def team_data(explicit: pathlib.Path | None) -> dict:
     sys.exit("cannot find dist/team.json; pass --team-json")
 
 
-def package_region(team: dict) -> str:
+def roster_of(team: dict, profile: str) -> list[str]:
+    if profile not in team["profiles"]:
+        sys.exit(f"unknown profile '{profile}'; choose one of "
+                 f"{', '.join(sorted(team['profiles']))}")
+    return team["profiles"][profile]
+
+
+def package_region(team: dict, profile: str) -> str:
     """The package-owned region: rewritten on every update (§5.1)."""
-    v, profile = team["version"], team["profile"]
+    v = team["version"]
     rows = ["| Colleague | Signature | Spawn name |", "|---|---|---|"]
     spawnable = []
-    for name in team["roster"]:
+    for name in roster_of(team, profile):
         p = team["personas"][name]
         spawn = p["spawn_name"] or "(primary)"
         if p["spawn_name"]:
@@ -71,10 +78,10 @@ def package_region(team: dict) -> str:
     ])
 
 
-def index_region(team: dict) -> str:
+def index_region(team: dict, profile: str) -> str:
     """Audit-owned: scaffolded once, then rewritten only by an audit, never by an update."""
     lines = [INDEX, "| lens | where it lives | derived from |", "|---|---|---|"]
-    for name in team["roster"]:
+    for name in roster_of(team, profile):
         lines.append(f"| {team['personas'][name]['lens']} | — | not yet audited |")
     lines.append("")
     return "\n".join(lines)
@@ -85,11 +92,12 @@ def bindings_region() -> str:
     return "\n".join([BINDINGS, "### Platforms and tools", "", "### Workflow and permissions", ""])
 
 
-def build_block(team: dict) -> str:
-    return package_region(team) + "\n" + index_region(team) + "\n" + bindings_region() + "\n" + END + "\n"
+def build_block(team: dict, profile: str) -> str:
+    return (package_region(team, profile) + "\n" + index_region(team, profile) + "\n"
+            + bindings_region() + "\n" + END + "\n")
 
 
-def splice(existing: str, team: dict) -> str:
+def splice(existing: str, team: dict, profile: str) -> str:
     """Rewrite only the package region; preserve the index and the project's bindings.
 
     The block goes first because Codex truncates the TAIL once project_doc_max_bytes is
@@ -109,8 +117,8 @@ def splice(existing: str, team: dict) -> str:
             else:
                 idx, binds = keep_index, bindings_region() + "\n"
         else:
-            idx, binds = index_region(team) + "\n", bindings_region() + "\n"
-        return head + package_region(team) + "\n" + idx.rstrip("\n") + "\n\n" \
+            idx, binds = index_region(team, profile) + "\n", bindings_region() + "\n"
+        return head + package_region(team, profile) + "\n" + idx.rstrip("\n") + "\n\n" \
             + binds.rstrip("\n") + "\n\n" + END + tail
 
     lines = existing.splitlines(keepends=True)
@@ -121,14 +129,14 @@ def splice(existing: str, team: dict) -> str:
             break
     while at < len(lines) and not lines[at].strip():
         at += 1
-    return "".join(lines[:at]) + "\n" + build_block(team) + "\n" + "".join(lines[at:])
+    return "".join(lines[:at]) + "\n" + build_block(team, profile) + "\n" + "".join(lines[at:])
 
 
 def sha(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
-def plan(root: pathlib.Path, team: dict, notes: list[str]) -> dict[pathlib.Path, str]:
+def plan(root: pathlib.Path, team: dict, profile: str, notes: list[str]) -> dict[pathlib.Path, str]:
     """The files this run owns, and what they should contain.
 
     `notes` collects things the project must do by hand, which this script will not do for it.
@@ -136,7 +144,7 @@ def plan(root: pathlib.Path, team: dict, notes: list[str]) -> dict[pathlib.Path,
     out = {}
     agents = root / "AGENTS.md"
     existing = agents.read_text() if agents.exists() else f"# AGENTS.md — {root.name}\n"
-    out[agents] = splice(existing, team)
+    out[agents] = splice(existing, team, profile)
 
     claude = root / "CLAUDE.md"
     # never `/import codex`, which appends a copy of AGENTS.md into CLAUDE.md [CC-14][CC-16]
@@ -152,8 +160,8 @@ def plan(root: pathlib.Path, team: dict, notes: list[str]) -> dict[pathlib.Path,
     lock = root / ".e-colleagues" / "lock.json"
     doc = {
         "package_version": team["version"],
-        "profile": team["profile"],
-        "roster": team["roster"],
+        "profile": profile,
+        "roster": roster_of(team, profile),
         "written": {},
         "completed_lenses": [],
         "updated": datetime.date.today().isoformat(),
@@ -171,14 +179,43 @@ def budgets(root: pathlib.Path, content: str, warn) -> list[str]:
         errs.append(f"AGENTS.md is {size} bytes, over the {AGENTS_MAX_BYTES} limit "
                     f"[CX-11]: Codex truncates the tail and an untrusted teammate never "
                     f"gets the raised cap")
-    m = re.search(re.escape(BEGIN) + r".*?" + re.escape(END), content, re.S)
+    # The 2 KB budget is the PACKAGE-owned region only (§5.1). The index grows one row per
+    # lens and the project-bindings region is the team's to write; both are bounded by the
+    # 30 KiB total, not by this.
+    m = re.search(re.escape(BEGIN) + r".*?" + re.escape(INDEX), content, re.S)
     if m and len(m.group(0).encode()) > BLOCK_MAX_BYTES:
-        errs.append(f"the managed block is {len(m.group(0).encode())} bytes, over "
+        errs.append(f"the package-owned region is {len(m.group(0).encode())} bytes, over "
                     f"{BLOCK_MAX_BYTES}")
     if len(content) > ANTIGRAVITY_CAUTION_CHARS:
         warn(f"AGENTS.md is {len(content)} characters; Antigravity documents a 12,000 "
              f"character limit for rules files and its application here is UNVERIFIED [AG-11]")
     return errs
+
+
+def install_personas(dist: pathlib.Path, dest: pathlib.Path, roster: list[str],
+                     dry_run: bool) -> tuple[list[str], list[str]]:
+    """Copy the rendered role files to a Codex agents directory as REAL FILES.
+
+    Never symlinks: Codex opens a role's config with O_NOFOLLOW at spawn, so a symlinked
+    role is discovered and then fails with "agent type is currently not available"
+    (docs/experiments.md E5). This is why the stow layout had to be retired.
+    """
+    written, skipped = [], []
+    for name in roster:
+        src = dist / f"{name}.toml"
+        if not src.exists():          # the tech-lead is developer_instructions, not a role
+            skipped.append(name)
+            continue
+        target = dest / f"{name}.toml"
+        if target.is_symlink():
+            # replacing a symlink in place would write through it; remove it first
+            if not dry_run:
+                target.unlink()
+        if not dry_run:
+            dest.mkdir(parents=True, exist_ok=True)
+            target.write_text(src.read_text())
+        written.append(name)
+    return written, skipped
 
 
 def main() -> int:
@@ -187,6 +224,13 @@ def main() -> int:
     ap.add_argument("--write", action="store_true")
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--team-json", type=pathlib.Path)
+    ap.add_argument("--profile", default="default",
+                    help="which roster to write; ec-init proposes it from evidence (D3)")
+    ap.add_argument("--scope", choices=("project", "user"), default="project",
+                    help="project: the contract in this repo. user: additionally install the "
+                         "rendered personas into ~/.codex/agents as real files (§9 route A)")
+    ap.add_argument("--dist", type=pathlib.Path,
+                    help="dist/codex/agents directory; defaults to the one beside this skill")
     a = ap.parse_args()
     if not (a.write or a.check):
         ap.error("pass --write or --check")
@@ -194,7 +238,7 @@ def main() -> int:
     root = a.root.resolve()
     team = team_data(a.team_json)
     notes: list[str] = []
-    files = plan(root, team, notes)
+    files = plan(root, team, a.profile, notes)
 
     warnings: list[str] = []
     errs = budgets(root, files[root / "AGENTS.md"], warnings.append)
@@ -226,6 +270,26 @@ def main() -> int:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
     print(f"wrote {len(files)} files, {len(changed)} changed")
+
+    if a.scope == "user":
+        dist = a.dist
+        if dist is None:
+            here = pathlib.Path(__file__).resolve()
+            for up in here.parents:
+                cand = up / "dist" / "codex" / "agents"
+                if cand.exists():
+                    dist = cand
+                    break
+        if dist is None or not dist.exists():
+            print("error: cannot find dist/codex/agents; pass --dist")
+            return 1
+        dest = pathlib.Path.home() / ".codex" / "agents"
+        w, sk = install_personas(dist, dest, roster_of(team, a.profile), dry_run=False)
+        print(f"installed {len(w)} personas into ~/.codex/agents as real files: "
+              f"{', '.join(w)}")
+        if sk:
+            print(f"not a role file (delivered as developer_instructions instead): "
+                  f"{', '.join(sk)} [CX-06]")
     return 0
 
 

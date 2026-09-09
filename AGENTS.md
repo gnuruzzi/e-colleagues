@@ -1,5 +1,55 @@
 # e-colleagues
 
+
+<!-- e-colleagues:begin v=0.1.0 profile=library -->
+## E-Colleagues
+
+| Colleague | Signature | Spawn name |
+|---|---|---|
+| Tech-Lead | `👨‍💻 Tech-Lead:` | (primary) |
+| Developer | `🛠️ Developer:` | developer |
+| Reviewer | `🕵️ Reviewer:` | reviewer |
+| Security | `🛡️ Security:` | security |
+| Platform | `⚙️ Platform:` | platform |
+
+The Tech-Lead delegates by spawning sub-agents of exactly these types: developer, reviewer, security, platform. Specialists never spawn.
+Specialists never post externally: findings return to the Tech-Lead, who posts them.
+If no Tech-Lead persona is active in this session, invoke the `ec-tech-lead` skill first.
+
+<!-- e-colleagues:index -->
+| lens | where it lives | derived from |
+|---|---|---|
+| architecture | docs/design.md (§§1-9) | — (the project's own) |
+| build-and-test | AGENTS.md (Workflow and permissions) + tests/ | — (the project's own) |
+| standards-and-coverage | docs/design.md §13 + tests/ | — (the project's own) |
+| security-posture | docs/design.md §8 (enforcement matrix and fail-open risks) | — (the project's own) |
+| design-system | — | not yet audited |
+| ci-cd-and-infra | .github/workflows/check.yml | — (the project's own) |
+
+<!-- e-colleagues:project-bindings -->
+### Platforms and tools
+
+Work is tracked in this repository only — there is no external board or issue tracker, and
+the remote is not yet published. **The Tech-Lead therefore posts nowhere external**: findings
+are reported to the user in the session. Do not invent a destination.
+
+The decision record is `docs/design.md`; the evidence base is `docs/experiments.md` and
+`docs/SUPPORT-MATRIX.md`. A claim in any of them carries a claim id or the word UNVERIFIED.
+
+### Workflow and permissions
+
+- Verify before claiming: `python3 tools/check.py`, `python3 tools/gen.py --check`, and
+  `python3 -m unittest discover -s tests`. All three must pass before a change is reported done.
+- Never hand-edit a generated tree (`dist/`, `skills/ec-tech-lead/`); change `personas/` and
+  re-render. The drift gate will catch it either way.
+- Commits use Conventional Commits with a milestone scope, e.g. `feat(m4): …`.
+- Only the user may push, tag or publish. This repository is publish-ready by rule (D8):
+  no absolute paths, no machine-specific assumptions, no private project names, no secrets.
+- A gate that has never failed is not a gate. Prove a new check catches its failure before
+  trusting a green run.
+
+<!-- e-colleagues:end -->
+
 A team of AI personas — tech-lead, developer, reviewer, security, designer, platform — packaged so one repository installs into OpenAI Codex CLI, Claude Code, opencode and Google Antigravity, bootstraps any project's operating contract with `ec-init`, and learns an existing project from six angles with `ec-onboard`.
 
 **Status (2026-09-09): M0 complete bar two visual checks; M1, M2 and M3 met.** `docs/experiments.md` E4–E23 carries every verdict; `docs/SUPPORT-MATRIX.md` maps each claim id to the version it was last confirmed at. In place: `team.yaml`, `personas/`, `hosts/codex.yaml`, `tools/{gen,check}.py`, `skills/{ec-init,ec-onboard,ec-status,ec-tech-lead}`, 36 stdlib tests and CI. Generated: `dist/codex/`, `dist/team.json`, `skills/ec-tech-lead/`. Next is **M4** (dogfood: install as a third party, retire the stow trees, migrate the real project). Read `docs/design.md` §0, §15 and §16. **E17 supersedes E16's tool-list method**: seven Antigravity tool names AG-06 lists are not in the registry and abort the agent at startup, so `check.py --agy-tools` must validate against a list derived by running one agent per name, never by grepping the binary.

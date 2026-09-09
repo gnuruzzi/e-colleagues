@@ -1,7 +1,6 @@
 {
   "version": "0.1.0",
-  "profile": "default",
-  "roster": [
+  "catalog": [
     "tech-lead",
     "developer",
     "reviewer",
@@ -9,6 +8,28 @@
     "designer",
     "platform"
   ],
+  "profiles": {
+    "default": [
+      "tech-lead",
+      "developer",
+      "reviewer",
+      "security",
+      "designer",
+      "platform"
+    ],
+    "minimal": [
+      "tech-lead",
+      "developer",
+      "reviewer"
+    ],
+    "library": [
+      "tech-lead",
+      "developer",
+      "reviewer",
+      "security",
+      "platform"
+    ]
+  },
   "personas": {
     "tech-lead": {
       "display": "Tech-Lead",

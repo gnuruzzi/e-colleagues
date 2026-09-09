@@ -158,16 +158,17 @@ def render_floor(personas, team, host, roster):
     }
 
 
-def render_team_json(personas, team, roster):
+def render_team_json(personas, team):
     """Data for scripts that ship to users.
 
-    `bootstrap.py` is standard-library only (§6), so it cannot read YAML. Everything it
-    needs about the roster is rendered here as JSON instead.
+    `bootstrap.py` is standard-library only (§6), so it cannot read YAML. This carries the
+    whole catalog and every profile, not one baked roster: the package ships one artifact and
+    the project chooses its profile at init time (D3).
     """
-    doc = {
+    return {
         "version": team["version"],
-        "profile": None,          # filled by build()
-        "roster": list(roster),
+        "catalog": list(team["catalog"]),
+        "profiles": {k: list(v) for k, v in team["profiles"].items()},
         "personas": {
             n: {
                 "display": personas[n]["display"],
@@ -176,10 +177,9 @@ def render_team_json(personas, team, roster):
                 "spawn_name": n if personas[n]["role"] != "primary" else None,
                 "lens": personas[n]["lens"]["name"],
             }
-            for n in roster
+            for n in team["catalog"]
         },
     }
-    return doc
 
 
 def build(roster_name="default"):
@@ -189,9 +189,8 @@ def build(roster_name="default"):
     files = {}
     files.update(render_codex(personas, team, host, roster))
     files.update(render_floor(personas, team, host, roster))
-    doc = render_team_json(personas, team, roster)
-    doc["profile"] = roster_name
-    files["dist/team.json"] = json.dumps(doc, indent=2, ensure_ascii=False) + "\n"
+    files["dist/team.json"] = json.dumps(
+        render_team_json(personas, team), indent=2, ensure_ascii=False) + "\n"
     return files
 
 

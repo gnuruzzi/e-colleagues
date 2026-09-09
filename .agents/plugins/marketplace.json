@@ -1,0 +1,11 @@
+{
+  "name": "e-colleagues",
+  "interface": { "displayName": "e-colleagues" },
+  "plugins": [
+    {
+      "name": "e-colleagues",
+      "source": { "source": "local", "path": "./" },
+      "category": "workflow"
+    }
+  ]
+}
