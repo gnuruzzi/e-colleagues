@@ -219,6 +219,65 @@ def check_rendered_bodies():
     ok(f"rendered specialist bodies ({n}) carry the skeleton and RETURN verbatim")
 
 
+# --------------------------------------------------------------------------- knowledge store
+KNOWLEDGE_KEYS = {"lens", "persona", "derived_from", "package_version", "confidence"}
+DERIVED_KEYS = {"commit", "paths", "at"}
+
+
+def check_knowledge(root: pathlib.Path | None = None):
+    """§13 item 8. The shipped readers parse this shape by hand because they are stdlib-only;
+    here it is validated with a real YAML parser, and the index is cross-checked against disk.
+    """
+    root = root or ROOT
+    store = root / ".e-colleagues" / "knowledge"
+    agents = root / "AGENTS.md"
+    if not store.exists():
+        print("  skip knowledge store (this repository has none)")
+        return
+    lenses = {p.stem for p in store.glob("*.md")}
+    for f in sorted(store.glob("*.md")):
+        text = f.read_text()
+        m = re.match(r"^---\n(.*?)\n---\n", text, re.S)
+        if not m:
+            fail(f"{f.name}: no provenance frontmatter (§5.2)")
+            continue
+        try:
+            fm = yaml.safe_load(m.group(1))
+        except yaml.YAMLError as e:
+            fail(f"{f.name}: provenance does not parse: {e}")
+            continue
+        missing = KNOWLEDGE_KEYS - set(fm)
+        if missing:
+            fail(f"{f.name}: provenance missing {missing}")
+            continue
+        if fm["lens"] != f.stem:
+            fail(f"{f.name}: lens '{fm['lens']}' does not match the filename")
+        d = fm.get("derived_from") or {}
+        if DERIVED_KEYS - set(d):
+            fail(f"{f.name}: derived_from missing {DERIVED_KEYS - set(d)}")
+        if not d.get("paths"):
+            fail(f"{f.name}: derived_from.paths is empty, so staleness cannot be computed")
+        if fm.get("confidence") not in ("high", "medium", "low"):
+            fail(f"{f.name}: confidence must be high, medium or low")
+    # the index must correspond one-to-one with what is on disk
+    if agents.exists():
+        s = agents.read_text()
+        if "<!-- e-colleagues:index -->" in s and "<!-- e-colleagues:project-bindings -->" in s:
+            region = s.split("<!-- e-colleagues:index -->", 1)[1] \
+                      .split("<!-- e-colleagues:project-bindings -->", 1)[0]
+            indexed = set()
+            for ln in region.splitlines():
+                cells = [c.strip() for c in ln.strip().strip("|").split("|")]
+                if len(cells) == 3 and cells[0] not in ("lens",) and not set(cells[0]) <= {"-"}:
+                    if ".e-colleagues/knowledge/" in cells[1]:
+                        indexed.add(pathlib.Path(cells[1]).stem)
+            if indexed - lenses:
+                fail(f"index names knowledge files that do not exist: {indexed - lenses}")
+            if lenses - indexed:
+                fail(f"knowledge files not named in the index: {lenses - indexed}")
+    ok(f"knowledge store ({len(lenses)}) provenance valid and index consistent")
+
+
 # --------------------------------------------------------------------------- drift
 def check_drift():
     sys.path.insert(0, str(ROOT / "tools"))
@@ -233,7 +292,7 @@ def check_drift():
 
 def main():
     ap = argparse.ArgumentParser()
-    for flag in ("personas", "codex", "claude", "skills", "bodies", "drift"):
+    for flag in ("personas", "codex", "claude", "skills", "bodies", "knowledge", "drift"):
         ap.add_argument(f"--{flag}", action="store_true")
     a = ap.parse_args()
     chosen = {k for k, v in vars(a).items() if v}
@@ -244,6 +303,7 @@ def main():
     if run_all or "claude" in chosen: check_claude_agents()
     if run_all or "skills" in chosen: check_skills()
     if run_all or "bodies" in chosen: check_rendered_bodies()
+    if run_all or "knowledge" in chosen: check_knowledge()
     if run_all or "drift" in chosen: check_drift()
     if FAILS:
         print("\nFAILED:")

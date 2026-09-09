@@ -309,7 +309,9 @@ e-colleagues/                          # dir name is load-bearing [AG-07][AG-08]
 ├── skills/
 │   ├── ec-init/                       # contract: SKILL.md, references/, scripts/bootstrap.py
 │   ├── ec-onboard/                    # knowledge: the multi-angle audit
-│   ├── ec-review/  ec-audit/  ec-status/
+│   ├── ec-onboard/                     # knowledge: SKILL.md, scripts/knowledge.py
+│   ├── ec-status/                      # staleness: SKILL.md, scripts/status.py
+│   ├── ec-review/  ec-audit/
 │   └── ec-tech-lead/                  # GENERATED portable floor (D7)
 ├── agents/<name>/agent.md             # GENERATED Antigravity dialect
 ├── dist/                              # GENERATED, committed
@@ -550,7 +552,7 @@ Tranche A added two items to this list: the **project-config half of Q10** (E14 
 | **M0** | rename to `e-colleagues`, sanitize research, LICENSE, first commit; throwaway fixture; tranches A/B/C; `docs/experiments.md`; design revision 4 | every v1-relevant unknown has a recorded verdict with its command and output |
 | **M1** ✅ | `team.yaml` catalog, all six personas as source, `hosts/codex.yaml`, `gen.py` → Codex dialect + `ec-tech-lead`, `check.py`, CI | **met 2026-09-08.** `check.py` green across six gates and caught all 14 negative tests; five role TOMLs parse under the key whitelist (the tech-lead is `developer_instructions`, not a sixth file [CX-06]); the rendered reviewer's own `read-only` + `never` mechanically refused redirection, append, `sed -i`, `mkdir` and `git commit` while still running the tests |
 | **M2** ✅ | `ec-init` + `scripts/bootstrap.py`, managed regions, `lock.json`, bootstrap tests | **met 2026-09-08.** 21 stdlib tests green; idempotent (byte-identical re-run); block placed directly after the H1; an update rewrites only the package region and preserves the audit index and the team's bindings; foreign config files byte-identical. Exercised on a **real 23,502 B / 492-line Android `AGENTS.md`** (worked on a copy, original untouched): 23,502 → 24,702 B, **80% of the 30 KiB limit with 6,018 B headroom**, block 1,197 B, every original heading preserved in order. The gate itself is not vacuous — an oversized file fails `--check` **and** `--write`, which then writes nothing |
-| **M3** | `ec-onboard`, store format, provenance, index, waves sized to Q16, `ec-status` staleness | onboard a real project end to end; touch a recorded path and see the lens reported stale |
+| **M3** ✅ | `ec-onboard`, store format, provenance, index, waves sized to Q16, `ec-status` staleness | **met 2026-09-09.** 36 stdlib tests green. Onboarded a **real 30-commit Android repository** end to end on a clone (original untouched): two lenses indexed to the project's own documentation and authored nothing, two authored with provenance, two left unaudited. Touching a recorded path reported that lens **STALE since `<commit>`** and named the file, while a second authored lens whose recorded paths were untouched stayed **fresh** — the control that makes the result mean something. `check.py --knowledge` validates the real store and caught all six deliberate breakages. `AGENTS.md` ended at 81% of the 30 KiB budget |
 | **M4** | dogfood: install as a third party on Codex, retire the stow trees, migrate the real project additively, bootstrap this repository with itself | the team plans and ships one real change under the new rules |
 | **M5** | port: Claude, opencode and Antigravity dialects and manifests, per-host CI, install docs | all three validators green; the manual checklist passes per host |
 | **M6** | publish: README with per-tool install, `acceptance.md`, `SUPPORT-MATRIX.md`, CHANGELOG, visibility flip | a stranger can install and bootstrap from the README alone |
