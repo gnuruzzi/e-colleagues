@@ -167,7 +167,14 @@ def plan(root: pathlib.Path, team: dict, profile: str, notes: list[str]) -> dict
         "updated": datetime.date.today().isoformat(),
     }
     for path, content in sorted(out.items()):
-        doc["written"][str(path.relative_to(root))] = sha(content)
+        # Hash only what the package owns. AGENTS.md is mostly the project's, so hashing the
+        # whole file made any edit to the project's own prose report the contract as out of
+        # date — found by following the README as a stranger would.
+        owned = content
+        if path.name == "AGENTS.md":
+            m = re.search(re.escape(BEGIN) + r".*?" + re.escape(INDEX), content, re.S)
+            owned = m.group(0) if m else content
+        doc["written"][str(path.relative_to(root))] = sha(owned)
     out[lock] = json.dumps(doc, indent=2, ensure_ascii=False) + "\n"
     return out
 

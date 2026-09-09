@@ -149,6 +149,37 @@ class TestRegionOwnership(Base):
         self.assertIn("unknown profile", r.stdout + r.stderr)
 
 
+class TestOwnership(Base):
+    """The lock hashes what the PACKAGE owns, not the whole file.
+
+    Hashing the whole AGENTS.md made any edit to the project's own prose report the contract
+    as out of date — found by following the README as a stranger would (M6).
+    """
+
+    def test_editing_project_prose_does_not_make_the_contract_stale(self):
+        self.seed(**{"AGENTS.md": "# proj\n\nProse.\n"})
+        run(self.root, "--write")
+        (self.root / "AGENTS.md").write_text(self.agents + "\nMore of the project's prose.\n")
+        self.assertEqual(run(self.root, "--check").returncode, 0)
+
+    def test_editing_the_teams_bindings_does_not_make_the_contract_stale(self):
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        run(self.root, "--write")
+        (self.root / "AGENTS.md").write_text(
+            self.agents.replace("### Platforms and tools\n",
+                                "### Platforms and tools\n\nGitLab, board X.\n"))
+        self.assertEqual(run(self.root, "--check").returncode, 0)
+
+    def test_tampering_INSIDE_the_package_region_is_caught(self):
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        run(self.root, "--write")
+        (self.root / "AGENTS.md").write_text(
+            self.agents.replace("Specialists never spawn.", "Specialists may spawn freely."))
+        r = run(self.root, "--check")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("AGENTS.md", r.stdout)
+
+
 class TestForeignFilesUntouched(Base):
     """Nothing outside the owned files and markers may change (§13 item 10)."""
 
