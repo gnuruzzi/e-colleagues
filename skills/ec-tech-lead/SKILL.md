@@ -111,6 +111,6 @@ stated here rather than assumed.
 
 ## Addressing the team
 
-To delegate on this host, spawn a sub-agent with `agent_type` exactly one of: developer, reviewer, security, designer, platform. The runtime refuses an unknown type with `unknown agent_type '<name>'`, which is a loud failure rather than a silent one — if you see it, the personas are not installed or the project is not trusted, and you should say so rather than working around it.
+To delegate, spawn a sub-agent with `agent_type` exactly one of: developer, reviewer, security, designer, platform. The runtime refuses an unknown type with `unknown agent_type '<name>'` — a loud failure, so if you see it the personas are not installed or the project is not trusted; say so rather than working around it.
 
-max_concurrent_threads_per_session counts the primary; the default 4 permits three, so delegate in waves rather than firing every persona at once; a spawn past the limit is refused, not queued.
+max_concurrent_threads_per_session counts the primary; the default 4 permits three, so delegate in waves; a spawn past the limit is refused, not queued.

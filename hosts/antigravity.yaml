@@ -1,0 +1,77 @@
+# Antigravity dialect. The only place Antigravity vocabulary appears.
+host: antigravity
+display: Google Antigravity
+min_version: "1.1.27"          # agy CLI; desktop 2.12.2 diverges, see below
+
+agent_file:
+  # Discovered by convention at the plugin root, with no manifest key [AG-07].
+  path: "agents/{name}/agent.md"
+  allowed_keys: [name, description, tools, mainAgent, subagent, model,
+                 commandExecutionPolicy, mcpServers, skills, plugins, hidden,
+                 inheritMcp, inheritCustomizations, rules, disabled,
+                 enabledTools, disabledTools]
+  # `agents:` exists in agy 1.1.27 and NOT in desktop 2.12.2 (E16), so the renderer does not
+  # emit it: it would work on the CLI and be an unknown key on the desktop.
+  never_emit: [agents]
+
+# THE MEASURED REGISTRY (experiments.md E17), not AG-06's list.
+# Seven names AG-06 gives are absent from the registry and abort the agent at startup with
+# `unknown component: tool "<name>" not found in registry`. Re-derive this by running one
+# agent per name at each supported version; grepping the binary yields a superset.
+tool_registry:
+  - view_file
+  - run_command
+  - write_to_file
+  - replace_file_content
+  - multi_replace_file_content
+  - grep_search
+  - find_by_name
+  - list_dir
+  - read_url_content
+  - search_web
+  - invoke_subagent
+  - define_subagent
+  - manage_task
+  - manage_subagents
+  - send_message
+rejected_at_1_1_27: [view_file_outline, view_code_item, command_status, codebase_search,
+                     browser_subagent, notify_user, manage_inbox]
+
+capabilities:
+  read:   [view_file]
+  search: [grep_search, find_by_name, list_dir]
+  shell:  [run_command]
+  web:    [read_url_content, search_web]
+  edit:   [write_to_file, replace_file_content, multi_replace_file_content]
+  delegate: [invoke_subagent]
+
+delegation:
+  style: mechanical
+  address_form: "{name}"
+  tool: invoke_subagent
+  # Measured (E19): an explicit `tools` list omitting invoke_subagent DOES override ambient
+  # subagent inheritance — the specialist reports the tool unavailable.
+  allowlist_overrides_inheritance: true
+
+manifest:
+  path: "plugin.json"            # ROOT, regular file, never a symlink (§6, E6)
+  schema: "https://antigravity.google/schemas/v1/plugin.json"
+
+install:
+  # Measured (E18): NO workspace root delivers agents at 1.1.27 — not .agents/plugins/,
+  # not _agents/plugins/, not .agents/agents/. Only a global install works, so the roster is
+  # per-user here, not per-project.
+  global_only: true
+  command: "agy plugin install <dir>"
+  url_form: "agy plugin install https://github.com/<owner>/e-colleagues"   # github.com only (E8)
+  destination: "~/.gemini/config/plugins/{name}/"
+  # A re-install MERGES; deleted files survive (E8). An update that drops a persona must
+  # uninstall first, or delete the stale agent directory explicitly.
+  reinstall_merges: true
+
+instructions:
+  # Measured (E19): AGENTS.md reaches NO agy agent — not a custom one, not the default.
+  # The managed block is therefore invisible here, so each body must carry the contract.
+  file: null
+  reaches_children: false
+  body_carries_contract: true

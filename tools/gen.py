@@ -47,26 +47,61 @@ def shared(name: str) -> str:
     return (SHARED / f"{name}.md").read_text().strip()
 
 
+CONTRACT = """## The contract
+
+This host does not deliver `AGENTS.md` to you, so the contract is stated here rather than
+assumed. Read the project's `AGENTS.md` yourself if you need its project-specific bindings.
+
+- The Tech-Lead is the only voice to the user and the only persona that posts externally.
+- Specialists return findings; they never post, and never contact each other.
+- Evidence before claims: "passes" and "fixed" carry the command and its output.
+"""
+
+
 def host_appendix(persona, team, host) -> str:
-    """§4.7 — how to address the team on this host."""
-    if persona["role"] != "primary":
-        return (
-            "## Addressing the team\n\n"
-            "You have no spawn tool on this host. If the work needs another persona, say so "
-            "under follow-ups and let the Tech-Lead delegate."
-        )
-    names = ", ".join(persona["capabilities"]["delegate"])
+    """§4.7 — how to address the team on this host, generated from hosts/<tool>.yaml."""
     d = host["delegation"]
-    return (
-        "## Addressing the team\n\n"
-        f"To delegate on this host, {d['spawn_verb']} with `agent_type` exactly one of: "
-        f"{names}. The runtime refuses an unknown type with "
-        f"`{d['unknown_type_error'].format(name='<name>')}`, which is a loud failure rather "
-        "than a silent one — if you see it, the personas are not installed or the project is "
-        "not trusted, and you should say so rather than working around it.\n\n"
-        f"{d['concurrency_note']}, so delegate in waves rather than firing every persona at "
-        "once; a spawn past the limit is refused, not queued."
-    )
+    if persona["role"] != "primary":
+        extra = ""
+        if host["host"] == "antigravity":
+            # measured: an explicit tools list omitting invoke_subagent really does bite (E19)
+            extra = (" Your `tools` list omits `invoke_subagent`, so the tool is genuinely "
+                     "absent rather than merely forbidden.")
+        return ("## Addressing the team\n\n"
+                "You have no spawn tool on this host." + extra +
+                " If the work needs another persona, say so under follow-ups and let the "
+                "Tech-Lead delegate.")
+
+    names = persona["capabilities"]["delegate"]
+    addressed = ", ".join(d["address_form"].format(name=n) for n in names)
+    lines = ["## Addressing the team", ""]
+    if host["host"] == "codex":
+        lines.append(
+            f"To delegate, {d['spawn_verb']} with `agent_type` exactly one of: {addressed}. "
+            f"The runtime refuses an unknown type with "
+            f"`{d['unknown_type_error'].format(name='<name>')}` — a loud failure, so if you "
+            f"see it the personas are not installed or the project is not trusted; say so "
+            f"rather than working around it.")
+        lines.append("")
+        lines.append(d["concurrency_note"] + ", so delegate in waves; a spawn past the limit "
+                     "is refused, not queued.")
+    elif host["host"] == "claude":
+        lines.append(
+            f"To delegate, use the `{d['tool']}` tool with `{d['parameter']}` exactly one of: "
+            f"{addressed}.")
+        lines.append("")
+        lines.append("The qualified `e-colleagues:` prefix is required — a bare name does not "
+                     "resolve. Never delegate to a built-in type ("
+                     + ", ".join(d["builtins_to_deny"]) + ").")
+    elif host["host"] == "opencode":
+        lines.append(
+            f"To delegate, use the `{d['tool']}` tool with `{d['parameter']}` exactly one of: "
+            f"{addressed}. The allowlist is enforced by the runtime, so an attempt to reach "
+            f"anyone else is refused rather than silently permitted.")
+    elif host["host"] == "antigravity":
+        lines.append(
+            f"To delegate, use `{d['tool']}` with one of: {addressed}.")
+    return "\n".join(lines)
 
 
 def render_body(persona, team, host) -> str:
@@ -93,6 +128,8 @@ def render_body(persona, team, host) -> str:
         parts.append(shared("return"))
     if primary:
         parts.append(shared("lead-conduct"))
+    if host.get("instructions", {}).get("body_carries_contract"):
+        parts.append(CONTRACT.strip())
     parts.append(host_appendix(persona, team, host))
     return "\n\n".join(p for p in parts if p).strip() + "\n"
 
@@ -182,13 +219,121 @@ def render_team_json(personas, team):
     }
 
 
+
+def yaml_scalar(v: str) -> str:
+    """Quote a frontmatter value when it could be misread.
+
+    A routing sentence always contains a colon, and an unquoted colon is a YAML error that
+    `claude plugin validate` silently repairs rather than reports (experiments.md E15), so
+    the generator must never emit one.
+    """
+    if any(c in v for c in ':#{}[]&*!|>%@`"\'') or v.strip() != v:
+        return '"' + v.replace('\\', '\\\\').replace('"', '\\"') + '"'
+    return v
+
+
+def render_claude(personas, team, host, roster):
+    """Claude dialect: a tools allowlist for read-only personas, nothing for the primary."""
+    out = {}
+    caps = host["capabilities"]
+    for name in roster:
+        p = personas[name]
+        fm = [f"name: {p['name']}",
+              f"description: {yaml_scalar(' '.join(p['description'].split()))}",
+              f"model: {p['model']}"]
+        if p["role"] == "primary":
+            pass                      # no tools key at all [CC-09]
+        elif p["capabilities"]["edit"]:
+            fm.append("disallowedTools: " + ", ".join(caps["edit_true"]["disallowed_tools"]))
+        else:
+            fm.append("tools: " + ", ".join(caps["edit_false"]["tools"]))
+        body = render_body(p, team, host)
+        out[host["agent_file"]["path"].format(name=name)] = (
+            "---\n" + "\n".join(fm) + "\n---\n\n" + body)
+    return out
+
+
+def render_opencode(personas, team, host, roster):
+    """opencode dialect: opencode's own permission vocabulary, never Claude's tool names."""
+    out = {}
+    caps = host["capabilities"]
+    for name in roster:
+        p = personas[name]
+        perm: dict = {}
+        perm.update(caps["edit_true"] if p["capabilities"]["edit"] else caps["edit_false"])
+        if not p["capabilities"]["web"]:
+            perm.update(caps["no_web"])
+        if p["capabilities"]["delegate"]:
+            perm["task"] = {"*": "deny", **{n: "allow" for n in p["capabilities"]["delegate"]}}
+        lines = [f"description: {yaml_scalar(' '.join(p['description'].split()))}",
+                 f"mode: {'primary' if p['role'] == 'primary' else 'subagent'}",
+                 "permission:"]
+        for k, v in perm.items():
+            if isinstance(v, dict):
+                lines.append(f"  {k}:")
+                for pat, act in v.items():
+                    lines.append(f'    "{pat}": {act}')
+            else:
+                lines.append(f"  {k}: {v}")
+        out[host["agent_file"]["path"].format(name=name)] = (
+            "---\n" + "\n".join(lines) + "\n---\n\n" + render_body(p, team, host))
+
+    cfg = {
+        "$schema": host["config"]["schema"],
+        "default_agent": "tech-lead",
+        "permission": {"task": {"*": "deny",
+                                **{n: "allow" for n in personas["tech-lead"]["capabilities"]["delegate"]
+                                   if n in roster}}},
+    }
+    out[host["config"]["path"]] = json.dumps(cfg, indent=2) + "\n"
+    # opencode writes these into any config directory on first run [OC-10]
+    out["dist/opencode/.gitignore"] = "node_modules/\npackage.json\npackage-lock.json\n"
+    return out
+
+
+def render_antigravity(personas, team, host, roster):
+    """Antigravity dialect: ONLY names in the measured registry (E17)."""
+    out = {}
+    caps = host["capabilities"]
+    registry = set(host["tool_registry"])
+    for name in roster:
+        p = personas[name]
+        tools = list(caps["read"]) + list(caps["search"])
+        if p["capabilities"]["shell"]:
+            tools += caps["shell"]
+        if p["capabilities"]["web"]:
+            tools += caps["web"]
+        if p["capabilities"]["edit"]:
+            tools += caps["edit"]
+        if p["capabilities"]["delegate"]:
+            tools += caps["delegate"]
+        bad = [t for t in tools if t not in registry]
+        if bad:                       # a name outside the registry aborts the agent (E17)
+            raise SystemExit(f"gen.py: {name} would emit tool names outside the measured "
+                             f"registry: {bad}")
+        primary = p["role"] == "primary"
+        fm = [f"name: {p['name']}",
+              f"description: {yaml_scalar(' '.join(p['description'].split()))}",
+              f"mainAgent: {'true' if primary else 'false'}",
+              f"subagent: {'false' if primary else 'true'}",
+              f"model: {p['model']}",
+              "tools:"] + [f"  - {t}" for t in tools]
+        out[host["agent_file"]["path"].format(name=name)] = (
+            "---\n" + "\n".join(fm) + "\n---\n\n" + render_body(p, team, host))
+    return out
+
+
 def build(roster_name="default"):
     team, personas = load_team(), load_personas()
-    host = yaml.safe_load((HOSTS / "codex.yaml").read_text())
+    hosts = {h: yaml.safe_load((HOSTS / f"{h}.yaml").read_text())
+             for h in ("codex", "claude", "opencode", "antigravity")}
     roster = team["profiles"][roster_name]
     files = {}
-    files.update(render_codex(personas, team, host, roster))
-    files.update(render_floor(personas, team, host, roster))
+    files.update(render_codex(personas, team, hosts["codex"], roster))
+    files.update(render_claude(personas, team, hosts["claude"], roster))
+    files.update(render_opencode(personas, team, hosts["opencode"], roster))
+    files.update(render_antigravity(personas, team, hosts["antigravity"], roster))
+    files.update(render_floor(personas, team, hosts["codex"], roster))
     files["dist/team.json"] = json.dumps(
         render_team_json(personas, team), indent=2, ensure_ascii=False) + "\n"
     return files

@@ -11,9 +11,70 @@ Two things it does to a repository:
 
 ## Status
 
-**Design revision 3 complete; implementation not started.** Codex CLI is the first target; Claude Code, opencode and Antigravity follow at M5. See [`docs/design.md`](docs/design.md) for the design, [`docs/experiments.md`](docs/experiments.md) for what has been verified against the installed tools, and [`docs/handoff.md`](docs/handoff.md) for provenance.
+**M0–M5 complete.** All six personas are rendered into four host dialects from a single
+source, behind a drift gate and 43 tests. What is verified is recorded: see
+[`docs/experiments.md`](docs/experiments.md) for 23 experiments against the installed tools,
+and [`docs/SUPPORT-MATRIX.md`](docs/SUPPORT-MATRIX.md) for which claim was last confirmed at
+which version. [`docs/design.md`](docs/design.md) is the decision record.
 
-Install instructions land at M6. There is nothing to install yet.
+Publishing is M6, so the install lines below assume you have the repository locally.
+
+## Install
+
+Nothing here needs network access beyond cloning.
+
+### Codex CLI
+
+```bash
+codex plugin marketplace add /path/to/e-colleagues
+codex plugin add e-colleagues@e-colleagues          # the four skills
+python3 skills/ec-init/scripts/bootstrap.py --scope user --write   # the personas, as real files
+```
+
+The second line installs `ec-init`, `ec-onboard`, `ec-status` and `ec-tech-lead`. The third
+writes `~/.codex/agents/*.toml` and `~/.codex/e-colleagues.config.toml`; run
+`codex --profile e-colleagues` to make the tech-lead primary. They must be **real files** —
+Codex opens a role file with `O_NOFOLLOW` at spawn, so a symlinked persona is discovered and
+then fails with `agent type is currently not available`.
+
+### Claude Code
+
+```bash
+claude plugin marketplace add /path/to/e-colleagues
+claude plugin install e-colleagues@e-colleagues
+claude --agent tech-lead
+```
+
+Delegation uses the qualified name — `e-colleagues:reviewer`, not `reviewer`. A bare name
+resolves for the `--agent` flag but not for the `Agent` tool's `subagent_type`.
+
+### opencode
+
+There is no bundle format, so `ec-init` writes the files into the project:
+`.opencode/agents/*.md` plus an `opencode.json` carrying `default_agent: tech-lead`.
+
+### Antigravity
+
+```bash
+agy plugin install /path/to/e-colleagues        # or a https://github.com/... URL
+agy --agent tech-lead
+```
+
+A **global** install is the only route that delivers agents — no workspace directory does at
+agy 1.1.27 — so the roster is per-user rather than per-project there. A re-install merges
+rather than replaces, so uninstall first when the roster shrinks.
+
+## Bootstrap a project
+
+```bash
+python3 skills/ec-init/scripts/bootstrap.py /path/to/project --write --profile default
+python3 skills/ec-status/scripts/status.py  /path/to/project
+```
+
+Profiles are `default` (all six), `library` (no designer, for projects with no user
+interface) and `minimal`. `--check` exits non-zero when the contract is out of date or
+`AGENTS.md` would exceed 30 KiB — above that Codex truncates the tail, and the raised cap
+lives in a trust-gated config an untrusted teammate never gets.
 
 ## Why the research directory is here
 

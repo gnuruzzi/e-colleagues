@@ -1,0 +1,16 @@
+{
+  "name": "e-colleagues",
+  "version": "0.1.0",
+  "description": "A team of AI personas \u2014 tech-lead, developer, reviewer, security, designer, platform \u2014 with an operating contract, a portable floor and a knowledge store.",
+  "author": {
+    "name": "e-colleagues"
+  },
+  "agents": [
+    "./dist/claude/agents/tech-lead.md",
+    "./dist/claude/agents/developer.md",
+    "./dist/claude/agents/reviewer.md",
+    "./dist/claude/agents/security.md",
+    "./dist/claude/agents/designer.md",
+    "./dist/claude/agents/platform.md"
+  ]
+}

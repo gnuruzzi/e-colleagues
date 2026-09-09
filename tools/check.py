@@ -9,6 +9,7 @@ frontmatter when the value contains a colon, and every routing sentence has one
 from __future__ import annotations
 
 import argparse
+import json
 import pathlib
 import re
 import sys
@@ -219,6 +220,174 @@ def check_rendered_bodies():
     ok(f"rendered specialist bodies ({n}) carry the skeleton and RETURN verbatim")
 
 
+# --------------------------------------------------------------------------- opencode
+def check_opencode():
+    """opencode agents fail OPEN: an unknown key is silently moved into `options`, so a
+    misspelled `permision:` yields a reviewer with full default permissions [OC-01][OC-02].
+    Only this gate stands between that and a shipped agent."""
+    host = yaml.safe_load((ROOT / "hosts" / "opencode.yaml").read_text())
+    allowed = set(host["agent_file"]["allowed_keys"])
+    perm_keys = set(host["permission_keys"])
+    d = ROOT / "dist" / "opencode" / "agents"
+    files = sorted(d.glob("*.md")) if d.exists() else []
+    if not files:
+        print("  skip opencode agents (not rendered)")
+        return
+    for f in files:
+        m = re.match(r"^---\n(.*?)\n---\n", f.read_text(), re.S)
+        if not m:
+            fail(f"{f.name}: no frontmatter")
+            continue
+        try:
+            fm = yaml.safe_load(m.group(1))
+        except yaml.YAMLError as e:
+            fail(f"{f.name}: frontmatter does not parse: {e}")
+            continue
+        unknown = set(fm) - allowed
+        if unknown:
+            fail(f"{f.name}: {unknown} is outside KNOWN_KEYS and would vanish into "
+                 f"`options` with full default permissions [OC-02]")
+        if "options" in fm:
+            fail(f"{f.name}: `options` content means a key was silently swallowed [OC-02]")
+        for k in host["agent_file"]["required_keys"]:
+            if not fm.get(k):
+                fail(f"{f.name}: {k} is required")
+        if fm.get("mode") not in ("primary", "subagent", "all"):
+            fail(f"{f.name}: mode must be primary, subagent or all [OC-03]")
+        for k in (fm.get("permission") or {}):
+            if k not in perm_keys:
+                fail(f"{f.name}: permission key '{k}' is not one of opencode's {len(perm_keys)}")
+            if k != k.lower():
+                fail(f"{f.name}: permission keys are lowercase; '{k}' is Claude's spelling")
+        name = f.stem
+        p = yaml.safe_load((ROOT / "personas" / f"{name}.yaml").read_text())
+        perm = fm.get("permission") or {}
+        if not p["capabilities"]["edit"] and perm.get("edit") != "deny":
+            fail(f"{f.name}: a read-only persona needs permission.edit = deny")
+        if p["capabilities"]["delegate"] and "task" not in perm:
+            fail(f"{f.name}: a delegating persona needs a permission.task allowlist [OC-05]")
+        if p["role"] == "primary" and fm.get("mode") != "primary":
+            fail(f"{f.name}: the primary needs mode: primary [OC-03]")
+
+    cfg_path = ROOT / "dist" / "opencode" / "opencode.json"
+    if cfg_path.exists():
+        cfg = json.loads(cfg_path.read_text())
+        da = cfg.get("default_agent")
+        if da and not (d / f"{da}.md").exists():
+            fail(f"opencode.json: default_agent '{da}' does not resolve — a hard config "
+                 f"error for every user of the repository [OC-03]")
+        for cname, c in (cfg.get("command") or {}).items():
+            extra = set(c) - set(host["config"]["command_keys"])
+            if extra:
+                fail(f"opencode.json: command '{cname}' has keys outside the schema: {extra}")
+            for req in host["config"]["command_required"]:
+                if req not in c:
+                    fail(f"opencode.json: command '{cname}' is missing required '{req}'")
+    ok(f"opencode agents ({len(files)}) use opencode's own vocabulary; config resolves")
+
+
+# --------------------------------------------------------------------------- antigravity
+def check_agy_tools():
+    """Every emitted tool name must be in the MEASURED registry.
+
+    A name outside it aborts the agent at startup with `unknown component: tool "<name>" not
+    found in registry` (experiments.md E17). Seven names AG-06 lists are invalid. The list
+    must be re-derived by running one agent per name; grepping the binary yields a superset
+    and reported all seven as present (E16 C1, superseded).
+    """
+    host = yaml.safe_load((ROOT / "hosts" / "antigravity.yaml").read_text())
+    registry = set(host["tool_registry"])
+    rejected = set(host["rejected_at_1_1_27"])
+    if registry & rejected:
+        fail(f"hosts/antigravity.yaml: {registry & rejected} is in both lists")
+    d = ROOT / "agents"
+    files = sorted(d.glob("*/agent.md")) if d.exists() else []
+    if not files:
+        print("  skip antigravity agents (not rendered)")
+        return
+    for f in files:
+        m = re.match(r"^---\n(.*?)\n---\n", f.read_text(), re.S)
+        if not m:
+            fail(f"{f.parent.name}/agent.md: no frontmatter")
+            continue
+        fm = yaml.safe_load(m.group(1))
+        unknown = set(fm) - set(host["agent_file"]["allowed_keys"])
+        if unknown:
+            fail(f"{f.parent.name}/agent.md: unknown frontmatter keys {unknown}")
+        for never in host["agent_file"]["never_emit"]:
+            if never in fm:
+                fail(f"{f.parent.name}/agent.md: `{never}` exists in agy 1.1.27 but not in "
+                     f"desktop 2.12.2 (E16); do not emit it")
+        tools = fm.get("tools") or []
+        if not tools:
+            fail(f"{f.parent.name}/agent.md: an omitted or empty `tools` list means no tools "
+                 f"[AG-06]")
+        bad = [t for t in tools if t not in registry]
+        if bad:
+            fail(f"{f.parent.name}/agent.md: {bad} not in the measured registry — the agent "
+                 f"would abort at startup (E17)")
+        name = fm.get("name")
+        p = yaml.safe_load((ROOT / "personas" / f"{name}.yaml").read_text())
+        if not p["capabilities"]["edit"] and (set(tools) & set(host["capabilities"]["edit"])):
+            fail(f"{f.parent.name}/agent.md: a read-only persona carries a write tool")
+        if not p["capabilities"]["delegate"] and "invoke_subagent" in tools:
+            fail(f"{f.parent.name}/agent.md: a specialist carries invoke_subagent")
+        if p["capabilities"]["delegate"] and "invoke_subagent" not in tools:
+            fail(f"{f.parent.name}/agent.md: the primary needs invoke_subagent")
+    ok(f"antigravity agents ({len(files)}) use only the {len(registry)} measured registry names")
+
+
+# --------------------------------------------------------------------------- vendor validators
+# This repository is simultaneously a plugin AND a project bootstrapped with itself, so its
+# own CLAUDE.md sits at the plugin root. Claude warns that a plugin-root CLAUDE.md is not
+# loaded as project context — true, and irrelevant here: that file exists for the project
+# role, not the plugin role. It is the one warning this gate tolerates, by exact text.
+KNOWN_CLAUDE_WARNINGS = ["CLAUDE.md at the plugin root is not loaded as project context"]
+
+
+def check_hosts():
+    """Run the vendors' own validators. Skips cleanly where a binary is absent, so CI on a
+    bare runner reports honestly instead of passing vacuously."""
+    import shutil
+    import subprocess
+
+    if shutil.which("claude"):
+        runs = [("agents dir", ["./dist/claude/agents"]),
+                ("plugin manifest", [".claude-plugin/plugin.json"]),
+                ("marketplace", [".claude-plugin/marketplace.json"])]
+        for label, args in runs:
+            r = subprocess.run(["claude", "plugin", "validate", "--strict", *args],
+                               capture_output=True, text=True, cwd=ROOT)
+            out = r.stdout + r.stderr
+            if r.returncode != 0:
+                # Claude prints a separate "Found 1 warning" block per issue, so counting
+                # blocks is not enough. Tolerate only when EVERY complaint is a known one.
+                complaints = [c.strip() for c in re.findall(r"❯\s*(.+)", out)]
+                unknown = [c for c in complaints
+                           if not any(k in c for k in KNOWN_CLAUDE_WARNINGS)]
+                has_errors = re.search(r"Found \d+ error", out) is not None
+                if complaints and not unknown and not has_errors:
+                    ok(f"claude validate {label}: passes but for the known plugin-root "
+                       f"CLAUDE.md warning")
+                else:
+                    fail(f"claude plugin validate --strict {' '.join(args)} failed: "
+                         f"{out.strip().splitlines()[-1] if out.strip() else '(no output)'}")
+            else:
+                ok(f"claude validate {label}")
+    else:
+        print("  skip claude plugin validate (claude not on PATH)")
+
+    if shutil.which("agy"):
+        r = subprocess.run(["agy", "plugin", "validate", "."], capture_output=True,
+                           text=True, cwd=ROOT)
+        if r.returncode != 0 or "[ok]" not in (r.stdout + r.stderr):
+            fail(f"agy plugin validate did not report [ok]: {(r.stdout + r.stderr).strip()[:120]}")
+        else:
+            ok("agy plugin validate reports [ok]")
+    else:
+        print("  skip agy plugin validate (agy not on PATH)")
+
+
 # --------------------------------------------------------------------------- knowledge store
 KNOWLEDGE_KEYS = {"lens", "persona", "derived_from", "package_version", "confidence"}
 DERIVED_KEYS = {"commit", "paths", "at"}
@@ -292,7 +461,8 @@ def check_drift():
 
 def main():
     ap = argparse.ArgumentParser()
-    for flag in ("personas", "codex", "claude", "skills", "bodies", "knowledge", "drift"):
+    for flag in ("personas", "codex", "claude", "opencode", "agy-tools", "skills",
+                 "bodies", "knowledge", "hosts", "drift"):
         ap.add_argument(f"--{flag}", action="store_true")
     a = ap.parse_args()
     chosen = {k for k, v in vars(a).items() if v}
@@ -301,9 +471,12 @@ def main():
     if run_all or "personas" in chosen: check_personas()
     if run_all or "codex" in chosen: check_codex()
     if run_all or "claude" in chosen: check_claude_agents()
+    if run_all or "opencode" in chosen: check_opencode()
+    if run_all or "agy_tools" in chosen: check_agy_tools()
     if run_all or "skills" in chosen: check_skills()
     if run_all or "bodies" in chosen: check_rendered_bodies()
     if run_all or "knowledge" in chosen: check_knowledge()
+    if run_all or "hosts" in chosen: check_hosts()
     if run_all or "drift" in chosen: check_drift()
     if FAILS:
         print("\nFAILED:")

@@ -1,0 +1,55 @@
+# opencode dialect. The only place opencode vocabulary appears.
+host: opencode
+display: opencode
+min_version: "1.18.29"
+
+agent_file:
+  path: "dist/opencode/agents/{name}.md"
+  # [OC-02] KNOWN_KEYS. An unknown key is silently moved into `options`, so a misspelled
+  # `permision:` yields full default permissions — check.py rejects anything outside this set
+  # and any `options` content, because the runtime will not.
+  allowed_keys: [name, description, model, variant, prompt, temperature, top_p, mode,
+                 hidden, color, steps, maxSteps, options, permission, disable, tools]
+  required_keys: [description, mode]
+
+# The 15 permission keys from the vendored schema (E20 re-derived them at 1.18.29).
+permission_keys: [read, edit, glob, grep, list, bash, task, external_directory,
+                  todowrite, question, webfetch, websearch, lsp, doom_loop, skill]
+
+capabilities:
+  edit_true:  { edit: allow }
+  edit_false:
+    edit: deny
+    # Pattern rules rather than a blanket `ask`. A blanket ask would be DENIED outright in
+    # `opencode run` — every headless session stamps `question: * deny` on parent and
+    # subtask alike (E20) — which silently removes the shell when the reviewer needs it.
+    bash:
+      "*": allow
+      "git commit*": deny
+      "git stash*": deny
+      "sed -i*": deny
+  no_web: { webfetch: deny, websearch: deny }
+
+delegation:
+  style: mechanical
+  address_form: "{name}"
+  tool: task
+  parameter: subagent_type
+  # Children get `task * deny` automatically [OC-05]; the primary gets an explicit allowlist.
+  child_denies_task: true
+
+config:
+  path: "dist/opencode/opencode.json"
+  schema: "https://opencode.ai/config.json"
+  default_agent_key: default_agent
+  # A typo in default_agent is a hard config error for every user of the repo [OC-03].
+  # Command entries: {template, description, agent, model, variant, subtask}, template
+  # REQUIRED, additionalProperties false (E20 corrected §13's list).
+  command_keys: [template, description, agent, model, variant, subtask]
+  command_required: [template]
+
+instructions:
+  file: "AGENTS.md"
+  # Measured (E20): a task child DOES receive AGENTS.md.
+  reaches_children: true
+  body_carries_contract: false

@@ -5,18 +5,30 @@ on:
   pull_request:
 
 jobs:
-  check:
+  static:
+    name: static gates and drift
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"     # tomllib is stdlib from 3.11
-      - name: Install the one dev dependency
-        run: pip install pyyaml
-      - name: Static gates
+      - run: pip install pyyaml
+      - name: Static gates (all hosts)
         run: python3 tools/check.py
       - name: The generated tree is current
         run: python3 tools/gen.py --check
-      - name: Bootstrap tests (standard library only, like the script)
+      - name: Bootstrap and knowledge tests (standard library only)
         run: python3 -m unittest discover -s tests -v
+
+  claude:
+    name: claude plugin validate
+    runs-on: ubuntu-latest
+    continue-on-error: true          # the CLI is not installable on a bare runner yet
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pyyaml
+      - name: Vendor validators, where the binaries exist
+        run: python3 tools/check.py --hosts

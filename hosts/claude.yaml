@@ -1,0 +1,49 @@
+# Claude Code dialect. The only place Claude vocabulary appears.
+host: claude
+display: Claude Code
+min_version: "2.1.263"
+
+agent_file:
+  path: "dist/claude/agents/{name}.md"
+  # [CC-07] plugin agents support these; permissionMode, hooks and mcpServers are silently
+  # ignored, so check.py forbids them outright.
+  allowed_keys: [name, description, model, effort, maxTurns, tools, disallowedTools,
+                 skills, memory, background, isolation]
+  forbidden_keys: [permissionMode, hooks, mcpServers]
+
+capabilities:
+  # An allowlist is the stronger form, but it strips every tool it does not name — including
+  # all MCP tools, Skill and AskUserQuestion — and MCP cannot be re-admitted generically
+  # [CC-09]. So only read-only personas get one.
+  edit_false:
+    tools: [Read, Grep, Glob, Bash]
+    # Never `memory` here: it re-enables Write and Edit [CC-07].
+  edit_true:
+    # No `tools` key at all — inherit. Built-ins are denied by name instead.
+    disallowed_tools: [Agent]
+  primary:
+    # The tech-lead carries NO tools key and no disallowedTools: an allowlist would remove
+    # MCP, Skill, AskUserQuestion and plan mode, and it must be able to delegate [CC-09].
+    tools: null
+    disallowed_tools: []
+
+# Measured (experiments.md E10): a bare subagent_type does NOT resolve; the qualified form
+# does. The `--agent` CLI flag accepts either.
+delegation:
+  style: mechanical
+  address_form: "e-colleagues:{name}"
+  tool: Agent
+  parameter: subagent_type
+  builtins_to_deny: [Explore, Plan, general-purpose]
+
+# The manifest's `agents` key takes explicit FILE paths and REPLACES the default agents/
+# scan, which is what lets the Antigravity dialect live at the repo root [CC-02] (E10).
+manifest:
+  path: ".claude-plugin/plugin.json"
+  agents_key_is_file_list: true
+
+instructions:
+  # CLAUDE.md is a two-line import; subagents receive the hierarchy [CC-12][CC-14].
+  file: "CLAUDE.md"
+  imports_agents_md: true
+  body_carries_contract: false
