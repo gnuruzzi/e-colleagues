@@ -40,7 +40,7 @@ These override the digest wherever they disagree.
 
 ## The Antigravity tool registry
 
-`check.py --agy-tools` validates against this list, which was derived by installing each name as the sole entry in an agent's `tools` list and running it (E17). **Do not derive it by grepping the binary** — that yields a superset and reported all seven invalid names as present (E16 C1, superseded).
+**`check.py --agy-tools` is not implemented yet** — it lands with M5, when the Antigravity dialect is first rendered and there is something for it to validate; today it would gate nothing. The list below is what it must validate against, derived by installing each name as the sole entry in an agent's `tools` list and running it (E17). **Do not derive it by grepping the binary** — that yields a superset and reported all seven invalid names as present (E16 C1, superseded).
 
 Valid at **agy 1.1.27** — 15 names:
 

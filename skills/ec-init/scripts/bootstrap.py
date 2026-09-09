@@ -218,25 +218,82 @@ def install_personas(dist: pathlib.Path, dest: pathlib.Path, roster: list[str],
     return written, skipped
 
 
+def install_user_scope(team: dict, a) -> int:
+    """§9 route A: personas and the tech-lead profile, for this machine.
+
+    Writes no project files: a per-user install and a per-project contract are different
+    jobs. Never writes ~/.codex/config.toml — Codex rewrites that file itself.
+    """
+    here = pathlib.Path(__file__).resolve()
+    dist = a.dist
+    if dist is None:
+        for up in here.parents:
+            if (up / "dist" / "codex" / "agents").exists():
+                dist = up / "dist" / "codex" / "agents"
+                break
+    if dist is None or not dist.exists():
+        print("error: cannot find dist/codex/agents; pass --dist")
+        return 1
+
+    roster = roster_of(team, a.profile)
+    codex_home = pathlib.Path.home() / ".codex"
+    dest = codex_home / "agents"
+
+    if a.check:
+        stale = []
+        for name in roster:
+            src = dist / f"{name}.toml"
+            if not src.exists():
+                continue
+            t = dest / f"{name}.toml"
+            if t.is_symlink():
+                stale.append(f"{t.name} is a SYMLINK and cannot spawn [CX-02]")
+            elif not t.exists() or t.read_text() != src.read_text():
+                stale.append(f"{t.name} is missing or out of date")
+        for s_ in stale:
+            print(f"  {s_}")
+        print("up to date" if not stale else f"{len(stale)} persona file(s) need --write")
+        return 1 if stale else 0
+
+    written, skipped = install_personas(dist, dest, roster, dry_run=False)
+    print(f"installed {len(written)} personas into ~/.codex/agents as real files: "
+          f"{', '.join(written)}")
+    if skipped:
+        print(f"delivered as developer_instructions instead, not a role file: "
+              f"{', '.join(skipped)} [CX-06]")
+
+    profile_src = dist.parent / "e-colleagues.config.toml"
+    if profile_src.exists():
+        (codex_home / "e-colleagues.config.toml").write_text(profile_src.read_text())
+        print("installed ~/.codex/e-colleagues.config.toml — run `codex --profile e-colleagues`")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("root", nargs="?", default=".", type=pathlib.Path)
+    ap.add_argument("root", nargs="?", default=".", type=pathlib.Path,
+                    help="the project root; ignored with --scope user")
     ap.add_argument("--write", action="store_true")
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--team-json", type=pathlib.Path)
     ap.add_argument("--profile", default="default",
                     help="which roster to write; ec-init proposes it from evidence (D3)")
     ap.add_argument("--scope", choices=("project", "user"), default="project",
-                    help="project: the contract in this repo. user: additionally install the "
-                         "rendered personas into ~/.codex/agents as real files (§9 route A)")
+                    help="project: write this repository's contract. user: install the "
+                         "personas and the profile for this machine (§9 route A). They are "
+                         "different jobs and are not combined")
     ap.add_argument("--dist", type=pathlib.Path,
                     help="dist/codex/agents directory; defaults to the one beside this skill")
     a = ap.parse_args()
     if not (a.write or a.check):
         ap.error("pass --write or --check")
 
-    root = a.root.resolve()
     team = team_data(a.team_json)
+
+    if a.scope == "user":
+        return install_user_scope(team, a)
+
+    root = a.root.resolve()
     notes: list[str] = []
     files = plan(root, team, a.profile, notes)
 
@@ -271,25 +328,6 @@ def main() -> int:
         path.write_text(content)
     print(f"wrote {len(files)} files, {len(changed)} changed")
 
-    if a.scope == "user":
-        dist = a.dist
-        if dist is None:
-            here = pathlib.Path(__file__).resolve()
-            for up in here.parents:
-                cand = up / "dist" / "codex" / "agents"
-                if cand.exists():
-                    dist = cand
-                    break
-        if dist is None or not dist.exists():
-            print("error: cannot find dist/codex/agents; pass --dist")
-            return 1
-        dest = pathlib.Path.home() / ".codex" / "agents"
-        w, sk = install_personas(dist, dest, roster_of(team, a.profile), dry_run=False)
-        print(f"installed {len(w)} personas into ~/.codex/agents as real files: "
-              f"{', '.join(w)}")
-        if sk:
-            print(f"not a role file (delivered as developer_instructions instead): "
-                  f"{', '.join(sk)} [CX-06]")
     return 0
 
 
