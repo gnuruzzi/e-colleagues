@@ -205,7 +205,7 @@ def install_personas(dist: pathlib.Path, dest: pathlib.Path, roster: list[str],
 
     Never symlinks: Codex opens a role's config with O_NOFOLLOW at spawn, so a symlinked
     role is discovered and then fails with "agent type is currently not available"
-    (docs/experiments.md E5). This is why the stow layout had to be retired.
+    (docs/experiments.md E5), so any symlink-based install layout is silently broken.
     """
     written, skipped = [], []
     for name in roster:
