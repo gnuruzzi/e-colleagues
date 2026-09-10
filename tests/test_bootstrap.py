@@ -172,7 +172,7 @@ class TestOwnership(Base):
     """The lock hashes what the PACKAGE owns, not the whole file.
 
     Hashing the whole AGENTS.md made any edit to the project's own prose report the contract
-    as out of date — found by following the README as a stranger would (M6).
+    as out of date — found by following the README as a stranger would.
     """
 
     def test_editing_project_prose_does_not_make_the_contract_stale(self):
@@ -255,7 +255,7 @@ class TestBudgets(Base):
     def test_a_long_bindings_section_does_not_breach_the_2kb_budget(self):
         """§5.1 budgets the PACKAGE region at 2 KB. The project-bindings region is the
         team's to write and is bounded only by the 30 KiB total. Measuring the whole block
-        against 2 KB rejected a perfectly legal contract — found by dogfooding (M4)."""
+        against 2 KB rejected a perfectly legal contract — found by using the tool on this repository itself."""
         self.seed(**{"AGENTS.md": "# proj\n"})
         run(self.root, "--write")
         s = self.agents.replace(

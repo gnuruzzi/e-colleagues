@@ -32,7 +32,7 @@ Tranches: **A** automated, **B** interactive — needing a TTY or a trust dialog
 
 ---
 
-## The M0 fixture
+## The fixture
 
 Several questions need a tree that really *is* a plugin for the host under test. This was that fixture — a throwaway in a scratch directory, deleted afterwards. Its shape is recorded so it can be rebuilt for a new host or version without re-deriving the manifests.
 
@@ -62,7 +62,7 @@ Two companion trees, also throwaway:
 
 ## E1 — Q14 retired by design
 
-**Date** 2026-09-07. **Not tested.**
+**Not tested.**
 
 Design decision D6 makes the tech-lead the only external voice: specialists return structured findings and never touch the network. Whether the Codex `read-only` sandbox blocks outbound network therefore has no bearing on the package. Recorded so a later reader does not re-open it looking for evidence.
 
@@ -176,7 +176,7 @@ Control at `sandbox_mode = "workspace-write"` + `never`: the same `make test` wr
 1. The design's central guarantee survives — `read-only` + `never` is strict *and* a reviewer can still run tests and cite output.
 2. But §8's fallback ("a per-project `hosts.codex.sandbox_mode: workspace-write` override for the reviewer with a `check.py` warning") will be the **common** case, not the rare one: any suite that compiles to a build directory, writes a coverage or report file, or uses a scratch temp file will fail — a Gradle or Maven build certainly will. The design must say this plainly rather than treating the override as an edge case.
 3. There is no in-between setting. `sandbox_workspace_write.writable_roots` only *adds* roots and applies only when `sandbox_mode = "workspace-write"`, which always makes the workspace itself writable. `exclude_slash_tmp` and `exclude_tmpdir_env_var` only subtract. So "read-only workspace plus a writable scratch dir" is not expressible through `sandbox_mode`.
-4. Lead, not yet settled: the beta `[permissions.<name>]` profiles (config reference: built-ins `:read-only`, `:workspace`, `:danger-full-access`; "Don't combine with `sandbox_mode` or `[sandbox_workspace_write]`") may express it. `-c permissions.default=":read-only"` is **not** the invocation — it fails `invalid type: string ":read-only", expected struct PermissionProfileToml in `permissions``. Worth a probe before M1 settles the reviewer's Codex dialect.
+4. Lead, not yet settled: the beta `[permissions.<name>]` profiles (config reference: built-ins `:read-only`, `:workspace`, `:danger-full-access`; "Don't combine with `sandbox_mode` or `[sandbox_workspace_write]`") may express it. `-c permissions.default=":read-only"` is **not** the invocation — it fails `invalid type: string ":read-only", expected struct PermissionProfileToml in `permissions``. Worth a probe before the reviewer's Codex dialect is settled.
 
 **Bonus, recorded not sought**: the network probe shows the read-only sandbox blocks outbound DNS. That is the evidence retired Q14 (E1) would have gathered. D6 stands on its own; this only means a reversal of D6 would find read-only unusable for posting.
 
@@ -222,7 +222,7 @@ codex
 
 ## E6 — Q5 and Q15: Codex root-as-plugin marketplace, and the plugin cache layout (tranche A)
 
-**Date** 2026-09-07. **codex-cli 0.153.4.** Fixture: the M0 throwaway tree carrying all three manifests.
+**Date** 2026-09-07. **codex-cli 0.153.4.** Fixture: the throwaway tree carrying all three manifests.
 
 ### Q5 — which `source` forms resolve a root-as-plugin entry
 
@@ -529,7 +529,7 @@ codex
 
 ## E13 — §8's Bash write path on Claude, measured rather than argued
 
-**Date** 2026-09-07. **Claude Code 2.1.263.** Not a numbered unknown — §8 asserts it, and the M0 fixture made it cheap to check.
+**Date** 2026-09-07. **Claude Code 2.1.263.** Not a numbered unknown — §8 asserts it, and the fixture made it cheap to check.
 
 The rendered read-only reviewer (`tools: Read, Grep, Glob, Bash`, no `memory`) was spawned as `e-colleagues:reviewer` and **asked to do something entirely within its role**: run the project's test suite. The persona spec permits exactly this (`shell: true  # may run the project's test/lint commands`). No instruction to violate the contract was given.
 
@@ -761,7 +761,7 @@ Each of the 22 candidate names was then installed as the sole entry in a probe a
    | web | `read_url_content, search_web` | unchanged — both valid |
    | edit | the three write tools | unchanged — all three valid |
 
-   Every rendered Antigravity agent carrying the §3 read list would fail at startup, so this would have broken M5 outright rather than degrading quietly.
+   Every rendered Antigravity agent carrying the §3 read list would fail at startup, so this would have broken the Antigravity port outright rather than degrading quietly.
 
 2. **AG-06's failure-mode warning is wrong at 1.1.27, in the safe direction.** It says an "unmapped or misspelled tool name in the tools list may cause the subagent process to hang". It does not hang: it fails fast and loudly at executor construction, before any model call. That makes it cheap to test — which is what made this sweep affordable — but the surfaced message is generic, and the actionable name appears only in `--log-file`.
 

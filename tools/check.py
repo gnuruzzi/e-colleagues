@@ -129,7 +129,7 @@ def check_claude_agents():
     d = ROOT / "dist" / "claude" / "agents"
     files = sorted(d.glob("*.md")) if d.exists() else []
     if not files:
-        print("  skip claude agents (not rendered until M5)")
+        print("  skip claude agents (none rendered)")
         return
     for f in files:
         text = f.read_text()

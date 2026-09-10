@@ -52,7 +52,7 @@ The decision record is `docs/design.md`; the evidence base is `docs/experiments.
 
 A team of AI personas — tech-lead, developer, reviewer, security, designer, platform — packaged so one repository installs into OpenAI Codex CLI, Claude Code, opencode and Google Antigravity, bootstraps any project's operating contract with `ec-init`, and learns an existing project from six angles with `ec-onboard`.
 
-**Status (2026-09-09): M0–M5 met; M6's gate met, publishing outstanding.** Six personas render into four host dialects from one source, behind a drift gate, nine `check.py` gates and 46 tests. `docs/experiments.md` E4–E23 is the evidence; `docs/SUPPORT-MATRIX.md` maps each claim to the version it was last confirmed at; `docs/acceptance.md` carries the minimum versions and the honest per-host guarantee table. This repository runs on its own contract (`--profile library`). **What remains is the visibility flip**, which is the maintainer's call and also settles the last two open questions (E8, E23). **E17 is the load-bearing correction**: seven Antigravity tool names AG-06 lists are not in the registry and abort the agent at startup. `hosts/antigravity.yaml` carries the 15 measured names and `check.py --agy-tools` enforces them; re-derive that list by running one agent per name at each supported version, never by grepping the binary.
+Six personas are authored once in `personas/` and rendered into four host dialects. Read `docs/design.md` §0 for the decisions that are binding, §15 for how a host fact gets established, and §16 for how to add a host or a persona. `docs/SUPPORT-MATRIX.md` resolves every claim id; `docs/experiments.md` is the evidence and outranks any claim it contradicts.
 
 ## Working rules for this repository
 

@@ -9,15 +9,23 @@ Two things it does to a repository:
 - **`ec-init`** establishes the operating contract — who is on the team, which platforms and tools the project uses, the branching and merge rules, who may push or tag. Interview-derived, because only a human knows those. It lands as one small managed block at the top of your `AGENTS.md`, and your own content is never restructured.
 - **`ec-onboard`** learns the project. Each persona audits from its own angle — architecture, build and test reality, coverage and standards, security posture, design system, CI/CD and infrastructure — and **indexes what your project already documents first**, authoring a knowledge file only where there is no home for that angle. Every file records the commit and the paths it was derived from, so going stale is detectable with a `git diff`.
 
-## Status
+## What works today
 
-**M0–M5 complete.** All six personas are rendered into four host dialects from a single
-source, behind a drift gate and 43 tests. What is verified is recorded: see
-[`docs/experiments.md`](docs/experiments.md) for 23 experiments against the installed tools,
-and [`docs/SUPPORT-MATRIX.md`](docs/SUPPORT-MATRIX.md) for which claim was last confirmed at
-which version. [`docs/design.md`](docs/design.md) is the decision record.
+Version 0.1.0. Six personas, rendered from one source into four host dialects.
 
-Publishing is M6, so the install lines below assume you have the repository locally.
+| host | minimum version | the tech-lead is primary by | "cannot edit" is enforced by |
+|---|---|---|---|
+| OpenAI Codex CLI | 0.153.4 | `developer_instructions` (prose) | **the sandbox** — the only host where it is a filesystem guarantee |
+| Claude Code | 2.1.263 | `--agent` (mechanical) | the tool list; the shell can still write |
+| opencode | 1.18.29 | `default_agent` (mechanical) | permissions; bash narrowed by patterns |
+| Google Antigravity | agy 1.1.27 | `mainAgent` (mechanical) | the tool list; `run_command` can still write |
+
+Known limits, stated because a guarantee that is really a request is worth naming:
+Codex's read-only sandbox blocks **every** write including `/tmp`, so a project whose tests
+write anything needs an explicit override; Antigravity has no per-project roster and its
+re-install merges rather than replaces; and `AGENTS.md` never reaches an Antigravity agent, so
+its personas carry the contract in their own bodies. The full list, with what each rests on,
+is in [`docs/acceptance.md`](docs/acceptance.md).
 
 ## Install
 

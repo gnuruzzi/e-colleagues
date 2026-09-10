@@ -1,8 +1,8 @@
 # Support matrix
 
-One row per fact-checked claim the design rests on, with the version it was last confirmed at and whether the M0 sweep exercised it at runtime or it still rests on documentation and source alone.
+One row per fact-checked claim the design rests on, with the version it was last confirmed at and whether it was exercised against a running tool or still rests on documentation and source alone.
 
-Every claim id is stated in full under [The claims themselves](#the-claims-themselves) below, so a citation anywhere in this repository resolves without leaving it. Read alongside [`experiments.md`](experiments.md), which holds the M0 evidence (E1–E23). Where a claim and an experiment disagree, **the experiment wins** — it ran against the installed binary; the claim was read from documentation and source.
+Every claim id is stated in full under [The claims themselves](#the-claims-themselves) below, so a citation anywhere in this repository resolves without leaving it. Read alongside [`experiments.md`](experiments.md), which holds the evidence (E1–E23). Where a claim and an experiment disagree, **the experiment wins** — it ran against the installed binary; the claim was read from documentation and source.
 
 ## Versions this matrix describes
 
@@ -25,7 +25,7 @@ Every claim id is stated in full under [The claims themselves](#the-claims-thems
 
 ## How to read the `how` column
 
-- **runtime** — the M0 sweep exercised this claim against the installed binary and it held.
+- **runtime** — exercised against the installed binary, and it held.
 - **corrected** — the sweep contradicted or materially narrowed the digest. The design follows the experiment, not the claim text. These nine are listed again below.
 - **docs/source only** — believed on documentation or source reading. Not exercised. Treat as the weakest tier.
 
@@ -47,7 +47,7 @@ These override the digest wherever they disagree.
 
 ## The Antigravity tool registry
 
-**`check.py --agy-tools` is not implemented yet** — it lands with M5, when the Antigravity dialect is first rendered and there is something for it to validate; today it would gate nothing. The list below is what it must validate against, derived by installing each name as the sole entry in an agent's `tools` list and running it (E17). **Do not derive it by grepping the binary** — that yields a superset and reported all seven invalid names as present (E16 C1, superseded).
+`check.py --agy-tools` validates every rendered Antigravity agent against this list, derived by installing each name as the sole entry in an agent's `tools` list and running it (E17). **Do not derive it by grepping the binary** — that yields a superset and reported all seven invalid names as present (E16 C1, superseded).
 
 Valid at **agy 1.1.27** — 15 names:
 
@@ -63,7 +63,7 @@ Rejected at 1.1.27, despite appearing in the binary's strings: `view_file_outlin
 
 ### Claude Code
 
-| claim | last confirmed at | digest verdict | how | M0 evidence | what the sweep showed |
+| claim | last confirmed at | verdict | how | evidence | what was measured |
 |---|---|---|---|---|---|
 | `CC-02` | Claude Code 2.1.263 | confirmed | runtime | E10 | manifest agents list replaces the default scan; decoy never loaded |
 | `CC-03` | Claude Code 2.1.263 | confirmed | **corrected** | E10 | bare subagent_type does NOT resolve; qualified form does |
@@ -83,7 +83,7 @@ Rejected at 1.1.27, despite appearing in the binary's strings: `view_file_outlin
 
 ### Codex CLI
 
-| claim | last confirmed at | digest verdict | how | M0 evidence | what the sweep showed |
+| claim | last confirmed at | verdict | how | evidence | what was measured |
 |---|---|---|---|---|---|
 | `CX-01` | Codex CLI 0.153.4 | confirmed | docs/source only | — | — |
 | `CX-02` | Codex CLI 0.153.4 | confirmed | runtime | E4, E5 | read-only+never blocks every write; symlinked role TOML fails at spawn |
@@ -100,7 +100,7 @@ Rejected at 1.1.27, despite appearing in the binary's strings: `view_file_outlin
 
 ### opencode
 
-| claim | last confirmed at | digest verdict | how | M0 evidence | what the sweep showed |
+| claim | last confirmed at | verdict | how | evidence | what was measured |
 |---|---|---|---|---|---|
 | `OC-01` | opencode 1.18.29 | confirmed | runtime | E20 | project agents load from .opencode/agents |
 | `OC-02` | opencode 1.18.29 | confirmed | runtime | E20 | permission edit:deny holds on a subagent |
@@ -115,7 +115,7 @@ Rejected at 1.1.27, despite appearing in the binary's strings: `view_file_outlin
 
 ### Antigravity
 
-| claim | last confirmed at | digest verdict | how | M0 evidence | what the sweep showed |
+| claim | last confirmed at | verdict | how | evidence | what was measured |
 |---|---|---|---|---|---|
 | `AG-02` | agy 1.1.27 / desktop 2.12.2 | confirmed | **corrected** | E16, E19 | desktop lacks agents:; body is not sliced at the first H1 |
 | `AG-03` | agy 1.1.27 / desktop 2.12.2 | confirmed | runtime | E19 | agy --agent runs a mainAgent persona |
@@ -130,21 +130,21 @@ Rejected at 1.1.27, despite appearing in the binary's strings: `view_file_outlin
 
 ### Prior art
 
-| claim | last confirmed at | digest verdict | how | M0 evidence | what the sweep showed |
+| claim | last confirmed at | verdict | how | evidence | what was measured |
 |---|---|---|---|---|---|
 | `PA-01` | n/a (public repos) | confirmed | docs/source only | — | — |
 | `PA-02` | n/a (public repos) | refuted | docs/source only | — | — |
 
 ### Standards
 
-| claim | last confirmed at | digest verdict | how | M0 evidence | what the sweep showed |
+| claim | last confirmed at | verdict | how | evidence | what was measured |
 |---|---|---|---|---|---|
 | `STD-01` | n/a (cross-tool) | confirmed | docs/source only | — | — |
 | `STD-02` | n/a (cross-tool) | confirmed | docs/source only | — | — |
 | `STD-03` | n/a (cross-tool) | confirmed | docs/source only | — | — |
 ## Not covered here
 
-Five questions stay open after M0 and none is version-gated in a way this matrix can express:
+Five questions stay open and none is version-gated in a way this matrix can express:
 
 - a user-scope versus project-scope `agent` key on Claude — needs a temporary edit to a user's own settings file
 - the opencode Tab and `@` menus — needs the TUI
