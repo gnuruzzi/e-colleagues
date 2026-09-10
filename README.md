@@ -76,11 +76,23 @@ interface) and `minimal`. `--check` exits non-zero when the contract is out of d
 `AGENTS.md` would exceed 30 KiB — above that Codex truncates the tail, and the raised cap
 lives in a trust-gated config an untrusted teammate never gets.
 
-## Why the research directory is here
+## How this was built
 
-`docs/research/` holds 58 independently fact-checked claims about how Claude Code, Codex, opencode and Antigravity actually load agents, skills, plugins and instruction files — 50 confirmed, 8 refuted with corrections — plus 67 explicit "unknown, do not assume" gaps and the vendor documentation as it read at research time. Every path, key and command in the design cites a claim id, or says UNVERIFIED.
+Every path, key and command in the design cites a fact-checked claim, or says UNVERIFIED. The
+claims are stated in full in [`docs/SUPPORT-MATRIX.md`](docs/SUPPORT-MATRIX.md), together with
+the version each was last confirmed at and whether it was exercised at runtime or rests on
+documentation alone.
 
-It is kept because the tools move fast enough that an unsourced design rots quietly. Four of the five targets moved within a day of the research being written, and one version gate had already flipped.
+They are not taken on faith. [`docs/experiments.md`](docs/experiments.md) records 23
+experiments run against the installed tools, with the exact command, the version and the raw
+output — and where an experiment contradicts a claim, the experiment wins. That discipline
+paid for itself: seven tool names the Antigravity documentation lists are absent from its tool
+registry and abort an agent at startup, so a renderer built from the documentation would have
+produced agents that could not start on that host at all.
+
+It is worth the ceremony because these tools move fast. Four of the five targets released a
+new version within a day of the research being written, and one version gate had already
+flipped by the time it was checked.
 
 ## Licence
 

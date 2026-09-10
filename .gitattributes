@@ -4,4 +4,3 @@ agents/**                   linguist-generated=true
 skills/ec-tech-lead/**      linguist-generated=true
 
 # Vendor documentation snapshots taken at research time.
-docs/research/snapshots/**  linguist-vendored=true

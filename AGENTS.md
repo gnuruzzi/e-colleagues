@@ -56,13 +56,13 @@ A team of AI personas — tech-lead, developer, reviewer, security, designer, pl
 
 ## Working rules for this repository
 
-- `docs/design.md` is the decision record. When you change a decision, change the document in the same commit. Every path, key, flag and command in it carries a claim id from `docs/research/facts-digest.md` or the word UNVERIFIED; keep that discipline in code comments and README text too.
+- `docs/design.md` is the decision record. When you change a decision, change the document in the same commit. Every path, key, flag and command in it carries a claim id resolved in `docs/SUPPORT-MATRIX.md` or the word UNVERIFIED; keep that discipline in code comments and README text too.
 - The eight **decisions of record** in design §0 are binding. Reversing one is a design change: update §0 and everything downstream of it in the same commit.
 - Before writing generator or bootstrap code, run the M0 sweep from design §15 and record every outcome in `docs/experiments.md` with the exact command, the installed version and the raw output. An unknown with no entry there is still open, and no code may depend on it.
 - Check installed tool versions first. Four of the five tools moved within a day of the research (see `docs/experiments.md` E2), so any claim carrying a version gate must be re-verified before it is relied on — E3 is an example of one that had already flipped.
 - Generated trees (`dist/`, `agents/`, `skills/ec-tech-lead/`) are never hand-edited. `tools/gen.py` renders them from `personas/`; `tools/check.py --drift` must pass before any commit.
 - `personas/` never contains a tool's vocabulary. Tool names, permission keys and spawn syntax live in `hosts/*.yaml`.
-- This repository is **publish-ready**: no absolute paths, no machine-specific assumptions (no stow, no `pass`, no Arch), no private project names. `docs/research/` has been sanitized to `~`-relative paths for exactly this reason — keep it that way.
+- This repository is **publish-ready**: no absolute paths, no machine-specific assumptions, no private project names, no secrets. It is public, so assume every file is read by a stranger with no context.
 - Never write `~/.codex/config.toml` from any script here; Codex rewrites it itself and on the maintainer's machine it is deliberately untracked state. `~/.claude/settings.json` is a stowed, tracked file in the maintainer's dotfiles, so a user-scope Claude plugin install dirties that working tree by design.
 - Secrets never reach a manifest, a fixture or a test. Not one token, not in an example.
 

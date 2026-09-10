@@ -1,5 +1,5 @@
 # Codex CLI dialect. The only place Codex vocabulary appears.
-# Claim ids refer to docs/research/facts-digest.md; E-ids to docs/experiments.md.
+# Claim ids resolve in docs/SUPPORT-MATRIX.md; E-ids in docs/experiments.md.
 host: codex
 display: OpenAI Codex CLI
 min_version: "0.153.4"          # the version every claim below was confirmed at

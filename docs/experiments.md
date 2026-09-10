@@ -700,9 +700,9 @@ The **inheritance default** half of this item is not settled here — `inheritCu
 
 ```console
 $ curl -sS https://opencode.ai/config.json -o new.json
-$ wc -c new.json docs/research/snapshots/opencode/config.schema.json
+$ wc -c new.json vendored-copy.json
 39039 new.json
-39039 docs/research/snapshots/opencode/config.schema.json
+39039 vendored-copy.json
 ```
 
 Byte-identical, 19 `$defs` in both. `AgentConfig` carries the same 15 properties as at 1.18.25 — `color, description, disable, hidden, maxSteps, mode, model, options, permission, prompt, steps, temperature, tools, top_p, variant` — with nothing added or removed, and `mode` still `["subagent","primary","all"]`.

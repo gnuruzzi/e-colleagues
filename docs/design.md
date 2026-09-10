@@ -12,7 +12,7 @@ Targets: Claude Code, OpenAI Codex CLI, opencode, Google Antigravity (the `agy` 
 
 Four of the five moved within a day of the research, and one version gate has already flipped: AG-02 records that the Antigravity `agents:` frontmatter list is 1.1.27+ and absent from the installed binary — on 1.1.27 `strings /usr/bin/agy | grep -c 'yaml:"agents'` returns 1. M0 tranche C re-verified every version-gated claim (`experiments.md` E16): the agy tool list is valid at 1.1.27, the opencode published schema is unchanged at 1.18.29, and the desktop diverges from the CLI on `agents:` alone.
 
-Every path, key, flag and command below carries the id of the fact-checked claim it rests on (`research/facts-digest.md`: 58 claims, 50 confirmed, 8 refuted with corrections — for a refuted claim the CORRECTION is the truth). Anything the research could not settle is marked UNVERIFIED and appears in §15 with the probe that settles it.
+Every path, key, flag and command below carries the id of the fact-checked claim it rests on. Each id is stated in full in [`SUPPORT-MATRIX.md`](SUPPORT-MATRIX.md) — for a claim marked refuted, the correction is the truth. Anything the research could not settle is marked UNVERIFIED and appears in §15 with the probe that settles it, and where an experiment in [`experiments.md`](experiments.md) contradicts a claim, the experiment wins.
 
 **What changed in revision 3.** Revision 2 was a packaging design. Revision 3 keeps its mechanics almost entirely and adds the capability the package exists for: personas that learn a project from several angles and work from what the project already documents. Eight decisions of record (§0) reshaped the roster, the external-posting rule, the portable floor, the knowledge architecture and the build order. One unknown (Q14) is retired by design rather than by experiment.
 
@@ -31,7 +31,7 @@ Settled 2026-09-07. Each is binding; changing one changes this document in the s
 | D5 | **Every knowledge file records provenance** (commit sha + paths read) | Staleness detection becomes a `git diff`, so the living-knowledge upgrade is additive rather than a redesign |
 | D6 | **The tech-lead is the only external voice.** Specialists never post; they return structured findings the lead posts verbatim | Read-only specialists need no network, so Codex's `read-only` sandbox is strict *and* usable; Claude's allowlist stripping MCP [CC-09] stops mattering; no specialist needs platform credentials. Retires Q14 |
 | D7 | **Portable floor is the tech-lead only.** Specialists ship as native agents exclusively | A skill cannot restrict tools portably, so a skill-adopted reviewer would run in a thread that can write — the exact fail-open the redesign exists to remove |
-| D8 | **Research is sanitized and kept in-tree; the repo is publish-ready from commit one** | No history rewrite is ever needed; the fact base ships as part of the value. Absolute paths normalized to `~`, private project names replaced |
+| D8 | **The repository is public and self-contained; the evidence ships, the raw research does not** | Superseded 2026-09-10. D8 originally kept the sanitized research in-tree. On publication the maintainer removed it — 4.7 MB of vendored third-party documentation and the previous package's prompts — so what ships is the *evidence*: `experiments.md` (23 experiments run against the installed tools) and `SUPPORT-MATRIX.md`, which now states all 52 claims in full so every citation resolves inside the repository. No claim id points outward |
 
 Per-directory `AGENTS.md` knowledge files (the one mechanically-injected option, [CX-11][OC-09][AG-11][CC-14]) are permitted as a project override but are never the architecture: they only carry directory-local knowledge, and what the team needs is cross-cutting.
 
@@ -474,7 +474,7 @@ Invoke from inside the tool: `$ec-init` (Codex) [CX-07], `/e-colleagues:ec-init`
 
 ## 14. Migration from the Codex-only package
 
-The package being replaced is preserved under `reference/current-codex-package/`: five agent TOMLs, all `sandbox_mode = "workspace-write"` including reviewer and security, plus the `ecolleagues-init` skill and its `AGENTS.template.md`. It is live from the dotfiles repository, stowed into `~/.codex/agents/*.toml` as **symlinks** and `~/.codex/skills/ecolleagues-init` in a deprecated skill root [CX-07].
+The package being replaced was a Codex-only set of five agent TOMLs — all `sandbox_mode = "workspace-write"`, including reviewer and security, so "does not edit source" was prose alone — plus an `ecolleagues-init` skill in the deprecated `~/.codex/skills` root [CX-07]. It was installed by symlink, which is why Q4 exists: a symlinked role file is discovered and then fails at spawn (E5). It is not carried in this repository.
 
 In order:
 
