@@ -109,6 +109,32 @@ class TestAuthoring(Base):
             self.assertEqual(ln.count("|"), 4, ln)
 
 
+class TestLockOwnership(Base):
+    """The lock has two owners: ec-init owns the package fields, the audit owns
+    completed_lenses and the knowledge entries. Rebuilding the whole document wiped the
+    audit's record, so every indexed lens reported as "not audited" after an ec-init run."""
+
+    def test_ec_init_does_not_wipe_the_audits_record(self):
+        self.audit()
+        before = json.loads((self.root / ".e-colleagues/lock.json").read_text())
+        self.assertIn("ci-cd-and-infra", before["completed_lenses"])
+        sh(sys.executable, BOOTSTRAP, self.root, "--write", "--team-json", TEAM)
+        after = json.loads((self.root / ".e-colleagues/lock.json").read_text())
+        self.assertIn("ci-cd-and-infra", after["completed_lenses"])
+
+    def test_ec_init_keeps_the_knowledge_entries(self):
+        self.audit()
+        sh(sys.executable, BOOTSTRAP, self.root, "--write", "--team-json", TEAM)
+        written = json.loads((self.root / ".e-colleagues/lock.json").read_text())["written"]
+        self.assertIn(".e-colleagues/knowledge/ci-cd-and-infra.md", written)
+
+    def test_status_still_reports_a_lens_indexed_after_an_ec_init_run(self):
+        sh(sys.executable, KNOWLEDGE, self.root, "--lens", "architecture",
+           "--persona", "tech-lead", "--index-only", "docs/")
+        sh(sys.executable, BOOTSTRAP, self.root, "--write", "--team-json", TEAM)
+        self.assertIn("indexed", self.status().stdout)
+
+
 class TestStaleness(Base):
     """Staleness is a git diff over the recorded paths (§5.2)."""
 

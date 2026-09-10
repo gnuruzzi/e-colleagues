@@ -142,6 +142,25 @@ class TestRegionOwnership(Base):
         self.assertEqual(lock["profile"], "library")
         self.assertNotIn("designer", lock["roster"])
 
+    def test_a_plain_write_keeps_the_projects_recorded_profile(self):
+        """A project's roster is its own decision. A plain --write used to revert it to
+        `default`, silently adding a persona the project had chosen to drop."""
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        run(self.root, "--write", "--profile", "library")
+        run(self.root, "--write")                       # no --profile
+        lock = json.loads((self.root / ".e-colleagues/lock.json").read_text())
+        self.assertEqual(lock["profile"], "library")
+        self.assertNotIn("designer", lock["roster"])
+        self.assertNotIn("| Designer |", self.agents)
+
+    def test_an_explicit_profile_still_overrides_the_lock(self):
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        run(self.root, "--write", "--profile", "library")
+        run(self.root, "--write", "--profile", "default")
+        lock = json.loads((self.root / ".e-colleagues/lock.json").read_text())
+        self.assertEqual(lock["profile"], "default")
+        self.assertIn("designer", lock["roster"])
+
     def test_an_unknown_profile_is_rejected(self):
         self.seed(**{"AGENTS.md": "# proj\n"})
         r = run(self.root, "--write", "--profile", "nonsense")

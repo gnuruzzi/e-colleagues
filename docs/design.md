@@ -12,7 +12,7 @@ Targets: Claude Code, OpenAI Codex CLI, opencode, Google Antigravity (the `agy` 
 
 Four of the five moved within a day of the research, and one version gate has already flipped: AG-02 records that the Antigravity `agents:` frontmatter list is 1.1.27+ and absent from the installed binary — on 1.1.27 `strings /usr/bin/agy | grep -c 'yaml:"agents'` returns 1. M0 tranche C re-verified every version-gated claim (`experiments.md` E16): the agy tool list is valid at 1.1.27, the opencode published schema is unchanged at 1.18.29, and the desktop diverges from the CLI on `agents:` alone.
 
-Every path, key, flag and command below carries the id of the fact-checked claim it rests on. Each id is stated in full in [`SUPPORT-MATRIX.md`](SUPPORT-MATRIX.md) — for a claim marked refuted, the correction is the truth. Anything the research could not settle is marked UNVERIFIED and appears in §15 with the probe that settles it, and where an experiment in [`experiments.md`](experiments.md) contradicts a claim, the experiment wins.
+Every path, key, flag and command below carries the id of the fact-checked claim it rests on. Each id is stated in full in [`SUPPORT-MATRIX.md`](SUPPORT-MATRIX.md) — for a claim marked refuted, the correction is the truth. Anything the research could not settle is marked UNVERIFIED, and where an experiment in [`experiments.md`](experiments.md) contradicts a claim, the experiment wins.
 
 **What changed in revision 3.** Revision 2 was a packaging design. Revision 3 keeps its mechanics almost entirely and adds the capability the package exists for: personas that learn a project from several angles and work from what the project already documents. Eight decisions of record (§0) reshaped the roster, the external-posting rule, the portable floor, the knowledge architecture and the build order. One unknown (Q14) is retired by design rather than by experiment.
 
@@ -321,7 +321,7 @@ e-colleagues/                          # dir name is load-bearing [AG-07][AG-08]
 │   └── opencode/{agents,commands}/*.md, opencode.json, .gitignore
 ├── tools/{gen.py,check.py}    install.py
 ├── tests/test_bootstrap.py            # stdlib unittest, like the script it tests
-├── docs/{design.md,experiments.md,handoff.md,acceptance.md,SUPPORT-MATRIX.md,research/}
+├── docs/{design.md,experiments.md,acceptance.md,SUPPORT-MATRIX.md}
 └── VERSION  README.md  CHANGELOG.md  LICENSE  .gitattributes  .gitignore
 ```
 
@@ -397,7 +397,7 @@ Prose-only ceilings, stated plainly: signatures everywhere; the primary persona 
 
 Notes that bind the implementation:
 
-- **Real files, never symlinks.** Codex opens a role's config with `O_NOFOLLOW` at spawn, so a symlinked `~/.codex/agents/*.toml` is discovered but fails when spawned — **measured** (Q4, `experiments.md` E5): identical file content, symlink → `agent type is currently not available`, real file → spawns [CX-02]. `--scope user` writes copies, and `check.py` refuses to emit a symlink into an agents directory. Consequence for §14: the maintainer's currently stowed personas **cannot spawn today**, so retiring that stow tree is a fix, not a tidy-up.
+- **Real files, never symlinks.** Codex opens a role's config with `O_NOFOLLOW` at spawn, so a symlinked `~/.codex/agents/*.toml` is discovered but fails when spawned — **measured** (Q4, `experiments.md` E5): identical file content, symlink → `agent type is currently not available`, real file → spawns [CX-02]. `--scope user` writes copies, and `check.py` refuses to emit a symlink into an agents directory. Consequence for §14: a symlink-installed persona cannot spawn at all, so replacing that layout is a fix rather than a tidy-up.
 - **`~/.codex/config.toml` is never written by this package.** Codex rewrites that file itself, and on this machine it is deliberately untracked state. The profile is a separate file; `codex --profile` reads `~/.codex/<name>.config.toml` [CX-03].
 - **Skills live in exactly one scope per host.** A user with the plugin *and* project `.agents/skills` copies sees `ec-init` twice, because same-named skills are not merged [CX-07]. The plugin is the documented route; project copies are opt-in (`--vendor-skills`). Project skills are **not** trust-gated (the CX-03 correction), so `$ec-tech-lead` works in an untrusted clone even when the agents do not load — **measured** in one run (Q17, `experiments.md` E12): the skill loaded and its body was followed, while the project agent failed with `unknown agent_type '<name>'`.
 - **Two install stories.** Route A is per-user: plugin for skills, `bootstrap.py --scope user` for personas and the profile. Route B is per-repo: the project carries `.codex/agents/`, the `.codex/config.toml` managed region and vendored skills, so a teammate clones, trusts once and has the team with nothing installed.
@@ -472,89 +472,76 @@ Invoke from inside the tool: `$ec-init` (Codex) [CX-07], `/e-colleagues:ec-init`
 
 ---
 
-## 14. Migration from the Codex-only package
+## 14. Migrating from an earlier setup
 
-The package being replaced was a Codex-only set of five agent TOMLs — all `sandbox_mode = "workspace-write"`, including reviewer and security, so "does not edit source" was prose alone — plus an `ecolleagues-init` skill in the deprecated `~/.codex/skills` root [CX-07]. It was installed by symlink, which is why Q4 exists: a symlinked role file is discovered and then fails at spawn (E5). It is not carried in this repository.
+The package this replaced was Codex-only: five agent TOMLs, all `sandbox_mode =
+"workspace-write"` — including reviewer and security, so "does not edit source" was prose
+alone — plus a skill in the deprecated `~/.codex/skills` root [CX-07]. It was installed by
+symlink, which is why Q4 mattered: a symlinked role file is discovered and then fails at
+spawn (`experiments.md` E5), so those personas could not be delegated to at all.
 
-In order:
+Anyone migrating from a similar arrangement needs three things, in this order:
 
-1. **Verify Q4 first** — spawn one specialist from the stowed symlink layout, then again after replacing the symlinks with copies [CX-02].
-2. **Retire the `codex` stow package's agent and skill trees** and install as a third party would (§9 route A).
-3. **Delete `~/.codex/skills/ecolleagues-init`**; the documented user skill root is `~/.agents/skills` [CX-07].
-4. **Correct the two stale notes in the dotfiles `CLAUDE.md`**: `[agents] max_depth = 2` is not set in the live config and is ignored whenever the selected model is catalogued for V2 [CX-04]; and record that a project `opencode.json` with `default_agent` makes the tech-lead primary on opencode [OC-03].
-5. **Expect a dirty dotfiles working tree** later from `claude plugin install -s user`, which writes `enabledPlugins` into the stowed `~/.claude/settings.json` [CC-05]. Accepted by design.
-6. **The persona bodies change**: reviewer and security move to `read-only` + `approval_policy = "never"`; all six gain the §4 skeleton; R5 inverts from "post with your signature" to "never post — return findings" (D6); `platform` is new.
-7. **The real project bootstrapped with the old package** keeps its own team section as project text; the audit path proposes the managed block beneath the title and never restructures the existing prose.
+1. **Install the new personas first**, so the team is never unavailable:
+   `bootstrap.py --scope user --write`. It writes real files, and replaces a symlink rather
+   than writing through it.
+2. **Verify one actually spawns** before removing anything. A persona that loads is not a
+   persona that spawns.
+3. **Then remove the old files**, including any dangling symlink left in `~/.codex/agents/`
+   and any copy in a deprecated skill root.
+
+A project already carrying its own team section keeps it: the managed block is inserted below
+the title and no existing prose is restructured.
 
 ---
 
 ## 15. M0 — the four-host sweep
 
-**Status 2026-09-08: tranches A and C complete; tranche B all but three visual checks.** All thirteen tranche A unknowns and all four tranche C items have recorded verdicts in `docs/experiments.md` (E4–E16), each with its command, installed version and raw output. Every mutating probe was reversed and the reversal verified byte-identical against a before-snapshot. Tranche B then ran with the maintainer at the keyboard for the trust dialogs only; everything else was driven headlessly (`experiments.md` E17–E23). Q10 and Q13 are closed, Q3, Q7 and Q8 are settled apart from three checks that need eyes on a UI, and E17 found the one result that would have broken M5 outright.
+**Complete.** Before any generator or bootstrap code was written, twenty unknowns were probed
+against the installed tools and every outcome recorded in [`experiments.md`](experiments.md)
+with the exact command, the version and the raw output. That record is the authority; this
+section is the reason it exists.
 
-**What is still open**, all small: a user-scope versus project-scope `agent` key on Claude (needs a temporary edit to a stowed dotfile); the opencode Tab and `@` menus; the Antigravity **desktop's** subagent-inheritance default; and two questions that cannot be answered until the repository is published — the installed directory name for `agy plugin install <github-url>` (E8) and whether a **github**-sourced self-marketplace skips the install step the way a local one does (E23).
+The method, kept because it is worth repeating for a new host or a new version:
 
-M0 opens by hand-writing a **throwaway fixture** in a scratch directory: one persona (`reviewer`, the read-only case) in all four dialects plus the three manifests, explicitly disposable and deleted when M0 ends. Q1, Q2, Q6, Q8 and Q13 need a tree that *is* a plugin for the relevant host. This is not the generator; the working rule that experiments precede generator code stays intact.
+- **A throwaway fixture that really is a plugin** for the host under test, in a scratch
+  directory, deleted afterwards. Several questions — does the manifest's `agents` key replace
+  the default scan, does a workspace plugin root deliver agents — cannot be answered any other
+  way.
+- **Three tranches**: automated probes; probes needing a TTY or a trust dialog; and
+  re-verification of anything version-gated, because four of the five tools released a new
+  version within a day of the research and one gate had already flipped.
+- **Every mutating probe runs against the fixture, never a real project.** Host state is
+  snapshotted before and diffed after, and each change is reversed and the reversal recorded.
+  `~/.codex/config.toml` is never written by hand — Codex rewrites that file itself.
+- **A probe that produces no output has not produced a finding.** Confirm the command ran:
+  check the exit code, include a positive control, and never read silence as evidence.
 
-Safety rules for the whole sweep: every mutating probe runs in the fixture, never in a real project; `~/.codex/config.toml` is never written; `~/.gemini/config/config.json` and the Codex plugin state are snapshotted before and diffed after, with each change reversed and the reversal recorded.
+Nine design decisions changed as a result, before code depended on any of them. The largest:
+seven Antigravity tool names the vendor documentation lists are absent from the tool registry
+and abort an agent at startup, so a renderer built from the documentation would have produced
+agents that could not start at all.
 
-### Tranche A — automated — **complete** (E4–E15)
-
-| # | unknown | probe |
-|---|---|---|
-| Q19 | **does the Codex `read-only` sandbox permit running the project's tests?** If not, R3 evidence is impossible and read-only stops being the guarantee this design rests on | run a real test target under `read-only` + `never` |
-| Q4 | Codex `O_NOFOLLOW`: symlinked role TOMLs fail at spawn [CX-02] | `codex exec` spawning a specialist, symlinked then copied |
-| Q16 | **V2 concurrency ceiling** — `max_concurrent_threads_per_session` counts the primary, so the default 4 permits three spawned [CX-04] | spawn five, count concurrent threads |
-| Q9 | does a spawned Codex child re-run AGENTS.md discovery [CX-05] | spawn, ask the child to recite its instructions |
-| Q17 | does `$ec-tech-lead` resolve from project skills in an **untrusted** clone (the CX-03 correction says skills are not trust-gated) | temp repo, never trusted, `codex exec` |
-| Q5 | Codex root-as-plugin marketplace entry `path: "./"` [CX-10] | `codex plugin marketplace add <clone>` → `codex plugin add` → reverse |
-| Q15 | Codex plugin cache layout, so `ec-init` can find its own script [CX-10] | `codex plugin list`; inspect `~/.codex/plugins` |
-| Q10 | `-c developer_instructions=""` clears the project value for one session [CX-06] | direct run in a bootstrapped fixture |
-| Q1 | Claude ignores the Antigravity-format root `agents/` when the manifest lists files explicitly [CC-02][PA-02] | the three validate runs; `claude --plugin-dir . --agent tech-lead -p …` |
-| Q2 | bare names in `Agent(...)`'s `subagent_type` resolve to plugin agents under `--agent` [CC-09][CC-03] | headless spawn from the fixture lead |
-| Q6 | `agy plugin validate` / `install` on a tree carrying all three manifests and `dist/` [AG-08] | validate then install the fixture; inspect `/plugins`, `/agents` |
-| Q12 | `agy plugin install <dir>` destination, and a second install [AG-08] | install, list both candidate roots, install again |
-
-### Tranche B — interactive, needs a TTY or a trust dialog — **all but three visual checks** (E17–E23)
-
-Tranche A added two items to this list: the **project-config half of Q10** (E14 settled the profile layer; the trusted-project layer needs the trust dialog), and the **installed directory name for a URL install** on Antigravity (E8 verified the syntax; the resulting directory name matters because AG-07/AG-08 key enablement by it, and it cannot be observed until the repository is public).
-
-| # | unknown | script |
-|---|---|---|
-| Q3 | project `.claude/settings.json` `agent` key: trust-gated? beats a user-level `agent`? startup with an unresolvable value? [CC-10] | open a bootstrapped repo with and without a user `agent`, and before running the plugin install line |
-| Q13 | a project-enabled plugin whose marketplace source is `./`: auto-installed on trust, or treated as external? [CC-06] | fresh clone, trust the folder, `claude plugin list` |
-| Q7 | opencode: project agents in Tab and `@` menus, `default_agent` from project config, `run --command` as subtask, `ask` from a subtask, AGENTS.md reaching task children [OC-03][OC-07] | open a bootstrapped repo; run a reviewer subtask headlessly |
-| Q8 | Antigravity: does a `tools` list omitting `invoke_subagent` override ambient subagent inheritance? `tools: []` semantics; H1 body slicing; workspace versus plugin agent of the same name; the desktop's inheritance default [AG-02][AG-05][AG-06][AG-12] | under `agy --agent tech-lead` ask a specialist to `invoke_subagent` a sibling; if it succeeds, render `inheritCustomizations: false` and retest |
-| Q11 | `agy plugin install <github-url>` syntax [AG-08] | try `owner/repo` and the full URL |
-
-### Tranche C — re-verification, because four of five tools moved — **complete** (E16)
-
-- **Q18 — agy 1.1.27**: the `agents:` frontmatter key is confirmed present, so **AG-02's version gate has flipped** (settled; `docs/experiments.md` E3). What the key does at runtime is still open: re-read AG-05's flat-team story in that light — an `agents:` list may be a cleaner lever than a `tools` allowlist for overriding ambient subagent inheritance, which folds into Q8 — and re-derive the verified tool-name list that `check.py --agy-tools` depends on [AG-06].
-- **opencode 1.18.29**: refresh the vendored `opencode.ai/config.json` and re-derive `KNOWN_KEYS`; the source was read at 1.18.25 [OC-01][OC-02].
-- **Antigravity desktop 2.12.2**: re-check the `language_server` yaml tags and the inheritance default [AG-02][AG-05].
-- **Claude 2.1.263**: spot-check the plugin-agent frontmatter list and the three validate modes [CC-07][CC-04].
-- **Codex 0.153.4**: unchanged; no re-verification needed.
-
-### Retired
-
-- **Q14** — whether the Codex read-only sandbox blocks network, and so whether read-only specialists can post externally. Retired by decision D6: specialists never post. Recorded, not tested.
-
-### Output
-
-`docs/experiments.md`, one entry per unknown: exact command, installed version, raw output, verdict, and the design consequence. Verdicts feed claim-id updates in this document and a `docs/SUPPORT-MATRIX.md` refresh. **M0's gate: every v1-relevant unknown has a recorded verdict.** Tranche A and C verdicts are recorded and their consequences are already applied to §§2.2, 5.1, 5.3, 5.4, 6, 7, 8, 9 and 13; `SUPPORT-MATRIX.md` is not yet written.
+Three behaviours remain unexercised because they need a human at a user interface; they are
+listed under "Known limitations" in [`acceptance.md`](acceptance.md), marked untested rather
+than assumed.
 
 ---
 
 ## 16. Milestones
 
-| | milestone | gate |
-|---|---|---|
-| **M0** | rename to `e-colleagues`, sanitize research, LICENSE, first commit; throwaway fixture; tranches A/B/C; `docs/experiments.md`; design revision 4 | every v1-relevant unknown has a recorded verdict with its command and output |
-| **M1** ✅ | `team.yaml` catalog, all six personas as source, `hosts/codex.yaml`, `gen.py` → Codex dialect + `ec-tech-lead`, `check.py`, CI | **met 2026-09-08.** `check.py` green across six gates and caught all 14 negative tests; five role TOMLs parse under the key whitelist (the tech-lead is `developer_instructions`, not a sixth file [CX-06]); the rendered reviewer's own `read-only` + `never` mechanically refused redirection, append, `sed -i`, `mkdir` and `git commit` while still running the tests |
-| **M2** ✅ | `ec-init` + `scripts/bootstrap.py`, managed regions, `lock.json`, bootstrap tests | **met 2026-09-08.** 21 stdlib tests green; idempotent (byte-identical re-run); block placed directly after the H1; an update rewrites only the package region and preserves the audit index and the team's bindings; foreign config files byte-identical. Exercised on a **real 23,502 B / 492-line Android `AGENTS.md`** (worked on a copy, original untouched): 23,502 → 24,702 B, **80% of the 30 KiB limit with 6,018 B headroom**, block 1,197 B, every original heading preserved in order. The gate itself is not vacuous — an oversized file fails `--check` **and** `--write`, which then writes nothing |
-| **M3** ✅ | `ec-onboard`, store format, provenance, index, waves sized to Q16, `ec-status` staleness | **met 2026-09-09.** 36 stdlib tests green. Onboarded a **real 30-commit Android repository** end to end on a clone (original untouched): two lenses indexed to the project's own documentation and authored nothing, two authored with provenance, two left unaudited. Touching a recorded path reported that lens **STALE since `<commit>`** and named the file, while a second authored lens whose recorded paths were untouched stayed **fresh** — the control that makes the result mean something. `check.py --knowledge` validates the real store and caught all six deliberate breakages. `AGENTS.md` ended at 81% of the 30 KiB budget |
-| **M4** ✅ | dogfood: install as a third party on Codex, retire the stow trees, migrate the real project additively, bootstrap this repository with itself | **met 2026-09-09.** All four parts done. Installed as a third party (`codex plugin marketplace add` + `codex plugin add`): exactly the four intended skills register and `$ec-tech-lead` resolves. Stow trees retired in the maintainer's dotfiles, in the safe order — personas installed as real files first, one verified to spawn, then the dead trees removed and two stale notes corrected. The real project migrated **additively on its own branch via a worktree**, so a working tree with 21 uncommitted entries was never touched: AGENTS.md +34 lines, 0 deletions, every original heading preserved. This repository runs on its own contract (`--profile library`, no designer, no UI). **Gate met**: the team reviewed a real question under the new rules and its Reviewer found a genuine defect — three documents describing `check.py --agy-tools` in the present tense for a gate that does not exist, verified by running it and getting exit 2. Fixed in the same commit |
-| **M5** ✅ | port: Claude, opencode and Antigravity dialects and manifests, per-host CI, install docs | **met 2026-09-09.** All three validators green — `claude plugin validate --strict` on the agents directory, the plugin manifest and the marketplace, and `agy plugin validate` reporting `[ok]` with 4 skills and 6 agents. Manual checklist passed per host: on Claude the lead spawned `e-colleagues:reviewer` and confirmed the bare name is absent from its list; on opencode `default_agent` made the tech-lead primary and the reviewer's `edit: deny` refused a write; on Antigravity the lead invoked the reviewer, which reported `invoke_subagent` unavailable to it and returned a well-formed RETURN block. `check.py` now has five host gates, all negative-tested (11 of 11 breakages caught) |
-| **M6** ◐ | publish: README with per-tool install, `acceptance.md`, `SUPPORT-MATRIX.md`, CHANGELOG, visibility flip | **gate met 2026-09-09; the visibility flip is the maintainer's to make.** The stranger path was walked literally: a fresh `git clone`, then only the commands the README gives. `codex plugin marketplace add` + `codex plugin add` installed it and a session resolved all four `ec-` skills; `bootstrap.py --scope user` wrote five real persona files and the profile into a throwaway HOME; `bootstrap.py <project> --write` and `status.py` behaved as documented. It also **found a bug**: the lock hashed the whole `AGENTS.md`, so a project editing its own prose was told the contract was out of date. Fixed to hash the package region only, both directions tested. `acceptance.md` and `CHANGELOG.md` written. Remaining: publishing the repository, which also settles the last two M0 questions (E8, E23) |
+All met. What each gate actually required, and what proved it, is in
+[`experiments.md`](experiments.md) and the [CHANGELOG](../CHANGELOG.md); the value here is the
+order, which was chosen deliberately.
 
-M4 precedes M5 deliberately: dogfood on the anchor host before spending effort on three more.
+| | milestone | why it came where it did |
+|---|---|---|
+| **M0** | probe all four hosts; record every outcome | Nothing is built on an assumption. Nine design decisions changed as a result — including one that would have made every Antigravity agent fail to start |
+| **M1** | personas as source, the Codex dialect, `check.py`, CI | Codex is the tightest host: a plugin cannot carry agents and a custom agent can never be primary. Designing against it made the port downhill |
+| **M2** | `ec-init`, `bootstrap.py`, the managed regions | The contract before the knowledge, because the knowledge has nowhere to be indexed until the contract exists |
+| **M3** | `ec-onboard`, the knowledge store, `ec-status` | Provenance from the first write, so staleness is a `git diff` rather than a later redesign |
+| **M4** | dogfood: install as a third party, migrate a real project, run on its own contract | Before porting to three more hosts, prove the one that exists. It found two bugs that no fixture test would have |
+| **M5** | Claude, opencode and Antigravity dialects and manifests | With the source and the gates settled, each host is a renderer plus a vocabulary file |
+| **M6** | acceptance criteria, changelog, publication | The last gate is a stranger installing from the README alone — which found a third bug |
+
+M4 preceded M5 deliberately: dogfood on the anchor host before spending effort on three more.

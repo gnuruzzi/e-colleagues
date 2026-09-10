@@ -22,7 +22,7 @@ If no Tech-Lead persona is active in this session, invoke the `ec-tech-lead` ski
 | architecture | docs/design.md (§§1-9) | — (the project's own) |
 | build-and-test | AGENTS.md (Workflow and permissions) + tests/ | — (the project's own) |
 | standards-and-coverage | docs/design.md §13 + tests/ | — (the project's own) |
-| security-posture | docs/design.md §8 (enforcement matrix and fail-open risks) | — (the project's own) |
+| security-posture | docs/design.md §8 (enforcement matrix) | — (the project's own) |
 | design-system | — | not yet audited |
 | ci-cd-and-infra | .github/workflows/check.yml | — (the project's own) |
 
@@ -58,7 +58,7 @@ A team of AI personas — tech-lead, developer, reviewer, security, designer, pl
 
 - `docs/design.md` is the decision record. When you change a decision, change the document in the same commit. Every path, key, flag and command in it carries a claim id resolved in `docs/SUPPORT-MATRIX.md` or the word UNVERIFIED; keep that discipline in code comments and README text too.
 - The eight **decisions of record** in design §0 are binding. Reversing one is a design change: update §0 and everything downstream of it in the same commit.
-- Before writing generator or bootstrap code, run the M0 sweep from design §15 and record every outcome in `docs/experiments.md` with the exact command, the installed version and the raw output. An unknown with no entry there is still open, and no code may depend on it.
+- Probe before you build. Anything a host does that the code will depend on gets an entry in `docs/experiments.md` with the exact command, the installed version and the raw output. An unknown with no entry there is still open, and no code may depend on it. Design §15 describes the method.
 - Check installed tool versions first. Four of the five tools moved within a day of the research (see `docs/experiments.md` E2), so any claim carrying a version gate must be re-verified before it is relied on — E3 is an example of one that had already flipped.
 - Generated trees (`dist/`, `agents/`, `skills/ec-tech-lead/`) are never hand-edited. `tools/gen.py` renders them from `personas/`; `tools/check.py --drift` must pass before any commit.
 - `personas/` never contains a tool's vocabulary. Tool names, permission keys and spawn syntax live in `hosts/*.yaml`.

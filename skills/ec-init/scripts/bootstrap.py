@@ -158,14 +158,28 @@ def plan(root: pathlib.Path, team: dict, profile: str, notes: list[str]) -> dict
                      "`/import codex`, which appends a whole copy [CC-14][CC-16].")
 
     lock = root / ".e-colleagues" / "lock.json"
+    # The lock has two owners, like AGENTS.md: this script owns the package fields, and the
+    # audit owns `completed_lenses` and the knowledge entries under `written`. Rebuilding the
+    # whole document wiped the audit's record, so an ec-init run after an ec-onboard made
+    # every indexed lens report as "not audited".
+    prior = {}
+    if lock.exists():
+        try:
+            prior = json.loads(lock.read_text())
+        except json.JSONDecodeError:
+            prior = {}
     doc = {
         "package_version": team["version"],
         "profile": profile,
         "roster": roster_of(team, profile),
         "written": {},
-        "completed_lenses": [],
+        "completed_lenses": prior.get("completed_lenses", []),
         "updated": datetime.date.today().isoformat(),
     }
+    # carry across anything the audit recorded, which this script does not author
+    for rel, val in (prior.get("written") or {}).items():
+        if rel.startswith(".e-colleagues/knowledge/"):
+            doc["written"][rel] = val
     for path, content in sorted(out.items()):
         # Hash only what the package owns. AGENTS.md is mostly the project's, so hashing the
         # whole file made any edit to the project's own prose report the contract as out of
@@ -242,7 +256,7 @@ def install_user_scope(team: dict, a) -> int:
         print("error: cannot find dist/codex/agents; pass --dist")
         return 1
 
-    roster = roster_of(team, a.profile)
+    roster = roster_of(team, a.profile or "default")
     codex_home = pathlib.Path.home() / ".codex"
     dest = codex_home / "agents"
 
@@ -283,8 +297,10 @@ def main() -> int:
     ap.add_argument("--write", action="store_true")
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--team-json", type=pathlib.Path)
-    ap.add_argument("--profile", default="default",
-                    help="which roster to write; ec-init proposes it from evidence (D3)")
+    ap.add_argument("--profile", default=None,
+                    help="which roster to write; ec-init proposes it from evidence (D3). "
+                         "Defaults to the profile recorded in lock.json, so a plain --write "
+                         "never silently changes a project's roster")
     ap.add_argument("--scope", choices=("project", "user"), default="project",
                     help="project: write this repository's contract. user: install the "
                          "personas and the profile for this machine (§9 route A). They are "
@@ -302,7 +318,18 @@ def main() -> int:
 
     root = a.root.resolve()
     notes: list[str] = []
-    files = plan(root, team, a.profile, notes)
+    # A project's roster is its own decision. Honour what the lock already records, so a
+    # plain --write after an ec-init does not quietly swap the roster back to the default.
+    profile = a.profile
+    if profile is None:
+        lock_path = root / ".e-colleagues" / "lock.json"
+        if lock_path.exists():
+            try:
+                profile = json.loads(lock_path.read_text()).get("profile")
+            except json.JSONDecodeError:
+                profile = None
+        profile = profile or "default"
+    files = plan(root, team, profile, notes)
 
     warnings: list[str] = []
     errs = budgets(root, files[root / "AGENTS.md"], warnings.append)

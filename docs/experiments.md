@@ -1,8 +1,8 @@
 # Experiments
 
-The record required by `AGENTS.md`: every unknown from `docs/design.md` §15, with the exact command, the installed tool version, the raw output, the verdict, and the design consequence. An unknown with no entry here is still open, and no code may depend on it.
+What was actually run against the installed tools, and what came back: the exact command, the version, the raw output, the verdict and the design consequence. **This is the authority.** Where an entry here contradicts a claim in [`SUPPORT-MATRIX.md`](SUPPORT-MATRIX.md), the entry wins — it ran against the binary; the claim was read from documentation and source. An unknown with no entry here is still open, and no code may depend on it.
 
-Tranches are defined in design §15: **A** automated, **B** interactive (needs a TTY or a trust dialog), **C** re-verification of version-gated claims.
+Tranches: **A** automated, **B** interactive — needing a TTY or a trust dialog, **C** re-verification of version-gated claims, because four of the five tools moved within a day of the research.
 
 ## Status
 
@@ -34,7 +34,7 @@ Tranches are defined in design §15: **A** automated, **B** interactive (needs a
 
 ## The M0 fixture
 
-Design §15 opens M0 with a **throwaway fixture** that *is* a plugin for all four hosts, because Q1, Q2, Q6, Q8, Q13 and Q15 need one. It lived in a scratch directory and is disposable; this is its shape, so tranche B can rebuild it without re-deriving the manifests.
+Several questions need a tree that really *is* a plugin for the host under test. This was that fixture — a throwaway in a scratch directory, deleted afterwards. Its shape is recorded so it can be rebuilt for a new host or version without re-deriving the manifests.
 
 ```
 e-colleagues/                              # directory name is load-bearing [AG-07][AG-08]
@@ -56,7 +56,7 @@ Two companion trees, also throwaway:
 - `m0/proj` — a real little project (`src/calc.py`, stdlib `unittest` tests, `make test`, an `AGENTS.md` with the managed block and the canary `BLUEBIRD-7731`) used by E4, E9, E11, E13. Its test run writes `__pycache__`, which is what makes it a useful sandbox probe.
 - `m0/untrusted` — a repository deliberately absent from `~/.codex/config.toml`'s `[projects.*]`, carrying both `.agents/skills/ec-tech-lead/SKILL.md` (canary `MAGPIE-4402`) and `.codex/agents/m0-projonly.toml`, used by E12.
 
-**Safety, as §15 requires**: every mutating probe ran against these trees, never a real project; `~/.codex/config.toml` was never written by hand (Codex wrote and removed its own `[marketplaces.e-colleagues]` table); `~/.gemini/config/config.json` and both plugin trees were snapshotted before and diffed after. At the end of tranche A all four diffs were **identical** — Codex config, Codex plugins tree, Antigravity config, Antigravity plugins tree — and `~/.codex/agents/` held only the maintainer's five pre-existing stowed symlinks. One residue needed manual removal: `codex plugin remove` leaves an empty `~/.codex/plugins/cache/<marketplace>/` directory behind.
+**Safety rules, followed throughout**: every mutating probe ran against these trees, never a real project; `~/.codex/config.toml` was never written by hand (Codex wrote and removed its own `[marketplaces.e-colleagues]` table); `~/.gemini/config/config.json` and both plugin trees were snapshotted before and diffed after. At the end of tranche A all four diffs were **identical** — Codex config, Codex plugins tree, Antigravity config, Antigravity plugins tree — and `~/.codex/agents/` held only the maintainer's five pre-existing stowed symlinks. One residue needed manual removal: `codex plugin remove` leaves an empty `~/.codex/plugins/cache/<marketplace>/` directory behind.
 
 ---
 
@@ -186,7 +186,7 @@ Control at `sandbox_mode = "workspace-write"` + `never`: the same `make test` wr
 
 **Date** 2026-09-07. **codex-cli 0.153.4**, model `gpt-6-astra`.
 
-CX-02 predicts it from source: `core/src/agent/role.rs` reads the role's `config_file` with `read_sensitive_file_to_string`, which opens `O_NOFOLLOW` and fails on a symlink at the final path component, surfacing as `AGENT_TYPE_UNAVAILABLE_ERROR`. This is the one that gates the migration (§14 step 1), because the package being replaced is stowed into `~/.codex/agents/*.toml` as symlinks.
+CX-02 predicts it from source: `core/src/agent/role.rs` reads the role's `config_file` with `read_sensitive_file_to_string`, which opens `O_NOFOLLOW` and fails on a symlink at the final path component, surfacing as `AGENT_TYPE_UNAVAILABLE_ERROR`. This gates any migration from a symlink-installed layout.
 
 Both runs used the **same file content** at `~/.codex/agents/m0-reviewer.toml`, differing only in symlink versus regular file, and the same prompt. The maintainer's five stowed agent symlinks were not touched; only `m0-reviewer.toml` was added and then removed.
 
@@ -215,7 +215,7 @@ codex
 
 **Consequences**:
 1. §9's "Real files, never symlinks" is now measured, not inferred. `bootstrap.py --scope user` must write copies, and `check.py` should refuse to emit a symlink into an agents directory.
-2. §14 step 1 is satisfied: the current stowed layout is **broken today** — the maintainer's five personas cannot spawn from `~/.codex/agents/`. Retiring the `codex` stow package's agent tree is a fix, not just a tidy-up.
+2. A symlink-installed layout is **broken, not merely fragile** — such personas cannot spawn at all. Replacing it with real files is a fix, not a tidy-up.
 3. Two facts fell out of the control run: a spawned child does receive its role's `developer_instructions` (it returned the signature the TOML told it to use), and `codex exec` will spawn when the prompt explicitly asks for sub-agent delegation by name, consistent with CX-05.
 
 ---
@@ -635,7 +635,7 @@ Two mechanics worth recording because they cost time to find:
 
 ## E16 — tranche C re-verification at the installed versions
 
-**Date** 2026-09-07. The three tranche C items design §15 lists besides Q18, plus the agy tool list Q18 asked for.
+**Date** 2026-09-07. Re-verification of everything version-gated, plus the agy tool list.
 
 ### C1 — the agy tool-name list, re-derived at 1.1.27 (feeds `check.py --agy-tools`)
 
@@ -667,7 +667,7 @@ Word-boundary matching (`-w`) is required, not whole-line (`-x`): under `-x` sev
 
 ### C2 — Antigravity desktop 2.12.2: the CLI and the desktop have diverged
 
-Design §15 asks to "re-check the `language_server` yaml tags and the inheritance default" at desktop 2.12.2 (`/opt/Antigravity/resources/bin/language_server`, from `pacman -Q antigravity` → `2.12.2-1`).
+Re-checking the `language_server` yaml tags and the inheritance default at desktop 2.12.2 (`/opt/Antigravity/resources/bin/language_server`, from `pacman -Q antigravity` → `2.12.2-1`).
 
 Every AG-02 frontmatter tag is present in the desktop binary — `name`, `description`, `tools`, `mainAgent`, `subagent`, `model`, `commandExecutionPolicy`, `mcpServers`, `skills`, `plugins`, `hidden`, `inheritMcp`, `inheritCustomizations`, `rules`, `disabled`, `enabledTools`, `disabledTools` — with `yaml:"notARealKey` scoring 0 as a control. **Except one:**
 

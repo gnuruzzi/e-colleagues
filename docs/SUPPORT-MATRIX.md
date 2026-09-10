@@ -16,6 +16,13 @@ Every claim id is stated in full under [The claims themselves](#the-claims-thems
 
 **Re-verify before relying on a version-gated claim.** Four of the five tools moved within a day of the original research (`experiments.md` E2) and one gate had already flipped (E3). A claim marked *docs/source only* has never been exercised against a running tool.
 
+## Trust levels, highest first
+
+1. An experiment in [`experiments.md`](experiments.md), run against the installed binary.
+2. A claim marked confirmed with local evidence.
+3. A confirmed claim resting on documentation only — the `docs/source only` rows below.
+4. Anything the design marks UNVERIFIED.
+
 ## How to read the `how` column
 
 - **runtime** — the M0 sweep exercised this claim against the installed binary and it held.
