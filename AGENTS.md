@@ -63,7 +63,7 @@ Six personas are authored once in `personas/` and rendered into four host dialec
 - Generated trees (`dist/`, `agents/`, `skills/ec-tech-lead/`) are never hand-edited. `tools/gen.py` renders them from `personas/`; `tools/check.py --drift` must pass before any commit.
 - `personas/` never contains a tool's vocabulary. Tool names, permission keys and spawn syntax live in `hosts/*.yaml`.
 - This repository is **publish-ready**: no absolute paths, no machine-specific assumptions, no private project names, no secrets. It is public, so assume every file is read by a stranger with no context.
-- Never write `~/.codex/config.toml` from any script here; Codex rewrites it itself and on the maintainer's machine it is deliberately untracked state. `~/.claude/settings.json` is a stowed, tracked file in the maintainer's dotfiles, so a user-scope Claude plugin install dirties that working tree by design.
+- Never write `~/.codex/config.toml` from any script here; Codex rewrites it itself, and it mixes real settings with state the tool writes (trust decisions, nag counters), so it is machine-local by nature. `~/.claude/settings.json` may itself be a tracked file in someone's dotfiles, so a user-scope Claude plugin install can dirty that working tree — expected, not a bug.
 - Secrets never reach a manifest, a fixture or a test. Not one token, not in an example.
 
 ## Standing don't-do list

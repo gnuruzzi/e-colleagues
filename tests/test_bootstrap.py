@@ -320,7 +320,7 @@ class TestUserScopeInstall(Base):
             self.assertFalse(f.is_symlink(), f"{f.name} must be a real file [CX-02]/E5")
 
     def test_replaces_an_existing_symlink_instead_of_writing_through_it(self):
-        """The stow layout put symlinks here. Writing through one would corrupt the source."""
+        """A symlink-based install puts symlinks here; writing through one corrupts the source."""
         self.seed(**{"AGENTS.md": "# proj\n"})
         home = self.root / "fakehome"
         (home / ".codex" / "agents").mkdir(parents=True)

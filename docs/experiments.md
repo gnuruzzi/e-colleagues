@@ -56,7 +56,7 @@ Two companion trees, also throwaway:
 - `m0/proj` — a real little project (`src/calc.py`, stdlib `unittest` tests, `make test`, an `AGENTS.md` with the managed block and the canary `BLUEBIRD-7731`) used by E4, E9, E11, E13. Its test run writes `__pycache__`, which is what makes it a useful sandbox probe.
 - `m0/untrusted` — a repository deliberately absent from `~/.codex/config.toml`'s `[projects.*]`, carrying both `.agents/skills/ec-tech-lead/SKILL.md` (canary `MAGPIE-4402`) and `.codex/agents/m0-projonly.toml`, used by E12.
 
-**Safety rules, followed throughout**: every mutating probe ran against these trees, never a real project; `~/.codex/config.toml` was never written by hand (Codex wrote and removed its own `[marketplaces.e-colleagues]` table); `~/.gemini/config/config.json` and both plugin trees were snapshotted before and diffed after. At the end of tranche A all four diffs were **identical** — Codex config, Codex plugins tree, Antigravity config, Antigravity plugins tree — and `~/.codex/agents/` held only the maintainer's five pre-existing stowed symlinks. One residue needed manual removal: `codex plugin remove` leaves an empty `~/.codex/plugins/cache/<marketplace>/` directory behind.
+**Safety rules, followed throughout**: every mutating probe ran against these trees, never a real project; `~/.codex/config.toml` was never written by hand (Codex wrote and removed its own `[marketplaces.e-colleagues]` table); `~/.gemini/config/config.json` and both plugin trees were snapshotted before and diffed after. At the end of tranche A all four diffs were **identical** — Codex config, Codex plugins tree, Antigravity config, Antigravity plugins tree — and `~/.codex/agents/` held only the pre-existing agent files it started with. One residue needed manual removal: `codex plugin remove` leaves an empty `~/.codex/plugins/cache/<marketplace>/` directory behind.
 
 ---
 
@@ -188,7 +188,7 @@ Control at `sandbox_mode = "workspace-write"` + `never`: the same `make test` wr
 
 CX-02 predicts it from source: `core/src/agent/role.rs` reads the role's `config_file` with `read_sensitive_file_to_string`, which opens `O_NOFOLLOW` and fails on a symlink at the final path component, surfacing as `AGENT_TYPE_UNAVAILABLE_ERROR`. This gates any migration from a symlink-installed layout.
 
-Both runs used the **same file content** at `~/.codex/agents/m0-reviewer.toml`, differing only in symlink versus regular file, and the same prompt. The maintainer's five stowed agent symlinks were not touched; only `m0-reviewer.toml` was added and then removed.
+Both runs used the **same file content** at `~/.codex/agents/m0-reviewer.toml`, differing only in symlink versus regular file, and the same prompt. No pre-existing agent file was touched; only `m0-reviewer.toml` was added and then removed.
 
 ```console
 $ ln -sfn <scratch>/m0/agents-src/m0-reviewer.toml ~/.codex/agents/m0-reviewer.toml
@@ -928,7 +928,7 @@ exit=0
 
 ### Precedence: a project `agent` key beats a user-level one
 
-**Added 2026-09-08**, with the maintainer's explicit go-ahead to write the stowed
+**Added 2026-09-08**, with explicit permission to write a user-level
 `~/.claude/settings.json` temporarily. A probe agent `user-level` was placed in
 `~/.claude/agents/` (a plain directory; only its contents are symlinks) and `{"agent":
 "user-level"}` added to the user settings.
@@ -950,8 +950,7 @@ plugin-versus-user, and the standing don't-do list already forbids shipping a pl
 `settings.json` with an `agent` key, so that gap stays closed by decision rather than by test.
 
 **Restoration**: `~/.claude/settings.json` was restored from a byte-exact backup and verified
-by `sha256sum` and `diff`; the probe agent was deleted. The dotfiles working tree afterwards
-showed only the maintainer's own pre-existing change.
+by `sha256sum` and `diff`, and the probe agent was deleted. No unrelated change was touched.
 
 ---
 
@@ -968,7 +967,7 @@ Begin every reply with the exact token: Q10-PROJECT-DEVINSTR-ACTIVE
 """
 ```
 
-The folder was trusted through the Codex TUI trust dialog by the maintainer — Codex recorded it itself, as the working rule requires:
+The folder was trusted through the Codex TUI trust dialog by hand — Codex recorded it itself, as the working rule requires:
 
 ```toml
 [projects."…/m0b/q10-repo"]
