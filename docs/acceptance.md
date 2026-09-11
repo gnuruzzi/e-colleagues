@@ -91,5 +91,9 @@ Then, per host, by hand — because no static check can prove a runtime behaviou
 - **Two questions stay open until the repository is published**: the installed directory name
   for `agy plugin install <github-url>` (E8), and whether a github-sourced self-marketplace
   skips the install step the way a local one does (E23).
+- **A user-scope install keeps no record of its profile.** `bootstrap.py --scope user --check`
+  defaults to the `default` roster regardless of which profile was installed, so pass
+  `--profile` to both or it will report agents missing that were never meant to be there. A
+  project install has no such problem: the roster is recorded in `lock.json`.
 - **Three behaviours were never exercised**: the opencode Tab and `@` menus, and the
   Antigravity desktop's subagent-inheritance default. All three need a human at a UI.

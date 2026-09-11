@@ -340,6 +340,28 @@ class TestUserScopeInstall(Base):
         self.assertFalse((home / ".codex/agents/tech-lead.toml").exists())
         self.assertIn("developer_instructions", r.stdout)
 
+    def test_check_notices_a_stale_profile_not_just_the_agents(self):
+        """The profile carries the tech-lead's whole body, so it goes stale whenever a
+        persona body changes. Checking only the agent files reported "up to date" while the
+        installed tech-lead was several revisions behind."""
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        home = self.root / "fakehome"
+        (home / ".codex" / "agents").mkdir(parents=True)
+        self.install(home)                                   # everything current
+        env = {**__import__("os").environ, "HOME": str(home)}
+        # the same profile the install used: user scope keeps no lock, so --check cannot
+        # infer it (noted in docs/acceptance.md as a known rough edge)
+        args = [sys.executable, str(BOOTSTRAP), "--scope", "user", "--check",
+                "--profile", "library",
+                "--team-json", str(TEAM), "--dist", str(ROOT / "dist" / "codex" / "agents")]
+        self.assertEqual(subprocess.run(args, capture_output=True, text=True,
+                                        env=env).returncode, 0)
+        # age only the profile; every agent file stays current
+        (home / ".codex/e-colleagues.config.toml").write_text("developer_instructions = \"old\"\n")
+        r = subprocess.run(args, capture_output=True, text=True, env=env)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("e-colleagues.config.toml", r.stdout)
+
     def test_project_scope_touches_no_home_directory(self):
         self.seed(**{"AGENTS.md": "# proj\n"})
         home = self.root / "fakehome"

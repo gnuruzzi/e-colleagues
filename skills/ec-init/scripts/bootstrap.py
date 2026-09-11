@@ -271,9 +271,19 @@ def install_user_scope(team: dict, a) -> int:
                 stale.append(f"{t.name} is a SYMLINK and cannot spawn [CX-02]")
             elif not t.exists() or t.read_text() != src.read_text():
                 stale.append(f"{t.name} is missing or out of date")
+        # The profile carries the tech-lead's whole body, so it goes stale whenever a
+        # persona body changes. Checking only the agent files reported "up to date" while
+        # the installed tech-lead was several revisions behind.
+        profile_src = dist.parent / "e-colleagues.config.toml"
+        profile_dst = codex_home / "e-colleagues.config.toml"
+        if profile_src.exists():
+            if not profile_dst.exists():
+                stale.append("e-colleagues.config.toml is not installed")
+            elif profile_dst.read_text() != profile_src.read_text():
+                stale.append("e-colleagues.config.toml is out of date")
         for s_ in stale:
             print(f"  {s_}")
-        print("up to date" if not stale else f"{len(stale)} persona file(s) need --write")
+        print("up to date" if not stale else f"{len(stale)} file(s) need --write")
         return 1 if stale else 0
 
     written, skipped = install_personas(dist, dest, roster, dry_run=False)
