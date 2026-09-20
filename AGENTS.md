@@ -29,9 +29,10 @@ If no Tech-Lead persona is active in this session, invoke the `ec-tech-lead` ski
 <!-- e-colleagues:project-bindings -->
 ### Platforms and tools
 
-Work is tracked in this repository only — there is no external board or issue tracker, and
-the remote is not yet published. **The Tech-Lead therefore posts nowhere external**: findings
-are reported to the user in the session. Do not invent a destination.
+Work is tracked in this repository and its GitHub issue tracker. **The Tech-Lead reports
+findings to the user in the session and does not post to the tracker on its own**: opening or
+commenting on an issue is the user's action, or an explicit delegation naming the issue. Do not
+invent any other destination.
 
 The decision record is `docs/design.md`; the evidence base is `docs/experiments.md` and
 `docs/SUPPORT-MATRIX.md`. A claim in any of them carries a claim id or the word UNVERIFIED.

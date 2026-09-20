@@ -330,7 +330,7 @@ MARKER.txt  SKILL.md
 | `git@github.com:gnuruzzi/e-colleagues.git` | `Error: unknown marketplace: github.com:gnuruzzi/e-colleagues.git` — the `@` makes it parse as `plugin@marketplace` |
 | `e-colleagues@antigravity`, `e-colleagues@google` | `Error: unknown marketplace: <name>` |
 
-The `https://github.com/...` run was observed with `pstree`, which showed `agy → git clone --depth 1 … → git-remote-http → askpass`: it hung only because the repository is not published yet and git had no TTY for credentials. The clone path itself is real and reached.
+The `https://github.com/...` run was observed with `pstree`, which showed `agy → git clone --depth 1 … → git-remote-http → askpass`: it hung only because the repository was not yet published at the time and git had no TTY for credentials. The clone path itself is real and reached.
 
 **Verdict**: `agy plugin install <github-url>` **is** supported, for `github.com` HTTPS URLs only. `owner/repo` shorthand, other git hosts, `file://`, SSH form and `plugin@marketplace` are all rejected, the last confirming AG-08.
 
