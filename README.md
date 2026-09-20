@@ -64,7 +64,7 @@ There is no bundle format, so `ec-init` writes the files into the project:
 ### Antigravity
 
 ```bash
-agy plugin install /path/to/e-colleagues        # or a https://github.com/... URL
+agy plugin install https://github.com/gnuruzzi/e-colleagues     # or a local path
 agy --agent tech-lead
 ```
 

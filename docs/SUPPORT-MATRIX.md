@@ -123,7 +123,7 @@ Rejected at 1.1.27, despite appearing in the binary's strings: `view_file_outlin
 | `AG-05` | agy 1.1.27 / desktop 2.12.2 | confirmed | runtime | E19 | a tools allowlist DOES override ambient subagent inheritance |
 | `AG-06` | agy 1.1.27 / desktop 2.12.2 | confirmed | **corrected** | E17 | SEVEN of the listed tool names are not in the registry |
 | `AG-07` | agy 1.1.27 / desktop 2.12.2 | confirmed | runtime | E7, E18 | validate [ok]; only a global install delivers agents |
-| `AG-08` | agy 1.1.27 / desktop 2.12.2 | confirmed | runtime | E8, E18 | destination measured; re-install merges; github URL works |
+| `AG-08` | agy 1.1.27 / desktop 2.12.2 | confirmed | runtime | E8, E18 | destination measured; re-install merges; github URL works and lands in a directory named after the repo (E8 addendum, agy 1.2.6) |
 | `AG-10` | agy 1.1.27 / desktop 2.12.2 | confirmed | docs/source only | — | — |
 | `AG-11` | agy 1.1.27 / desktop 2.12.2 | confirmed | **corrected** | E19 | AGENTS.md does NOT reach any agy agent |
 | `AG-12` | agy 1.1.27 / desktop 2.12.2 | confirmed | **corrected** | E18 | no workspace root delivers agents, so collisions are moot |
@@ -144,12 +144,11 @@ Rejected at 1.1.27, despite appearing in the binary's strings: `view_file_outlin
 | `STD-03` | n/a (cross-tool) | confirmed | docs/source only | — | — |
 ## Not covered here
 
-Five questions stay open and none is version-gated in a way this matrix can express:
+Four questions stay open and none is version-gated in a way this matrix can express:
 
 - a user-scope versus project-scope `agent` key on Claude — needs a temporary edit to a user's own settings file
 - the opencode Tab and `@` menus — needs the TUI
 - the Antigravity **desktop's** subagent-inheritance default — needs the desktop app
-- the installed directory name for `agy plugin install <github-url>` (E8) — needs the repository published
 - whether a **github**-sourced self-marketplace skips the install step the way a local one does (E23) — needs the repository published
 
 ## The claims themselves

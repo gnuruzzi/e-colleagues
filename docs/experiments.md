@@ -330,11 +330,36 @@ MARKER.txt  SKILL.md
 | `git@github.com:gnuruzzi/e-colleagues.git` | `Error: unknown marketplace: github.com:gnuruzzi/e-colleagues.git` — the `@` makes it parse as `plugin@marketplace` |
 | `e-colleagues@antigravity`, `e-colleagues@google` | `Error: unknown marketplace: <name>` |
 
-The `https://github.com/...` run was observed with `pstree`, which showed `agy → git clone --depth 1 … → git-remote-http → askpass`: it hung only because the repository is not published yet and git had no TTY for credentials. The clone path itself is real and reached.
+The `https://github.com/...` run was observed with `pstree`, which showed `agy → git clone --depth 1 … → git-remote-http → askpass`: it hung only because the repository was not yet published at the time and git had no TTY for credentials. The clone path itself is real and reached.
 
 **Verdict**: `agy plugin install <github-url>` **is** supported, for `github.com` HTTPS URLs only. `owner/repo` shorthand, other git hosts, `file://`, SSH form and `plugin@marketplace` are all rejected, the last confirming AG-08.
 
 **Consequence**: §7's "Not offered, because unverified or measured absent: `agy plugin install <github-url>`" can be **reversed** — the README may document `agy plugin install https://github.com/<owner>/e-colleagues` alongside the clone-then-install-directory route. One residual unknown: the installed directory name for a URL install was not observed (the repository is unpublished), and AG-07/AG-08 key enablement by directory name, so this must be confirmed once the repository is public.
+
+### Addendum 2026-09-20 — the URL install, measured against the published repository (#3)
+
+**agy 1.2.6** — the CLI had moved from the 1.1.27 everything above was measured at; see the
+version-drift note in `SUPPORT-MATRIX.md`.
+
+```console
+$ agy plugin install https://github.com/gnuruzzi/e-colleagues
+Cloning plugin from https://github.com/gnuruzzi/e-colleagues.git...
+  [ok]    e-colleagues
+          ✔ skills      : 4 processed
+          ✔ agents      : 6 processed
+
+$ ls ~/.gemini/config/plugins/ | grep e-colleagues
+e-colleagues
+$ agy agents
+flutter_a11y_agent
+tech-lead
+```
+
+**Verdict**: the URL install lands at `~/.gemini/config/plugins/e-colleagues/` — the directory
+takes the repository's name, so D1's requirement that the installed directory be
+`e-colleagues` holds for the URL route as well as the local one. `config.json` was untouched,
+as for a directory install. The residual question E8 left open is closed. Reversed afterwards;
+the plugins tree and `config.json` were verified identical to the pre-experiment snapshot.
 
 ### Reversal
 
