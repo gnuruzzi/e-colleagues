@@ -199,6 +199,38 @@ class TestOwnership(Base):
         self.assertIn("AGENTS.md", r.stdout)
 
 
+class TestLockTimestamp(Base):
+    """`updated` means "when the contract last changed". Stamping today's date on every
+    run made --check exit 1 the day after any bootstrap, on the calendar alone (#1)."""
+
+    def _set_updated(self, value):
+        lock = self.root / ".e-colleagues/lock.json"
+        doc = json.loads(lock.read_text()); doc["updated"] = value
+        lock.write_text(json.dumps(doc, indent=2) + "\n")
+
+    def test_check_stays_clean_when_only_the_date_has_aged(self):
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        run(self.root, "--write")
+        self._set_updated("2020-01-01")                  # pretend the bootstrap was years ago
+        self.assertEqual(run(self.root, "--check").returncode, 0)
+
+    def test_a_no_op_write_keeps_the_old_date(self):
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        run(self.root, "--write")
+        self._set_updated("2020-01-01")
+        run(self.root, "--write")
+        lock = json.loads((self.root / ".e-colleagues/lock.json").read_text())
+        self.assertEqual(lock["updated"], "2020-01-01")
+
+    def test_a_real_change_moves_the_date(self):
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        run(self.root, "--write", "--profile", "library")
+        self._set_updated("2020-01-01")
+        run(self.root, "--write", "--profile", "default")     # the roster changed
+        lock = json.loads((self.root / ".e-colleagues/lock.json").read_text())
+        self.assertNotEqual(lock["updated"], "2020-01-01")
+
+
 class TestForeignFilesUntouched(Base):
     """Nothing outside the owned files and markers may change (§13 item 10)."""
 

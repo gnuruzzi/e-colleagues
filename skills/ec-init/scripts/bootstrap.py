@@ -174,7 +174,6 @@ def plan(root: pathlib.Path, team: dict, profile: str, notes: list[str]) -> dict
         "roster": roster_of(team, profile),
         "written": {},
         "completed_lenses": prior.get("completed_lenses", []),
-        "updated": datetime.date.today().isoformat(),
     }
     # carry across anything the audit recorded, which this script does not author
     for rel, val in (prior.get("written") or {}).items():
@@ -189,6 +188,13 @@ def plan(root: pathlib.Path, team: dict, profile: str, notes: list[str]) -> dict
             m = re.search(re.escape(BEGIN) + r".*?" + re.escape(INDEX), content, re.S)
             owned = m.group(0) if m else content
         doc["written"][str(path.relative_to(root))] = sha(owned)
+    # `updated` means "when the contract last changed", so it moves only when something
+    # else in the lock did. Stamping today's date unconditionally made --check exit 1 the
+    # day after every bootstrap, on the calendar alone — a gate that is red for no reason
+    # is a gate people learn to ignore.
+    unchanged = all(prior.get(k) == doc[k] for k in doc)
+    doc["updated"] = (prior.get("updated") if unchanged and prior.get("updated")
+                      else datetime.date.today().isoformat())
     out[lock] = json.dumps(doc, indent=2, ensure_ascii=False) + "\n"
     return out
 
