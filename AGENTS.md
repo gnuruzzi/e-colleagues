@@ -23,7 +23,6 @@ If no Tech-Lead persona is active in this session, invoke the `ec-tech-lead` ski
 | build-and-test | AGENTS.md (Workflow and permissions) + tests/ | — (the project's own) |
 | standards-and-coverage | docs/design.md §13 + tests/ | — (the project's own) |
 | security-posture | docs/design.md §8 (enforcement matrix) | — (the project's own) |
-| design-system | — | not yet audited |
 | ci-cd-and-infra | .github/workflows/check.yml | — (the project's own) |
 
 <!-- e-colleagues:project-bindings -->

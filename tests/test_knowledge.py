@@ -135,6 +135,30 @@ class TestLockOwnership(Base):
         self.assertIn("indexed", self.status().stdout)
 
 
+class TestOrphanedLens(Base):
+    """An index row whose lens no persona in the roster audits can never complete, and
+    "not audited" hides that. The lock's lens list is what makes it detectable."""
+
+    def test_status_flags_a_lens_no_persona_in_the_roster_audits(self):
+        sh(sys.executable, BOOTSTRAP, self.root, "--write", "--profile", "library",
+           "--team-json", TEAM)
+        out = self.status().stdout
+        self.assertIn("design-system", out)
+        self.assertIn("NO PERSONA", out)
+
+    def test_status_stays_quiet_when_every_row_has_a_persona(self):
+        self.assertNotIn("NO PERSONA", self.status().stdout)
+
+    def test_status_tolerates_a_lock_written_before_lenses_were_recorded(self):
+        lock = self.root / ".e-colleagues" / "lock.json"
+        doc = json.loads(lock.read_text())
+        doc.pop("lenses", None)
+        lock.write_text(json.dumps(doc, indent=2) + "\n")
+        r = self.status()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertNotIn("NO PERSONA", r.stdout)
+
+
 class TestStaleness(Base):
     """Staleness is a git diff over the recorded paths (§5.2)."""
 
