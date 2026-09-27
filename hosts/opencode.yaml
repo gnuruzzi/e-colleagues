@@ -3,6 +3,14 @@ host: opencode
 display: opencode
 min_version: "1.18.29"          # the floor; every runtime row re-verified at 2.0.18 (experiments.md E20 addendum)
 
+# The published schema, vendored so the key lists below are checked against it offline:
+# check.py fails when the agent keys, permission keys or command keys drift from it, so a
+# key entering or leaving the schema fails a run instead of going unnoticed. Refresh with
+#   curl -sS https://opencode.ai/config.json -o hosts/opencode-config.schema.json
+# and re-run check.py. Fetched 2026-09-27, 39,039 bytes, sha256 e8cb6e28…, byte-identical
+# to the copies read at 1.18.29 (E16 C3) and 2.0.8 (E17 addendum).
+schema_file: opencode-config.schema.json
+
 agent_file:
   path: "dist/opencode/agents/{name}.md"
   # [OC-02] KNOWN_KEYS. An unknown key is silently moved into `options`, so a misspelled

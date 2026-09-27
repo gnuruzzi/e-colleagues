@@ -87,6 +87,28 @@ class TestOpencodeGate(unittest.TestCase):
         self.assertEqual(r.returncode, 1)
         self.assertIn("identical", r.stdout)
 
+    def test_a_schema_change_fails_the_gate(self):
+        p = self.root / "hosts" / "opencode-config.schema.json"
+        schema = json.loads(p.read_text())
+        obj = next(v for v in schema["$defs"]["PermissionConfig"]["anyOf"]
+                   if v.get("type") == "object")
+        obj["properties"]["sandbox"] = obj["properties"].pop("lsp")   # a key renamed upstream
+        p.write_text(json.dumps(schema))
+        r = self.check()
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("drifted from the vendored schema", r.stdout)
+        self.assertIn("sandbox", r.stdout)
+
+    def test_a_key_list_change_fails_the_gate(self):
+        p = self.root / "hosts" / "opencode.yaml"
+        text = p.read_text()
+        self.assertIn(" doom_loop,", text)
+        p.write_text(text.replace(" doom_loop,", ""))
+        r = self.check()
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("drifted from the vendored schema", r.stdout)
+        self.assertIn("doom_loop", r.stdout)
+
     def test_the_config_needs_both_spellings_too(self):
         cfg = json.loads(self.config.read_text())
         del cfg["permission"]["subagent"]

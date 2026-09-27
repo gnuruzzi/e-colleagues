@@ -238,6 +238,31 @@ def check_opencode():
             if (a is None) != (b is None) or (a is not None and a != b):
                 fail(f"{label}: permission `{old}` and its 2.x name `{new}` must both be "
                      f"present with identical rules [OC-02]")
+
+    # The key lists above were transcribed from the published schema; the vendored copy is
+    # what makes a later change to that schema fail this gate instead of going unnoticed.
+    schema_path = ROOT / "hosts" / host["schema_file"]
+    defs = json.loads(schema_path.read_text())["$defs"]
+    schema_agent_keys = set(defs["AgentConfig"]["properties"])
+    schema_perm_keys = set(next(v for v in defs["PermissionConfig"]["anyOf"]
+                               if v.get("type") == "object")["properties"])
+    cmd = defs["Config"]["properties"]["command"]["additionalProperties"]
+    schema_cmd_keys, schema_cmd_required = set(cmd["properties"]), set(cmd.get("required", []))
+    drift = []
+    # `name` is accepted by the loader though absent from the schema [OC-02]; the 2.x
+    # runtime names are accepted though absent from the schema (E20 addendum).
+    if allowed - {"name"} != schema_agent_keys:
+        drift.append(f"agent keys {sorted((allowed - {'name'}) ^ schema_agent_keys)}")
+    if perm_keys - set(aliases.values()) != schema_perm_keys:
+        drift.append(f"permission keys "
+                     f"{sorted((perm_keys - set(aliases.values())) ^ schema_perm_keys)}")
+    if (set(host["config"]["command_keys"]) != schema_cmd_keys
+            or set(host["config"]["command_required"]) != schema_cmd_required):
+        drift.append("command keys")
+    if drift:
+        fail(f"hosts/opencode.yaml drifted from the vendored schema {schema_path.name}: "
+             f"{'; '.join(drift)} — refresh the copy or the lists, and re-derive (E16 C3)")
+
     d = ROOT / "dist" / "opencode" / "agents"
     files = sorted(d.glob("*.md")) if d.exists() else []
     if not files:
@@ -295,7 +320,8 @@ def check_opencode():
             for req in host["config"]["command_required"]:
                 if req not in c:
                     fail(f"opencode.json: command '{cname}' is missing required '{req}'")
-    ok(f"opencode agents ({len(files)}) use opencode's own vocabulary; config resolves")
+    ok(f"opencode agents ({len(files)}) use opencode's own vocabulary; config resolves; "
+       f"key lists match the vendored schema")
 
 
 # --------------------------------------------------------------------------- antigravity
