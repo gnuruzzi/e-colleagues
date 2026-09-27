@@ -124,7 +124,7 @@ Rejected at 1.1.27 and again at 1.2.6, despite appearing in the binary's strings
 | `AG-05` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | runtime | E19, E24 | a tools allowlist DOES override ambient subagent inheritance |
 | `AG-06` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | **corrected** | E17, E24 | SEVEN of the listed tool names are not in the registry |
 | `AG-07` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | runtime | E7, E18, E24 | validate [ok]; only a global install delivers agents |
-| `AG-08` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | runtime | E8, E18, E24 | destination measured; re-install merges; github URL works and lands in a directory named after the repo (E8 addendum, agy 1.2.6) |
+| `AG-08` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | runtime | E8, E18, E24 | destination measured; re-install merges; github URL works and lands in a directory named after the repo (E8 addendum, agy 1.2.6); `plugin@marketplace` is parsed at 1.2.10 but no marketplace is known or registrable (E8 addendum 2) |
 | `AG-10` | agy 1.1.27 / desktop 2.12.2 | confirmed | docs/source only | — | — |
 | `AG-11` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | **corrected** | E19, E24 | AGENTS.md does NOT reach any agy agent |
 | `AG-12` | agy 1.1.27 / desktop 2.12.2 | confirmed | **corrected** | E18 | no workspace root delivers agents, so collisions are moot |
@@ -266,7 +266,7 @@ Every claim id cited anywhere in this repository resolves here, so a citation ne
 
 **`AG-07`** — An Antigravity plugin is `plugins/<plugin_name>/` with a ROOT `plugin.json` (required; binary errors 'missing plugin.json', 'plugin.json missing name', 'invalid plugin name: %q'; CLI docs: `name` matching `^[a-zA-Z0-9-_]+$`, optional `description`, `$schema https://antigravity.google/schemas/v1/plugin.json`; general …
 
-**`AG-08`** — Antigravity plugin roots: workspace `.agents/plugins/` or `_agents/plugins/`; global `~/.gemini/config/plugins/` (9 Google plugins live there on this machine). Enablement is recorded in `~/.gemini/config/config.json` under `plugins: {<dirname>: {enabled: true}}`, keyed by DIRECTORY name, and 'config.json wins wherever …
+**`AG-08`** — Antigravity plugin roots: workspace `.agents/plugins/` or `_agents/plugins/`; global `~/.gemini/config/plugins/` (9 Google plugins live there on this machine). Enablement is recorded in `~/.gemini/config/config.json` under `plugins: {<dirname>: {enabled: true}}`, keyed by DIRECTORY name, and 'config.json wins wherever … **E8 addendum 2 (agy 1.2.10)**: `install <plugin>@<marketplace>` is parsed and `link <mp> <target>` exists, but both need a marketplace agy already knows — served from a remote catalog cache that was absent here — and nothing in the CLI or the config registers one. Not a delivery route.
 
 **`AG-10`** — 'Workflows are deprecated and will be retired on November 1, 2026.' Legacy locations: workspace `.agents/workflows/<name>.md` (also `_agents/`, `.agent/`, `_agent/`), global `~/.gemini/config/workflows/*.md`, `~/.gemini/config/global_workflows/*.md`, `workflows.json`; invoked `/<name>`; 12,000-char limit. Replacement …
 
