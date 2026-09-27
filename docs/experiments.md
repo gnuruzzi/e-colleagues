@@ -796,6 +796,49 @@ Each of the 22 candidate names was then installed as the sole entry in a probe a
 
 ---
 
+### Addendum 2026-09-20 — re-run at agy 1.2.6 (#6)
+
+The CLI had moved from 1.1.27 to **1.2.6** (desktop 2.12.2 → 2.15.0) since E17. The same
+probe was re-run: one agent per name, installed globally, one-character prompt, with
+`definitely_not_a_tool` as the negative control.
+
+**The registry is unchanged.** The same 15 names resolve; the same 7 are rejected; the control
+is rejected. Every valid name was confirmed by an observed `pong`, not by inference.
+
+| valid (15) | rejected (7) |
+|---|---|
+| `view_file` `run_command` `write_to_file` `replace_file_content` `multi_replace_file_content` `grep_search` `find_by_name` `list_dir` `read_url_content` `search_web` `invoke_subagent` `define_subagent` `manage_task` `manage_subagents` `send_message` | `view_file_outline` `view_code_item` `command_status` `codebase_search` `browser_subagent` `notify_user` `manage_inbox` |
+
+Two things changed around the registry, neither of which alters the list:
+
+1. **The error now reaches stdout, as structured JSON.** At 1.1.27 stdout said only
+   `Agent execution terminated due to error.` and the offending name appeared in `--log-file`
+   alone (E17 consequence 2). At 1.2.6 the print-mode output is
+   `AGY_ERROR: {"short_error":"… unknown component: tool \"<name>\" not found in registry",
+   "status":"UNKNOWN","error_code":2,"code_kind":"grpc","retryable":false,…}` — the name is in
+   the message a user actually sees.
+
+2. **A model-capacity error had to be told apart from a registry error.** The default model
+   (`gpt-oss-120b-medium`) returned `UNAVAILABLE (code 503): No capacity available` on several
+   runs. E17's classifier — any failure is INVALID — would have produced false negatives. The
+   ordering E17 established still holds and was re-verified first with the control: a registry
+   miss fails at executor construction, *before* any model call, so a 503 means the name
+   resolved. The sweep classified on the registry phrase, treated a 503 as "resolved, retry",
+   and the six names that first hit a 503 were re-run until each returned `pong`.
+
+**Consequence**: `hosts/antigravity.yaml` and `check.py --agy-tools` need no change. The floor
+stays 1.1.27, and the list is now confirmed at two versions. The desktop (2.15.0) was still
+not driven; only the CLI was.
+
+**Other hosts, noted for a consistent snapshot, not re-verified**: Claude Code 2.1.278
+(was 2.1.263), Codex CLI 0.154.0 (was 0.153.4), opencode **2.0.8** (was 1.18.29 — a major
+bump). For opencode the published schema at `opencode.ai/config.json` was re-fetched and is
+byte-identical (39,039 bytes): the same 15 `AgentConfig` keys, the same 15 permission keys, the
+same command shape with `template` required. So the opencode gate's key lists are unaffected
+by the 2.x bump; its runtime behaviour (E20) was not re-run.
+
+---
+
 ## E18 — Q8 part 1: Antigravity workspace plugin roots deliver no agents at 1.1.27
 
 **Date** 2026-09-08. **agy 1.1.27.**

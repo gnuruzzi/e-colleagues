@@ -8,11 +8,11 @@ Every claim id is stated in full under [The claims themselves](#the-claims-thems
 
 | tool | version | how the sweep reached it |
 |---|---|---|
-| Claude Code | 2.1.263 | `claude -p`, `--plugin-dir`, `plugin validate`, `plugin list` |
-| Codex CLI | 0.153.4 | `codex exec`, `codex sandbox`, `codex plugin …` |
-| opencode | 1.18.29 | `opencode run`, `agent list`, `run --command` |
-| agy (Antigravity CLI) | 1.1.27 | `agy --print`, `--agent`, `plugin install/validate` |
-| Antigravity desktop | 2.12.2 | binary inspection only — no session was driven |
+| Claude Code | 2.1.263 | `claude -p`, `--plugin-dir`, `plugin validate`, `plugin list` — installed now: 2.1.278, not re-verified |
+| Codex CLI | 0.153.4 | `codex exec`, `codex sandbox`, `codex plugin …` — installed now: 0.154.0, not re-verified |
+| opencode | 1.18.29 | `opencode run`, `agent list`, `run --command` — installed now: **2.0.8**; published schema re-fetched and byte-identical (E17 addendum), runtime not re-run |
+| agy (Antigravity CLI) | 1.1.27 | `agy --print`, `--agent`, `plugin install/validate` — **tool registry re-verified unchanged at 1.2.6** (E17 addendum) |
+| Antigravity desktop | 2.12.2 | binary inspection only — no session was driven; installed now: 2.15.0 |
 
 **Re-verify before relying on a version-gated claim.** Four of the five tools moved within a day of the original research (`experiments.md` E2) and one gate had already flipped (E3). A claim marked *docs/source only* has never been exercised against a running tool.
 
@@ -49,7 +49,7 @@ These override the digest wherever they disagree.
 
 `check.py --agy-tools` validates every rendered Antigravity agent against this list, derived by installing each name as the sole entry in an agent's `tools` list and running it (E17). **Do not derive it by grepping the binary** — that yields a superset and reported all seven invalid names as present (E16 C1, superseded).
 
-Valid at **agy 1.1.27** — 15 names:
+Valid at **agy 1.1.27**, and re-verified unchanged at **1.2.6** (E17 addendum) — 15 names:
 
 ```
 view_file  run_command  write_to_file  replace_file_content  multi_replace_file_content
@@ -57,7 +57,7 @@ grep_search  find_by_name  list_dir  read_url_content  search_web
 invoke_subagent  define_subagent  manage_task  manage_subagents  send_message
 ```
 
-Rejected at 1.1.27, despite appearing in the binary's strings: `view_file_outline`, `view_code_item`, `command_status`, `codebase_search`, `browser_subagent`, `notify_user`, `manage_inbox`.
+Rejected at 1.1.27 and again at 1.2.6, despite appearing in the binary's strings: `view_file_outline`, `view_code_item`, `command_status`, `codebase_search`, `browser_subagent`, `notify_user`, `manage_inbox`.
 
 ## Claims by host
 

@@ -17,7 +17,7 @@ the feature was introduced in. Below it, nothing is promised.
 | OpenAI Codex CLI | **0.153.4** | `read-only` + `approval_policy = "never"` blocks every write (E4); role files parse under `deny_unknown_fields` with a five-key whitelist [CX-02] |
 | Claude Code | **2.1.263** | plugin `agents` takes a file list and replaces the default scan (E10); `subagent_type` needs the qualified name (E10) |
 | opencode | **1.18.29** | the 15 permission keys and `AgentConfig`'s 15 properties, re-derived from the published schema (E16 C3) |
-| Google Antigravity (`agy`) | **1.1.27** | the 15-name tool registry (E17); global install is the only delivery route (E18) |
+| Google Antigravity (`agy`) | **1.1.27** | the 15-name tool registry (E17, re-verified unchanged at 1.2.6); global install is the only delivery route (E18) |
 | Antigravity desktop | 2.12.2 *(observed)* | **not a floor** — the desktop was inspected, never driven. It diverges from the CLI on the `agents:` key (E16), which is why the renderer never emits it |
 | Python | **3.11** | `tomllib` is standard library from 3.11; the shipped scripts use nothing else |
 

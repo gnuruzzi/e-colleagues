@@ -1,7 +1,7 @@
 # Antigravity dialect. The only place Antigravity vocabulary appears.
 host: antigravity
 display: Google Antigravity
-min_version: "1.1.27"          # agy CLI; desktop 2.12.2 diverges, see below
+min_version: "1.1.27"          # agy CLI; registry re-verified unchanged at 1.2.6 (E17 addendum)
 
 agent_file:
   # Discovered by convention at the plugin root, with no manifest key [AG-07].
@@ -14,7 +14,7 @@ agent_file:
   # emit it: it would work on the CLI and be an unknown key on the desktop.
   never_emit: [agents]
 
-# THE MEASURED REGISTRY (experiments.md E17), not AG-06's list.
+# THE MEASURED REGISTRY (experiments.md E17, re-verified at 1.2.6 in its addendum), not AG-06's list.
 # Seven names AG-06 gives are absent from the registry and abort the agent at startup with
 # `unknown component: tool "<name>" not found in registry`. Re-derive this by running one
 # agent per name at each supported version; grepping the binary yields a superset.
