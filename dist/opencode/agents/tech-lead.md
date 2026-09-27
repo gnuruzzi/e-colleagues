@@ -10,6 +10,13 @@ permission:
     "security": allow
     "designer": allow
     "platform": allow
+  subagent:
+    "*": deny
+    "developer": allow
+    "reviewer": allow
+    "security": allow
+    "designer": allow
+    "platform": allow
 ---
 
 # Tech-Lead

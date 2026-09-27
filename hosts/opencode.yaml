@@ -12,9 +12,18 @@ agent_file:
                  hidden, color, steps, maxSteps, options, permission, disable, tools]
   required_keys: [description, mode]
 
-# The 15 permission keys from the vendored schema (E20 re-derived them at 1.18.29).
+# The 15 permission keys from the published schema (E20 re-derived them at 1.18.29), plus
+# the two names the 2.x runtime uses for `task` and `bash` (E20 addendum): the schema still
+# lists only the old ones, the runtime accepts either, and unknown permission keys are
+# schema-valid, so both can be present on every version.
 permission_keys: [read, edit, glob, grep, list, bash, task, external_directory,
-                  todowrite, question, webfetch, websearch, lsp, doom_loop, skill]
+                  todowrite, question, webfetch, websearch, lsp, doom_loop, skill,
+                  subagent, shell]
+
+# Emitted beside the old name with identical rules, and check.py requires the pair. One
+# spelling alone is a silent fail-open on the version that knows only the other: the rule
+# vanishes and the default permission applies, which is the failure the gate exists to catch.
+permission_aliases: { task: subagent, bash: shell }
 
 capabilities:
   edit_true:  { edit: allow }
