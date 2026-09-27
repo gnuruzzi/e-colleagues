@@ -265,6 +265,10 @@ def render_opencode(personas, team, host, roster):
             perm.update(caps["no_web"])
         if p["capabilities"]["delegate"]:
             perm["task"] = {"*": "deny", **{n: "allow" for n in p["capabilities"]["delegate"]}}
+        # both spellings, identical rules: the 2.x runtime's name beside the schema's
+        for old, new in host.get("permission_aliases", {}).items():
+            if old in perm:
+                perm[new] = perm[old]
         lines = [f"description: {yaml_scalar(' '.join(p['description'].split()))}",
                  f"mode: {'primary' if p['role'] == 'primary' else 'subagent'}",
                  "permission:"]
@@ -285,6 +289,9 @@ def render_opencode(personas, team, host, roster):
                                 **{n: "allow" for n in personas["tech-lead"]["capabilities"]["delegate"]
                                    if n in roster}}},
     }
+    for old, new in host.get("permission_aliases", {}).items():
+        if old in cfg["permission"]:
+            cfg["permission"][new] = cfg["permission"][old]
     out[host["config"]["path"]] = json.dumps(cfg, indent=2) + "\n"
     # opencode writes these into any config directory on first run [OC-10]
     out["dist/opencode/.gitignore"] = "node_modules/\npackage.json\npackage-lock.json\n"

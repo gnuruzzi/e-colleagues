@@ -228,6 +228,16 @@ def check_opencode():
     host = yaml.safe_load((ROOT / "hosts" / "opencode.yaml").read_text())
     allowed = set(host["agent_file"]["allowed_keys"])
     perm_keys = set(host["permission_keys"])
+    aliases = host.get("permission_aliases", {})
+
+    def both_spellings(label: str, perm: dict) -> None:
+        # The 2.x runtime renamed `task` and `bash`; the schema still lists the old names.
+        # Either alone is a silent fail-open on the version that knows only the other.
+        for old, new in aliases.items():
+            a, b = perm.get(old), perm.get(new)
+            if (a is None) != (b is None) or (a is not None and a != b):
+                fail(f"{label}: permission `{old}` and its 2.x name `{new}` must both be "
+                     f"present with identical rules [OC-02]")
     d = ROOT / "dist" / "opencode" / "agents"
     files = sorted(d.glob("*.md")) if d.exists() else []
     if not files:
@@ -266,12 +276,14 @@ def check_opencode():
             fail(f"{f.name}: a read-only persona needs permission.edit = deny")
         if p["capabilities"]["delegate"] and "task" not in perm:
             fail(f"{f.name}: a delegating persona needs a permission.task allowlist [OC-05]")
+        both_spellings(f.name, perm)
         if p["role"] == "primary" and fm.get("mode") != "primary":
             fail(f"{f.name}: the primary needs mode: primary [OC-03]")
 
     cfg_path = ROOT / "dist" / "opencode" / "opencode.json"
     if cfg_path.exists():
         cfg = json.loads(cfg_path.read_text())
+        both_spellings("opencode.json", cfg.get("permission") or {})
         da = cfg.get("default_agent")
         if da and not (d / f"{da}.md").exists():
             fail(f"opencode.json: default_agent '{da}' does not resolve — a hard config "

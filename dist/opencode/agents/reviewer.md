@@ -10,6 +10,11 @@ permission:
     "sed -i*": deny
   webfetch: deny
   websearch: deny
+  shell:
+    "*": allow
+    "git commit*": deny
+    "git stash*": deny
+    "sed -i*": deny
 ---
 
 # Reviewer

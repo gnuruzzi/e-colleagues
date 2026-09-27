@@ -104,7 +104,7 @@ Rejected at 1.1.27 and again at 1.2.6, despite appearing in the binary's strings
 | claim | last confirmed at | verdict | how | evidence | what was measured |
 |---|---|---|---|---|---|
 | `OC-01` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum | project agents load from .opencode/agents |
-| `OC-02` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum | permission edit:deny holds on a subagent |
+| `OC-02` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum | permission edit:deny holds on a subagent; `task`/`subagent` and `bash`/`shell` both accepted at 2.0.18, so the renderer emits both |
 | `OC-03` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum | default_agent applies to opencode run; modes correct; `agent list` gone at 2.0.18, use `debug agents` |
 | `OC-04` | opencode 1.18.29 | confirmed | docs/source only | — | — |
 | `OC-05` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum | permission.task allowlist evaluated mechanically, as `subagent` at 2.0.18; nested spawns stopped by the depth limit |
@@ -227,7 +227,7 @@ Every claim id cited anywhere in this repository resolves here, so a citation ne
 
 **`OC-01`** — opencode Markdown agents live in `~/.config/opencode/agents/*.md` (global) and `.opencode/agents/*.md` (project); the loader globs `{agent,agents}/**/*.md` in every config directory (plus legacy `{mode,modes}/*.md`, forced `mode: primary`), reads with `dot: true, symlink: true`, and names the agent by path relative to …
 
-**`OC-02`** — opencode agent frontmatter keys (`KNOWN_KEYS`): `name`, `model`, `variant`, `prompt`, `description` (docs: required), `temperature`, `top_p`, `mode` (`subagent|primary|all`, default `all` for custom agents), `hidden`, `color`, `steps`, `maxSteps` (deprecated), `options`, `permission` (object keyed by tool: read, edit …
+**`OC-02`** — opencode agent frontmatter keys (`KNOWN_KEYS`): `name`, `model`, `variant`, `prompt`, `description` (docs: required), `temperature`, `top_p`, `mode` (`subagent|primary|all`, default `all` for custom agents), `hidden`, `color`, `steps`, `maxSteps` (deprecated), `options`, `permission` (object keyed by tool: read, edit … **E20 addendum (2.0.18)**: the runtime reports `task` as `subagent` and `bash` as `shell`, accepts either spelling, and the published schema still lists only the old ones; unknown permission keys are schema-valid, so the renderer emits both and `check.py` requires the pair.
 
 **`OC-03`** — opencode selects the primary agent with `opencode --agent <name>` / `opencode run --agent <name>` or config `default_agent` ('Must be a primary agent. Falls back to build if not set or if the specified agent is invalid'; errors if hidden). In the TUI the keybinds are `agent_cycle` (default `tab`) … **E20 addendum (2.0.18)**: `opencode agent list` no longer exists; `opencode debug agents` lists agents with their modes.
 
