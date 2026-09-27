@@ -168,6 +168,37 @@ class TestRegionOwnership(Base):
         self.assertIn("unknown profile", r.stdout + r.stderr)
 
 
+class TestOrphanedIndexRow(Base):
+    """A profile change can leave an audit-owned index row that no persona in the new
+    roster will ever audit. The script never edits the index (§5.1), so it has to say so
+    instead, and the lock has to carry the lens names so `ec-status` can keep saying so."""
+
+    def test_lock_records_the_rosters_lenses(self):
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        run(self.root, "--write", "--profile", "library")
+        lock = json.loads((self.root / ".e-colleagues/lock.json").read_text())
+        team = json.loads(TEAM.read_text())
+        self.assertEqual(lock["lenses"],
+                         [team["personas"][n]["lens"] for n in team["profiles"]["library"]])
+        self.assertNotIn("design-system", lock["lenses"])
+
+    def test_a_row_no_persona_audits_is_reported_not_removed(self):
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        run(self.root, "--write")                                  # default: six rows
+        r = run(self.root, "--check", "--profile", "library")
+        self.assertIn("action needed", r.stdout)
+        self.assertIn("design-system", r.stdout)
+        r = run(self.root, "--write", "--profile", "library")
+        self.assertIn("design-system", r.stdout)
+        self.assertIn("| design-system |", self.agents)          # the index is not the script's to edit
+
+    def test_no_action_when_every_row_has_a_persona(self):
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        run(self.root, "--write")
+        r = run(self.root, "--write")
+        self.assertNotIn("action needed", r.stdout)
+
+
 class TestOwnership(Base):
     """The lock hashes what the PACKAGE owns, not the whole file.
 

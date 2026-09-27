@@ -87,6 +87,20 @@ def index_region(team: dict, profile: str) -> str:
     return "\n".join(lines)
 
 
+def index_lenses(content: str) -> list[str]:
+    """The lens names the audit-owned index currently lists, in order."""
+    if INDEX not in content:
+        return []
+    region = content.split(INDEX, 1)[1]
+    region = region.split(BINDINGS, 1)[0] if BINDINGS in region else region
+    lenses = []
+    for ln in region.splitlines():
+        cells = [c.strip() for c in ln.strip().strip("|").split("|")]
+        if len(cells) == 3 and cells[0] != "lens" and not set(cells[0]) <= {"-"}:
+            lenses.append(cells[0])
+    return lenses
+
+
 def bindings_region() -> str:
     """The team's own. Scaffolded once and never touched again (§5.1)."""
     return "\n".join([BINDINGS, "### Platforms and tools", "", "### Workflow and permissions", ""])
@@ -146,6 +160,18 @@ def plan(root: pathlib.Path, team: dict, profile: str, notes: list[str]) -> dict
     existing = agents.read_text() if agents.exists() else f"# AGENTS.md — {root.name}\n"
     out[agents] = splice(existing, team, profile)
 
+    roster = roster_of(team, profile)
+    lenses = [team["personas"][n]["lens"] for n in roster]
+    # The index is the audit's region and is carried across verbatim, so a profile change
+    # can leave a row that no persona in the new roster will ever audit. That row reads as
+    # "not yet audited" forever unless someone is told.
+    orphaned = [l for l in index_lenses(out[agents]) if l not in lenses]
+    if orphaned:
+        notes.append(f"the index lists {', '.join(f'`{l}`' for l in orphaned)}, which no "
+                     f"persona in the '{profile}' roster audits, so it can never complete. "
+                     f"The index is the audit's, not this script's: remove the row by hand, "
+                     f"or choose a profile whose roster includes that lens's persona.")
+
     claude = root / "CLAUDE.md"
     # never `/import codex`, which appends a copy of AGENTS.md into CLAUDE.md [CC-14][CC-16]
     if not claude.exists() or claude.read_text().strip() == "@AGENTS.md":
@@ -171,7 +197,8 @@ def plan(root: pathlib.Path, team: dict, profile: str, notes: list[str]) -> dict
     doc = {
         "package_version": team["version"],
         "profile": profile,
-        "roster": roster_of(team, profile),
+        "roster": roster,
+        "lenses": lenses,
         "written": {},
         "completed_lenses": prior.get("completed_lenses", []),
     }

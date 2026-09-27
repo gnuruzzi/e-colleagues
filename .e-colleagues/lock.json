@@ -8,6 +8,13 @@
     "security",
     "platform"
   ],
+  "lenses": [
+    "architecture",
+    "build-and-test",
+    "standards-and-coverage",
+    "security-posture",
+    "ci-cd-and-infra"
+  ],
   "written": {
     "AGENTS.md": "379e0679049bfaa2bfdca381232dd2f6478a4d9b2811f09018cc0982e8004161",
     "CLAUDE.md": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49"
@@ -19,5 +26,5 @@
     "security-posture",
     "ci-cd-and-infra"
   ],
-  "updated": "2026-09-11"
+  "updated": "2026-09-27"
 }

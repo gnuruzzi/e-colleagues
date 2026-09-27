@@ -93,10 +93,18 @@ def main() -> int:
 
     rows = index_rows(root)
     completed = set(lock.get("completed_lenses", []))
+    # Locks written before the roster's lens names were recorded have no `lenses`; then
+    # the question "does anyone audit this lens" cannot be answered and is not asked.
+    audited = lock.get("lenses")
     print(f"\nlenses ({len(rows)} in the index, {len(completed)} completed)")
 
-    stale_count, unknown = 0, 0
+    stale_count, unknown, orphaned = 0, 0, 0
     for lens, where in sorted(rows.items()):
+        if audited is not None and lens not in audited:
+            orphaned += 1
+            print(f"  {lens:<24} NO PERSONA in the {lock.get('profile', '?')} roster audits "
+                  f"this lens — remove the row, or change the profile")
+            continue
         f = root / STORE / f"{lens}.md"
         if not f.exists():
             state = "not audited" if lens not in completed else f"indexed -> {where}"
@@ -122,7 +130,8 @@ def main() -> int:
         else:
             print(f"  {lens:<24} fresh at {d['commit']}")
 
-    print(f"\n{stale_count} stale, {unknown} unknown, {len(rows)} total")
+    tail = f", {orphaned} with no persona" if orphaned else ""
+    print(f"\n{stale_count} stale, {unknown} unknown{tail}, {len(rows)} total")
     if a.fail_on_stale and stale_count:
         return 1
     return 0
