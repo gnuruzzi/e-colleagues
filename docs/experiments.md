@@ -14,7 +14,7 @@ Tranches: **A** automated, **B** interactive — needing a TTY or a trust dialog
 | Q4 | A | Codex `O_NOFOLLOW`: symlinked role TOMLs fail at spawn | **settled** (E5) |
 | Q5 | A | Codex root-as-plugin marketplace entry `path: "./"` | **settled** (E6) |
 | Q6 | A | `agy plugin validate` / `install` on a tree carrying all three manifests | **settled** (E7) |
-| Q7 | B | opencode runtime: Tab and `@` menus, `default_agent`, subtask `ask`, AGENTS.md in task children | **mostly settled** (E20); Tab and `@` menus still open |
+| Q7 | B | opencode runtime: Tab and `@` menus, `default_agent`, subtask `ask`, AGENTS.md in task children | **mostly settled** (E20, re-verified at 2.0.18 in its addendum); Tab and `@` menus still open |
 | Q8 | B | Antigravity: `tools` allowlist versus ambient subagent inheritance, `tools: []`, H1 slicing, name collisions | **mostly settled** (E17–E19); desktop inheritance default still open |
 | Q9 | A | does a spawned Codex child re-run AGENTS.md discovery | **settled** (E9) |
 | Q10 | A+B | `-c developer_instructions=""` clears the project value for one session | **settled** (E14 profile layer, E22 project layer) |
@@ -969,6 +969,28 @@ So in headless `run` mode the `question` tool is **denied outright**, for parent
 ### Two non-findings, recorded so they are not mistaken for findings later
 
 Two runs were killed at their timeouts (600 s and 240 s) and looked like hangs. Both were **slowness on the lite model**, not permission blocks: the same delegation completed in about a minute with a shorter prompt, and `--command` completed on a 150 s retry. No opencode hang was observed at any point, and none should be inferred from the earlier logs.
+
+---
+
+### Addendum 2026-09-27 — re-run at opencode 2.0.18 (#11)
+
+**opencode 2.0.18**, model `opencode/gemini-3.5-flash-lite` as before. Fixture: the rendered `dist/opencode/agents/*.md` under `.opencode/agents/`, the rendered `opencode.json` plus a `command` block, an `AGENTS.md` with the canary `HERON-5540`, in a fresh git repository. Every run was `opencode run --standalone --print-logs --log-level debug`, stdin closed. Tool calls now go through a code-mode `execute` tool — the log shows `tools.task({subagent_type: …})` and `tools.shell({command: …})` — which is also how the runtime's own names for the permissions show through (#12).
+
+| # | question | at 2.0.18 |
+|---|---|---|
+| 1 | project agents load, with the right modes | **reproduced, by a different command.** `opencode agent list` is gone (`Unexpected positional argument: "list"`); `opencode debug agents` lists the six with `tech-lead` primary and the rest subagents, and `opencode debug config` lists the project `opencode.json` and `.opencode/` as sources |
+| 2 | `default_agent` from project config | **reproduced.** A bare `opencode run` printed `> tech-lead · gemini-3.5-flash-lite` and the reply carried the signature |
+| 3 | `permission.task` allowlist enforced | **reproduced, renamed.** `reviewer` → `ALLOWED: 🕵️ Reviewer: REVIEWER-OK`; the built-in `general` → `DENIED: Permission denied: subagent`. The permission is evaluated under the name `subagent`; the key in the file is still `task`, and so is the tool the model calls |
+| 4 | `permission: {edit: deny}` on a subagent | **holds.** The rendered reviewer, asked through the tech-lead, refused on role discipline and the tech-lead re-routed the job to the developer, which is allowed to write — a probe of the persona, not the mechanism. Measured instead on a fixture agent with `edit: deny` run directly with `--agent`: it made two `execute` calls to `fs.writeFileSync`, reported `ENOENT`, and no file appeared in the tree or anywhere else on disk. `execute` results are not logged, so whether `fs` threw or wrote into a sandbox is not known; nothing reached the working tree |
+| 5 | `AGENTS.md` reaches a task child | **reproduced.** `CHILD: PROJECT: HERON-5540` from a child told to read nothing |
+| 6 | `run --command <name>` as a subtask | **the flag is gone; a slash command in the prompt does the job.** `opencode run "/ec-review"` with the command in `opencode.json` ran the reviewer as a subtask, which returned the template's `COMMAND-SUBTASK-OK from reviewer`. The file form loads from **`.opencode/command/`** (singular): `.opencode/command/ec-review-file.md` expanded, `.opencode/commands/ec-review-file.md` did not, and the lead treated `/ec-review-file` as literal text |
+| 7 | can a subtask `ask` in `opencode run`? | **still cannot, by a different mechanism.** At 1.18.29 every headless session carried `question * deny`. At 2.0.18 the question is asked and immediately dismissed — `✗ Asked 1 question failed`, `Error: The user dismissed this question` — and the run **exits 1 with no reply**. The reason for pattern rules over a blanket `ask` survives: a blanket `ask` would now end the run |
+| — | a child spawning a child (E20 recorded `task * deny` on the subtask session) | **still blocked, by a different mechanism.** The reviewer, told to delegate to the developer, returned `NESTED: DENIED Subagent depth limit reached (1). Increase "experimental.subagent_depth" to allow nested subagents.` The static allowlist it inherits from `opencode.json` would have permitted it; the depth limit is what stops it. `debug agents` shows no session-level deny |
+| 8 | Tab and `@` menus | **not tested** — the TUI, #5 |
+
+**Verdict**: every row E20 established holds at 2.0.18. What moved is the surface around them: two commands the matrix cites are gone, the file-form command directory is singular, and the two "cannot" results now rest on a dismissed question and a depth limit rather than on session permissions. The schema at `opencode.ai/config.json` is unchanged (39,039 bytes; E24), so the gate's key lists still match the file format, while the runtime already speaks the new names — the renderer decision is #12.
+
+**Host state**: nothing under `~/.config/opencode` changed; opencode wrote its own logs and snapshots under `~/.local/share/opencode`, as it does for every run. The background service it starts was stopped afterwards.
 
 ---
 

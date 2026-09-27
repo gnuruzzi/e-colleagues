@@ -10,7 +10,7 @@ Every claim id is stated in full under [The claims themselves](#the-claims-thems
 |---|---|---|
 | Claude Code | 2.1.263 | `claude -p`, `--plugin-dir`, `plugin validate`, `plugin list` — **re-verified at 2.1.283** (E24) |
 | Codex CLI | 0.153.4 | `codex exec`, `codex sandbox`, `codex plugin …` — **re-verified at 0.154.0** (E24) |
-| opencode | 1.18.29 | `opencode run`, `agent list`, `run --command` — installed now: **2.0.18**; published schema still byte-identical, runtime not re-run (#11) |
+| opencode | 1.18.29 | `opencode run`, `agent list`, `run --command` — **re-verified at 2.0.18** (E20 addendum): every runtime row holds; `agent list` is now `debug agents` and `run --command` is a slash command in the prompt |
 | agy (Antigravity CLI) | 1.1.27 | `agy --print`, `--agent`, `plugin install/validate` — **tool registry re-verified unchanged at 1.2.6 and 1.2.10** (E17 addendum, E24) |
 | Antigravity desktop | 2.12.2 | binary inspection only — no session was driven; **2.17.0 carries the `agents:` tag the 2.12.2 binary lacked** (E24) |
 
@@ -103,14 +103,14 @@ Rejected at 1.1.27 and again at 1.2.6, despite appearing in the binary's strings
 
 | claim | last confirmed at | verdict | how | evidence | what was measured |
 |---|---|---|---|---|---|
-| `OC-01` | opencode 1.18.29 | confirmed | runtime | E20 | project agents load from .opencode/agents |
-| `OC-02` | opencode 1.18.29 | confirmed | runtime | E20 | permission edit:deny holds on a subagent |
-| `OC-03` | opencode 1.18.29 | confirmed | runtime | E20 | default_agent applies to opencode run; modes correct |
+| `OC-01` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum | project agents load from .opencode/agents |
+| `OC-02` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum | permission edit:deny holds on a subagent |
+| `OC-03` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum | default_agent applies to opencode run; modes correct; `agent list` gone at 2.0.18, use `debug agents` |
 | `OC-04` | opencode 1.18.29 | confirmed | docs/source only | — | — |
-| `OC-05` | opencode 1.18.29 | confirmed | runtime | E20 | permission.task allowlist evaluated mechanically |
-| `OC-07` | opencode 1.18.29 | confirmed | **corrected** | E20 | run --command as subtask; command schema keys corrected |
+| `OC-05` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum | permission.task allowlist evaluated mechanically, as `subagent` at 2.0.18; nested spawns stopped by the depth limit |
+| `OC-07` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | **corrected** | E20, E20 addendum | run --command as subtask; command schema keys corrected; at 2.0.18 the flag is gone, a slash command in the prompt expands, and the file form loads from `command/` not `commands/` |
 | `OC-08` | opencode 1.18.29 | refuted | docs/source only | — | — |
-| `OC-09` | opencode 1.18.29 | refuted | runtime | E20 | AGENTS.md reaches a task child |
+| `OC-09` | opencode 2.0.18 (E20 addendum; first 1.18.29) | refuted | runtime | E20, E20 addendum | AGENTS.md reaches a task child |
 | `OC-10` | opencode 1.18.29 | refuted | docs/source only | — | — |
 | `OC-11` | opencode 1.18.29 | confirmed | docs/source only | — | — |
 
@@ -229,13 +229,13 @@ Every claim id cited anywhere in this repository resolves here, so a citation ne
 
 **`OC-02`** — opencode agent frontmatter keys (`KNOWN_KEYS`): `name`, `model`, `variant`, `prompt`, `description` (docs: required), `temperature`, `top_p`, `mode` (`subagent|primary|all`, default `all` for custom agents), `hidden`, `color`, `steps`, `maxSteps` (deprecated), `options`, `permission` (object keyed by tool: read, edit …
 
-**`OC-03`** — opencode selects the primary agent with `opencode --agent <name>` / `opencode run --agent <name>` or config `default_agent` ('Must be a primary agent. Falls back to build if not set or if the specified agent is invalid'; errors if hidden). In the TUI the keybinds are `agent_cycle` (default `tab`) …
+**`OC-03`** — opencode selects the primary agent with `opencode --agent <name>` / `opencode run --agent <name>` or config `default_agent` ('Must be a primary agent. Falls back to build if not set or if the specified agent is invalid'; errors if hidden). In the TUI the keybinds are `agent_cycle` (default `tab`) … **E20 addendum (2.0.18)**: `opencode agent list` no longer exists; `opencode debug agents` lists agents with their modes.
 
 **`OC-04`** — opencode subagents are invoked (1) by the model calling the built-in `task` tool with `description`, `prompt`, `subagent_type` (= agent name), optional `task_id`, `command`, `background` (needs `OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=true`); the tool description appends 'Available agent types and the tools they …
 
-**`OC-05`** — On opencode, `permission.task` on the INVOKING agent is a map of agent-name glob patterns → allow|ask|deny (e.g. `{"*":"deny","orchestrator-*":"allow"}`), evaluated in insertion order, last match wins; `deny` removes the agent from the task tool description. The built-in `plan` agent carries `{permission: task …
+**`OC-05`** — On opencode, `permission.task` on the INVOKING agent is a map of agent-name glob patterns → allow|ask|deny (e.g. `{"*":"deny","orchestrator-*":"allow"}`), evaluated in insertion order, last match wins; `deny` removes the agent from the task tool description. The built-in `plan` agent carries `{permission: task … **E20 addendum (2.0.18)**: the runtime evaluates the key under the name `subagent` (`Permission denied: subagent`), and a child spawning a child is stopped by `subagent_depth` (default 1) rather than by a session-level deny.
 
-**`OC-07`** — opencode command files: `.opencode/commands/<name>.md` and `~/.config/opencode/commands/<name>.md` (glob `{command,commands}/**/*.md`; nested → `a/b`); frontmatter `description`, `agent`, `model`, `variant`, `subtask`; body = `template`. JSON form: top-level `command` object, schema requires `template` …
+**`OC-07`** — opencode command files: `.opencode/commands/<name>.md` and `~/.config/opencode/commands/<name>.md` (glob `{command,commands}/**/*.md`; nested → `a/b`); frontmatter `description`, `agent`, `model`, `variant`, `subtask`; body = `template`. JSON form: top-level `command` object, schema requires `template` … **E20 addendum (2.0.18)**: `run --command` is gone; a slash command in the `run` prompt expands, with `subtask: true` honoured. The file form loaded from `.opencode/command/` and not from `.opencode/commands/`, so the `{command,commands}` glob is at most half true there.
 
 **`OC-08`** **— refuted** — opencode skill sources, in order: per config dir `{skill,skills}/**/SKILL.md` (`.opencode/skills/` from cwd up to the worktree, `~/.config/opencode/skills/`, `~/.opencode/skills`, `$OPENCODE_CONFIG_DIR/skills`); external `.claude/skills/**` and `.agents/skills/**` walking cwd → worktree plus `~/.claude/skills/**` …
 

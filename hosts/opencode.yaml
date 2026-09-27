@@ -1,7 +1,7 @@
 # opencode dialect. The only place opencode vocabulary appears.
 host: opencode
 display: opencode
-min_version: "1.18.29"
+min_version: "1.18.29"          # the floor; every runtime row re-verified at 2.0.18 (experiments.md E20 addendum)
 
 agent_file:
   path: "dist/opencode/agents/{name}.md"
@@ -22,7 +22,8 @@ capabilities:
     edit: deny
     # Pattern rules rather than a blanket `ask`. A blanket ask would be DENIED outright in
     # `opencode run` — every headless session stamps `question: * deny` on parent and
-    # subtask alike (E20) — which silently removes the shell when the reviewer needs it.
+    # subtask alike (E20); at 2.0.18 the question is auto-dismissed and the run exits 1
+    # (E20 addendum) — either way it removes the shell when the reviewer needs it.
     bash:
       "*": allow
       "git commit*": deny
