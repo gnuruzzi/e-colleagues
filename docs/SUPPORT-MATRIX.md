@@ -8,11 +8,11 @@ Every claim id is stated in full under [The claims themselves](#the-claims-thems
 
 | tool | version | how the sweep reached it |
 |---|---|---|
-| Claude Code | 2.1.263 | `claude -p`, `--plugin-dir`, `plugin validate`, `plugin list` — installed now: 2.1.278, not re-verified |
-| Codex CLI | 0.153.4 | `codex exec`, `codex sandbox`, `codex plugin …` — installed now: 0.154.0, not re-verified |
-| opencode | 1.18.29 | `opencode run`, `agent list`, `run --command` — installed now: **2.0.8**; published schema re-fetched and byte-identical (E17 addendum), runtime not re-run |
-| agy (Antigravity CLI) | 1.1.27 | `agy --print`, `--agent`, `plugin install/validate` — **tool registry re-verified unchanged at 1.2.6** (E17 addendum) |
-| Antigravity desktop | 2.12.2 | binary inspection only — no session was driven; installed now: 2.15.0 |
+| Claude Code | 2.1.263 | `claude -p`, `--plugin-dir`, `plugin validate`, `plugin list` — **re-verified at 2.1.283** (E24) |
+| Codex CLI | 0.153.4 | `codex exec`, `codex sandbox`, `codex plugin …` — **re-verified at 0.154.0** (E24) |
+| opencode | 1.18.29 | `opencode run`, `agent list`, `run --command` — installed now: **2.0.18**; published schema still byte-identical, runtime not re-run (#11) |
+| agy (Antigravity CLI) | 1.1.27 | `agy --print`, `--agent`, `plugin install/validate` — **tool registry re-verified unchanged at 1.2.6 and 1.2.10** (E17 addendum, E24) |
+| Antigravity desktop | 2.12.2 | binary inspection only — no session was driven; **2.17.0 carries the `agents:` tag the 2.12.2 binary lacked** (E24) |
 
 **Re-verify before relying on a version-gated claim.** Four of the five tools moved within a day of the original research (`experiments.md` E2) and one gate had already flipped (E3). A claim marked *docs/source only* has never been exercised against a running tool.
 
@@ -26,7 +26,7 @@ Every claim id is stated in full under [The claims themselves](#the-claims-thems
 ## How to read the `how` column
 
 - **runtime** — exercised against the installed binary, and it held.
-- **corrected** — the sweep contradicted or materially narrowed the digest. The design follows the experiment, not the claim text. These nine are listed again below.
+- **corrected** — the sweep contradicted or materially narrowed the digest. The design follows the experiment, not the claim text. These ten are listed again below.
 - **docs/source only** — believed on documentation or source reading. Not exercised. Treat as the weakest tier.
 
 ## Corrections the sweep forced
@@ -41,8 +41,9 @@ These override the digest wherever they disagree.
 | `CC-10` | the `agent` key makes a persona the default | true; it is **not trust-gated**, an unresolvable value fails silently, and **project scope beats user scope** | E21 |
 | `AG-11` | Antigravity walks `AGENTS.md` cwd→root | **no agy agent receives it** — not a custom agent, not the default one | E19 |
 | `AG-12` | a workspace agent definition ranks above plugin and global | **no workspace root delivers agents at all**, so the ranking is moot | E18 |
-| `AG-02` | the CLI and desktop share one engine | the `agents:` key exists in agy 1.1.27 and **not** in desktop 2.12.2 | E16 |
+| `AG-02` | the CLI and desktop share one engine | the `agents:` key exists in agy 1.1.27 and **not** in desktop 2.12.2 — and again in desktop 2.17.0, so the divergence has closed | E16, E24 |
 | `CX-04` | `[agents]` defaults and the V1/V2 resolution | correct, and the V2 ceiling **refuses** a spawn past the limit rather than queueing it | E11 |
+| `CC-14` | Claude Code "reads CLAUDE.md, not AGENTS.md" | at 2.1.283 an `AGENTS.md` with no `CLAUDE.md` beside it **reaches the model**; the `@AGENTS.md` import still works and is kept for older versions | E24 |
 | `OC-07` | command keys are {description, agent, model, subtask} | the schema is **{template, description, agent, model, variant, subtask}** with `template` required | E20 |
 
 ## The Antigravity tool registry
@@ -65,19 +66,19 @@ Rejected at 1.1.27 and again at 1.2.6, despite appearing in the binary's strings
 
 | claim | last confirmed at | verdict | how | evidence | what was measured |
 |---|---|---|---|---|---|
-| `CC-02` | Claude Code 2.1.263 | confirmed | runtime | E10 | manifest agents list replaces the default scan; decoy never loaded |
-| `CC-03` | Claude Code 2.1.263 | confirmed | **corrected** | E10 | bare subagent_type does NOT resolve; qualified form does |
+| `CC-02` | Claude Code 2.1.283 (E24; first 2.1.263) | confirmed | runtime | E10, E24 | manifest agents list replaces the default scan; decoy never loaded |
+| `CC-03` | Claude Code 2.1.283 (E24; first 2.1.263) | confirmed | **corrected** | E10, E24 | bare subagent_type does NOT resolve; qualified form does |
 | `CC-04` | Claude Code 2.1.263 | confirmed | runtime | E10 | three validate modes; validate . is marketplace mode |
 | `CC-05` | Claude Code 2.1.263 | confirmed | docs/source only | — | — |
-| `CC-06` | Claude Code 2.1.263 | confirmed | runtime | E23 | local-source project plugin loads on trust, no install step |
-| `CC-07` | Claude Code 2.1.263 | confirmed | **corrected** | E13, E15 | tools allowlist holds for editors; validate does NOT catch the fail-open |
+| `CC-06` | Claude Code 2.1.283 (E24; first 2.1.263) | confirmed | runtime | E23, E24 | local-source project plugin loads on trust, no install step (2.1.263 and 2.1.283) |
+| `CC-07` | Claude Code 2.1.283 (E24; first 2.1.263) | confirmed | **corrected** | E13, E15, E24 | tools allowlist holds for editors; validate does NOT catch the fail-open |
 | `CC-08` | Claude Code 2.1.263 | confirmed | docs/source only | — | — |
-| `CC-09` | Claude Code 2.1.263 | confirmed | runtime | E13 | read-only reviewer still writes via Bash |
-| `CC-10` | Claude Code 2.1.263 | confirmed | **corrected** | E21 | agent key works, is NOT trust-gated, unresolvable value silent |
+| `CC-09` | Claude Code 2.1.283 (E24; first 2.1.263) | confirmed | runtime | E13, E24 | read-only reviewer still writes via Bash |
+| `CC-10` | Claude Code 2.1.283 (E24; first 2.1.263) | confirmed | **corrected** | E21, E24 | agent key works, is NOT trust-gated, unresolvable value silent |
 | `CC-11` | Claude Code 2.1.263 | confirmed | docs/source only | — | — |
-| `CC-12` | Claude Code 2.1.263 | confirmed | runtime | E10 | plugin agent bodies reach the subagent |
+| `CC-12` | Claude Code 2.1.283 (E24; first 2.1.263) | confirmed | runtime | E10, E24 | plugin agent bodies reach the subagent |
 | `CC-13` | Claude Code 2.1.263 | confirmed | docs/source only | — | — |
-| `CC-14` | Claude Code 2.1.263 | confirmed | docs/source only | — | — |
+| `CC-14` | Claude Code 2.1.283 (E24; first 2.1.263) | confirmed | **corrected** | E24 | the load order holds and the @import works, but "not AGENTS.md" no longer does: AGENTS.md is read natively |
 | `CC-15` | Claude Code 2.1.263 | confirmed | docs/source only | — | — |
 | `CC-16` | Claude Code 2.1.263 | confirmed | docs/source only | — | — |
 
@@ -86,12 +87,12 @@ Rejected at 1.1.27 and again at 1.2.6, despite appearing in the binary's strings
 | claim | last confirmed at | verdict | how | evidence | what was measured |
 |---|---|---|---|---|---|
 | `CX-01` | Codex CLI 0.153.4 | confirmed | docs/source only | — | — |
-| `CX-02` | Codex CLI 0.153.4 | confirmed | runtime | E4, E5 | read-only+never blocks every write; symlinked role TOML fails at spawn |
-| `CX-03` | Codex CLI 0.153.4 | refuted | runtime | E12 | project skills load untrusted; project agents do not |
-| `CX-04` | Codex CLI 0.153.4 | refuted | **corrected** | E11 | V2 ceiling is 3 spawned children; a 4th is refused, not queued |
-| `CX-05` | Codex CLI 0.153.4 | refuted | runtime | E5, E9 | explicit spawn ask works; unknown agent_type errors loudly |
-| `CX-06` | Codex CLI 0.153.4 | confirmed | runtime | E14, E22 | developer_instructions via profile and via trusted project config |
-| `CX-07` | Codex CLI 0.153.4 | confirmed | runtime | E12 | $ec-tech-lead resolves from .agents/skills untrusted |
+| `CX-02` | Codex CLI 0.154.0 (E24; first 0.153.4) | confirmed | runtime | E4, E5, E24 | read-only+never blocks every write; symlinked role TOML fails at spawn |
+| `CX-03` | Codex CLI 0.154.0 (E24; first 0.153.4) | refuted | runtime | E12, E24 | project skills load untrusted; project agents do not |
+| `CX-04` | Codex CLI 0.154.0 (E24; first 0.153.4) | refuted | **corrected** | E11, E24 | V2 ceiling is 3 spawned children; a 4th is refused, not queued |
+| `CX-05` | Codex CLI 0.154.0 (E24; first 0.153.4) | refuted | runtime | E5, E9, E24 | explicit spawn ask works; unknown agent_type errors loudly |
+| `CX-06` | Codex CLI 0.154.0 (E24; first 0.153.4) | confirmed | runtime | E14, E22, E24 | developer_instructions via profile and via trusted project config |
+| `CX-07` | Codex CLI 0.154.0 (E24; first 0.153.4) | confirmed | runtime | E12, E24 | $ec-tech-lead resolves from .agents/skills untrusted |
 | `CX-08` | Codex CLI 0.153.4 | confirmed | runtime | E6 | whole tree copied; .codex-plugin manifest adopted |
 | `CX-09` | Codex CLI 0.153.4 | confirmed | docs/source only | — | — |
 | `CX-10` | Codex CLI 0.153.4 | confirmed | runtime | E6 | marketplace add + plugin add; source forms measured |
@@ -117,15 +118,15 @@ Rejected at 1.1.27 and again at 1.2.6, despite appearing in the binary's strings
 
 | claim | last confirmed at | verdict | how | evidence | what was measured |
 |---|---|---|---|---|---|
-| `AG-02` | agy 1.1.27 / desktop 2.12.2 | confirmed | **corrected** | E16, E19 | desktop lacks agents:; body is not sliced at the first H1 |
+| `AG-02` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | **corrected** | E16, E19, E24 | desktop lacked agents: at 2.12.2 and carries it at 2.17.0; body is not sliced at the first H1 |
 | `AG-03` | agy 1.1.27 / desktop 2.12.2 | confirmed | runtime | E19 | agy --agent runs a mainAgent persona |
 | `AG-04` | agy 1.1.27 / desktop 2.12.2 | confirmed | docs/source only | — | — |
-| `AG-05` | agy 1.1.27 / desktop 2.12.2 | confirmed | runtime | E19 | a tools allowlist DOES override ambient subagent inheritance |
-| `AG-06` | agy 1.1.27 / desktop 2.12.2 | confirmed | **corrected** | E17 | SEVEN of the listed tool names are not in the registry |
-| `AG-07` | agy 1.1.27 / desktop 2.12.2 | confirmed | runtime | E7, E18 | validate [ok]; only a global install delivers agents |
-| `AG-08` | agy 1.1.27 / desktop 2.12.2 | confirmed | runtime | E8, E18 | destination measured; re-install merges; github URL works and lands in a directory named after the repo (E8 addendum, agy 1.2.6) |
+| `AG-05` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | runtime | E19, E24 | a tools allowlist DOES override ambient subagent inheritance |
+| `AG-06` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | **corrected** | E17, E24 | SEVEN of the listed tool names are not in the registry |
+| `AG-07` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | runtime | E7, E18, E24 | validate [ok]; only a global install delivers agents |
+| `AG-08` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | runtime | E8, E18, E24 | destination measured; re-install merges; github URL works and lands in a directory named after the repo (E8 addendum, agy 1.2.6) |
 | `AG-10` | agy 1.1.27 / desktop 2.12.2 | confirmed | docs/source only | — | — |
-| `AG-11` | agy 1.1.27 / desktop 2.12.2 | confirmed | **corrected** | E19 | AGENTS.md does NOT reach any agy agent |
+| `AG-11` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | **corrected** | E19, E24 | AGENTS.md does NOT reach any agy agent |
 | `AG-12` | agy 1.1.27 / desktop 2.12.2 | confirmed | **corrected** | E18 | no workspace root delivers agents, so collisions are moot |
 
 ### Prior art
@@ -182,7 +183,7 @@ Every claim id cited anywhere in this repository resolves here, so a citation ne
 
 **`CC-13`** — SKILL.md frontmatter in Claude Code: `name`, `description`, `when_to_use`, `argument-hint`, `arguments`, `disable-model-invocation` (true = user-only `/name`), `user-invocable` (false = hidden from `/` menu), `allowed-tools`, `disallowed-tools`, `model`, `effort`, `context: fork`, `agent`, `background`, `hooks` …
 
-**`CC-14`** — 'Claude Code reads CLAUDE.md, not AGENTS.md.' Load order: `/etc/claude-code/CLAUDE.md` → `~/.claude/CLAUDE.md` → `./CLAUDE.md` or `./.claude/CLAUDE.md` (and every ancestor, root-first) → `./CLAUDE.local.md`; subdirectory CLAUDE.md files load on demand. `@path` imports (relative to the containing file, or …
+**`CC-14`** — 'Claude Code reads CLAUDE.md, not AGENTS.md.' Load order: `/etc/claude-code/CLAUDE.md` → `~/.claude/CLAUDE.md` → `./CLAUDE.md` or `./.claude/CLAUDE.md` (and every ancestor, root-first) → `./CLAUDE.local.md`; subdirectory CLAUDE.md files load on demand. `@path` imports (relative to the containing file, or … **E24 (2.1.283)**: `AGENTS.md` is also read natively — its canary reached the model with no `CLAUDE.md` present, and with both files present the model reported it once. The import stays; it is no longer the only route.
 
 **`CC-15`** — Claude Code does not read `.agents/skills`, `~/.agents/skills`, or any other agent's skill directory. skills.md (100 KB) contains zero occurrences of `.agents`; the 2.1.261 binary's strings contain `.claude/skills` 52 times and `.agents/` zero times (the 42 bare `.agents` hits are JS property accesses like …
 
@@ -203,7 +204,7 @@ Every claim id cited anywhere in this repository resolves here, so a citation ne
 
 > **The correction, which is the truth:** Everything about the `[agents]` schema, defaults, alias, doc comment and its absence from the online reference is accurate and verified at tag rust-v0.153.4 (the installed version — not 0.153.3, and the install is the standalone release under ~/.codex/packages/standalone/, not the npm layout cited). What is wrong is the conclusion. `codex features list` …
 
-**`CX-05`** **— refuted** — Codex spawn tools in the binary: `spawn_agent`, `send_input`, `resume_agent`, `wait_agent`, `close_agent` (V1) plus V2 `send_message`, `followup_task`, `interrupt_agent`, `list_agents`. `spawn_agent` takes `agent_type` (omit → inherit parent type with full-history fork; otherwise `default`), `model` …
+**`CX-05`** **— refuted** — Codex spawn tools in the binary: `spawn_agent`, `send_input`, `resume_agent`, `wait_agent`, `close_agent` (V1) plus V2 `send_message`, `followup_task`, `interrupt_agent`, `list_agents`. `spawn_agent` takes `agent_type` (omit → inherit parent type with full-history fork; otherwise `default`), `model` … **E24 (0.154.0)**: when no role is installed at any scope the spawn tool exposes no `agent_type` parameter, so the loud `unknown agent_type` error presupposes at least one role somewhere.
 
 > **The correction, which is the truth:** Most of the claim holds verbatim (tool names, V1 depth = session_depth+1 refused when depth > max_depth with that exact message, DEFAULT_AGENT_MAX_DEPTH = 1, the explicit-ask runtime prompt, `unknown agent_type '<name>'`). Two parts are wrong:
 
@@ -253,7 +254,7 @@ Every claim id cited anywhere in this repository resolves here, so a citation ne
 
 ### Antigravity
 
-**`AG-02`** — Antigravity `agent.md` = YAML frontmatter + Markdown body (the system prompt). Documented fields: `name` (required), `description` (required), `tools` string[] default [], `mainAgent` bool default true, `subagent` bool default true, `model` `inherit|flash|pro` default inherit, `commandExecutionPolicy` …
+**`AG-02`** — Antigravity `agent.md` = YAML frontmatter + Markdown body (the system prompt). Documented fields: `name` (required), `description` (required), `tools` string[] default [], `mainAgent` bool default true, `subagent` bool default true, `model` `inherit|flash|pro` default inherit, `commandExecutionPolicy` … **E24**: desktop 2.17.0 carries the `agents:` tag; the CLI/desktop divergence E16 measured at 2.12.2 is gone.
 
 **`AG-03`** — An Antigravity custom agent runs as PRIMARY when `mainAgent` is true (default): 'If true, allows selection as the primary agent in chat interfaces.' CLI: `agy --agent <name>` (help: 'Agent for the current CLI session'; added in 1.1.1 with the `agent/agents` subcommand), value = frontmatter `name`; or the `/agents` …
 

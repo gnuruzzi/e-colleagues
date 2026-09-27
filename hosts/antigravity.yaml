@@ -1,7 +1,7 @@
 # Antigravity dialect. The only place Antigravity vocabulary appears.
 host: antigravity
 display: Google Antigravity
-min_version: "1.1.27"          # agy CLI; registry re-verified unchanged at 1.2.6 (E17 addendum)
+min_version: "1.1.27"          # agy CLI; registry re-verified unchanged at 1.2.6 and 1.2.10 (E17 addendum, E24)
 
 agent_file:
   # Discovered by convention at the plugin root, with no manifest key [AG-07].

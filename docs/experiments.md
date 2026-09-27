@@ -29,6 +29,7 @@ Tranches: **A** automated, **B** interactive — needing a TTY or a trust dialog
 | Q19 | A | does the Codex read-only sandbox permit running the project's tests | **settled** (E4) |
 | — | C | installed versions versus research targets | **settled** (E2) |
 | — | C | agy tool list, Antigravity desktop 2.12.2, opencode 1.18.29 schema, Claude 2.1.263 | **settled** (E16) |
+| — | C | the 2026-09-27 snapshot: Claude 2.1.283, Codex 0.154.0, agy 1.2.10, desktop 2.17.0 | **settled** (E24); opencode 2.0.18 still open (#11) |
 
 ---
 
@@ -1103,3 +1104,47 @@ No warning, and with the folder trusted:
 3. `check.py` must validate any `extraKnownMarketplaces` entry it writes against the object form, because a wrong shape is silently skipped after one dismissible warning — and the plugin then simply never appears.
 
 **Limitation, stated because it bounds the conclusion**: this was measured with a **`directory`** source using an absolute path — which a shipped repository cannot hardcode. The design's real distribution is a `github` source, and CC-06's v2.1.195 restriction is written specifically about "an external source (GitHub, npm)". So this result does **not** show that a github-sourced self-marketplace skips the install step; that remains open until the repository is published and can be tested as `{"source": "github", "repo": "<owner>/e-colleagues"}`. It folds into the same follow-up as E8's residual directory-name question.
+
+---
+
+## E24 — re-verification sweep at the 2026-09-27 snapshot (#13)
+
+**Date** 2026-09-27. Installed: **Claude Code 2.1.283**, **Codex CLI 0.154.0** (model `gpt-6-astra`), **agy 1.2.10** (default model), **Antigravity desktop 2.17.0**. opencode is at 2.0.18 and is not part of this sweep (#11). Every experiment below was re-run with the command its original entry records, against a fresh throwaway fixture in a scratch directory, with host state snapshotted before and diffed after. Where a row says *reproduced*, the original entry stands and this table is the evidence at the new version. Where it says otherwise, the row states what moved.
+
+### Codex CLI 0.154.0
+
+| experiment | claim | result |
+|---|---|---|
+| E4 | `read-only` + `never` runs a test suite and blocks every write | **reproduced.** `make test` passed and wrote no `.pyc`. Workspace, `/tmp`, `$TMPDIR`, `$HOME`, `mkdir ./build` and `git commit` all failed `Read-only file system` (rc 1; rc 128 for git); reads and `git status` rc 0; `curl` rc 6 `Could not resolve host`. The `workspace-write` control wrote two `.pyc` files and a file in `/tmp` |
+| E5 | a symlinked role TOML fails at spawn | **reproduced.** Symlink: `agent type is currently not available`. The same content as a real file: `🕵️ Reviewer: SPAWN-OK` |
+| E11 | the V2 ceiling refuses a fourth spawn rather than queueing | **reproduced.** Five requested; A, B and C ran (each 25.0 s, the three intervals overlapping for 18.9 s); two `collab spawn failed: agent thread limit reached` |
+| E12 | untrusted clone: the project skill loads, the project agent does not | **reproduced, with a nuance.** `$ec-tech-lead` was adopted and returned `MAGPIE-4402`; the spawn produced `unknown agent_type 'm0-projonly'` and no trust entry was written. The nuance: that error appears only when at least one role exists at user scope. With no role installed anywhere, the spawn tool exposes **no `agent_type` parameter** at all, and the primary reports that it cannot request the type rather than receiving an error. The original run had user-scope roles installed, which is why it never saw this |
+| E14 | profile layer; `-c developer_instructions` clears or replaces | **reproduced**, all five rows, including the silently ignored unknown profile name |
+| E22 | trusted project `developer_instructions` | **reproduced.** Plain `ping` before trust; `Q10-PROJECT-DEVINSTR-ACTIVE ping` after the trust dialog; `-c developer_instructions=""` clears it. Codex wrote the `[projects."…"]` entry itself |
+
+One mechanic that cost a full round of timeouts: `codex exec` reads more of its prompt from stdin when stdin is not a TTY and blocks on an open pipe with `Reading additional input from stdin...`. Every scripted invocation needs `< /dev/null`.
+
+### Claude Code 2.1.283
+
+| experiment | claim | result |
+|---|---|---|
+| E10 | the manifest `agents` list replaces the scan; a bare `subagent_type` does not resolve | **reproduced.** The decoy in root `agents/` was absent (`DECOY-VISIBLE: no`); bare `reviewer` → `Agent type 'reviewer' not found`; `e-colleagues:reviewer` spawned and reported its tools as `Read` and `Bash` |
+| E13 | Bash is a write path for the read-only reviewer | **capability reproduced; behaviour changed.** From inside the reviewer's own Bash, `os.access('.', W_OK)` was `True` and `sys.dont_write_bytecode` was `False`, and the tech-lead's identical Bash wrote the two `.pyc` files. But the rendered reviewer, on its own initiative and citing R4, ran `make test` under `PYTHONDONTWRITEBYTECODE=1` and wrote nothing. The persona now suppresses the side effect; the tool surface does not, and §8's cell stays *prose* |
+| E15 | `plugin validate --strict` misses most frontmatter faults | **reproduced.** The same two caught (colon-free unterminated quote, now worded `Unexpected EOF`; missing description) and the same six pass, `memory: true` on a `tools`-restricted agent included |
+| E21 | the project `agent` key works, is not trust-gated, and is silent on a bad value | **reproduced.** Token untrusted in four of five runs; token trusted; `no-such-agent-exists` → plain `ping`, exit 0. Two differences: the very first `-p` run in the fresh untrusted directory returned no token and was not reproduced in four further runs, cause not found; and a `-p` run no longer records the folder in `~/.claude.json` at all (at 2.1.263 it recorded `hasTrustDialogAccepted: false`). The precedence row was not re-run: it needs a user-level settings write |
+| E23 | a local-source self-marketplace loads on trust with no install step | **reproduced.** `known_marketplaces.json` lists it; `installed_plugins.json` and `claude plugin list` do not; inside the clone the `e-colleagues:` agents and all four skills are offered and `e-colleagues:reviewer` spawned (`SPAWN-OK-Q13`); outside the clone none are. The github-source variant is still #4 |
+
+**New: `AGENTS.md` reaches Claude with no `CLAUDE.md` at all.** In a directory holding only `AGENTS.md` (canary `BLUEBIRD-7731`), the default agent, told not to read files, answered `PROJECT: BLUEBIRD-7731`; the control directory with no `AGENTS.md` answered `PROJECT: NONE`. With both a `CLAUDE.md` containing `@AGENTS.md` and the `AGENTS.md` present, the model reported the token once — a self-report, so weak evidence against duplication, but no evidence for it. **Consequence**: the two-line import [CC-14] is no longer the only route on 2.1.283; it is kept because it costs nothing and older versions need it. The vendor changelog was not checked; this is measured only.
+
+### agy 1.2.10 and Antigravity desktop 2.17.0
+
+| experiment | claim | result |
+|---|---|---|
+| E17 | the 15-name registry | **reproduced.** Same 15 valid, each with an observed `pong` — four (`run_command`, `grep_search`, `read_url_content`, `manage_task`) resolved on the first pass but answered the one-character prompt with a clarification request, and gave `pong` on a second pass with a stricter fixture body; same 7 rejected with `not found in registry`; control rejected. No 503 this time |
+| E18 | no workspace root delivers agents | **reproduced** for the original three roots and two more (`.gemini/agents/<name>/`, `.agents/<plugin>/`); only `agy plugin install` does |
+| E19 | a `tools` list omitting `invoke_subagent` holds; the body is not sliced; `AGENTS.md` reaches no agent | **reproduced.** The reviewer: "I do not have an `invoke_subagent` tool available in my toolset"; `BODY: YES` for the second-H1 canary; `PROJECT: NONE` for both the custom agent and the default one |
+| E16 C2 | the desktop lacks the `agents:` key the CLI has | **flipped.** Desktop 2.17.0's `language_server` carries `yaml:"agents` (1 hit; controls `mainAgent` 1, `notARealKey` 0), the same as the CLI. The divergence AG-02 records is gone. The renderer's `never_emit: [agents]` now rests on portability across versions rather than on a measured divergence |
+
+**Host state**: `~/.gemini/config/config.json` and the plugins tree were byte-identical after each install and uninstall; `~/.codex/config.toml` is identical apart from the trust entry Codex wrote for the E22 fixture, and `~/.codex/agents/` was removed again because it did not exist before; `~/.claude.json` gained the two trusted fixture folders; `~/.claude/settings.json` was not touched.
+
+**Not re-run**: E6 to E9 (Codex marketplace, cache layout, `AGENTS.md` reaching a child), E20 (opencode, #11), and E21's precedence row.
