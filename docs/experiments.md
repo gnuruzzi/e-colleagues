@@ -374,6 +374,26 @@ No imported plugins.
 
 ---
 
+### Addendum 2026-09-27 — `plugin@marketplace` is parsed at agy 1.2.10 and resolves against nothing a user can register (#14)
+
+**agy 1.2.10.** `agy plugin --help` now reads `install <target>       Install a plugin (supports plugin@marketplace)` and lists a new `link <mp> <target>     Generate link to a marketplace`. E8 recorded `plugin@marketplace` as measured absent at 1.1.27, so both were probed, against a scratch copy of this repository, with the Antigravity config tree listed before and diffed after every command.
+
+| command | result |
+|---|---|
+| `agy plugin install e-colleagues@e-colleagues` — a marketplace name Claude Code has registered on this machine (E23) | rc 1, `Error: unknown marketplace: e-colleagues` |
+| `agy plugin install definitely-not-a-plugin@claude-plugins-official` — Claude's default marketplace | rc 1, `Error: unknown marketplace: claude-plugins-official` |
+| `agy plugin install definitely-not-a-plugin@not-a-marketplace` — control | rc 1, `Error: unknown marketplace: not-a-marketplace` |
+| `agy plugin install Not_Kebab@e-colleagues` — a bad plugin name | rc 1, `Error: unknown marketplace: e-colleagues` — the marketplace half is resolved first |
+| `agy plugin link e-colleagues-mp <scratch copy>` | rc 1, `Error: unknown marketplace: e-colleagues-mp` |
+| `agy plugin link claude-plugins-official <scratch copy>` | rc 1, `Error: unknown marketplace: claude-plugins-official` |
+| `agy plugin install --help`, `agy plugin link --help` | not flags: `install target must be a directory: --help`; `link requires marketplace name and target` |
+
+So the form is parsed, and `link` needs a marketplace that is already known, so it cannot register one. Neither `agy --help` nor `agy plugin` offers a marketplace subcommand or flag; `~/.gemini/config/config.json` has no marketplace key; the import manifest is empty. The binary's own strings say where a known marketplace comes from — a remote catalog served from a cache (`Cannot locate the marketplace cache directory, no marketplaces will be served`, `Failed to refresh marketplace %q, serving the cached copy`, `marketplace %q returned status %d`, `marketplace name %q is not kebab-case`) — and no such cache exists under `~/.gemini`, `~/.cache`, `~/.config` or `~/.local/share` on this machine. The config tree was byte-identical after the probes.
+
+**Verdict**: at 1.2.10 `plugin@marketplace` is a real syntax with no user-reachable marketplace behind it. It is not a route for installing this package, and design §7's "not offered" stands — for a different reason than "measured absent": the form exists, and resolves only against marketplaces agy serves itself, of which none was present and none can be added from the CLI. **Not driven**: the desktop app, whose UI strings (`Explore other marketplace customizations`) suggest it is what populates that cache. If a later version lets a user register a marketplace, or a served one comes to carry this package, this addendum is where to look.
+
+---
+
 ## E9 — Q9: a spawned Codex child does re-run AGENTS.md discovery (tranche A)
 
 **Date** 2026-09-07. **codex-cli 0.153.4**, model `gpt-6-astra` (catalogued **V2**, per CX-04's correction), `model_reasoning_effort = "medium"` for speed.
