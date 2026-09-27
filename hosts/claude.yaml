@@ -1,7 +1,7 @@
 # Claude Code dialect. The only place Claude vocabulary appears.
 host: claude
 display: Claude Code
-min_version: "2.1.263"
+min_version: "2.1.263"          # the floor; every runtime claim re-verified at 2.1.283 (experiments.md E24)
 
 agent_file:
   path: "dist/claude/agents/{name}.md"

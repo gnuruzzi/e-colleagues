@@ -2,7 +2,7 @@
 # Claim ids resolve in docs/SUPPORT-MATRIX.md; E-ids in docs/experiments.md.
 host: codex
 display: OpenAI Codex CLI
-min_version: "0.153.4"          # the version every claim below was confirmed at
+min_version: "0.153.4"          # the floor; every runtime claim re-verified at 0.154.0 (experiments.md E24)
 
 # A specialist role file accepts exactly these top-level keys. RawAgentRoleFileToml uses
 # deny_unknown_fields, and a rejected file is a silently missing persona, not an error [CX-02].
