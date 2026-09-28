@@ -29,7 +29,8 @@ Tranches: **A** automated, **B** interactive — needing a TTY or a trust dialog
 | Q19 | A | does the Codex read-only sandbox permit running the project's tests | **settled** (E4) |
 | — | C | installed versions versus research targets | **settled** (E2) |
 | — | C | agy tool list, Antigravity desktop 2.12.2, opencode 1.18.29 schema, Claude 2.1.263 | **settled** (E16) |
-| — | C | the 2026-09-27 snapshot: Claude 2.1.283, Codex 0.154.0, agy 1.2.10, desktop 2.17.0 | **settled** (E24); opencode 2.0.18 still open (#11) |
+| — | C | the 2026-09-27 snapshot: Claude 2.1.283, Codex 0.154.0, agy 1.2.10, desktop 2.17.0 | **settled** (E24); opencode 2.0.18 in the E20 addendum |
+| — | A | can a plugin, a `references` entry or a skill source deliver agents to an opencode project | **settled** (E25): no — agents come only from the two directories and the config key; a plugin can add commands and skills |
 
 ---
 
@@ -1212,3 +1213,35 @@ One mechanic that cost a full round of timeouts: `codex exec` reads more of its 
 **Host state**: `~/.gemini/config/config.json` and the plugins tree were byte-identical after each install and uninstall; `~/.codex/config.toml` is identical apart from the trust entry Codex wrote for the E22 fixture, and `~/.codex/agents/` was removed again because it did not exist before; `~/.claude.json` gained the two trusted fixture folders; `~/.claude/settings.json` was not touched.
 
 **Not re-run**: E6 to E9 (Codex marketplace, cache layout, `AGENTS.md` reaching a child), E20 (opencode, #11), and E21's precedence row.
+
+---
+
+## E25 — opencode 2.0.18 has no plugin route for agents: plugins add commands and skills, `references` delivers nothing (#24)
+
+**Date** 2026-09-28. **opencode 2.0.18.** Asked while deciding #24: could the team reach an opencode project the way it reaches the other three hosts — installed once, from this repository — instead of as files written into every project? Three candidates: the `references` config key, new in 2.x and described only as "named git or local directory references"; the `plugin` key and its `.opencode/plugins/` directory; and the `skills` sources. No model call was needed. Everything was read back with `opencode debug agents` and with marker files the plugin wrote about itself.
+
+### `references` is not a config source
+
+A consumer project whose `opencode.json` carried `references: {"ec": {"path": "<provider>"}}`, the provider being a directory shaped like a plugin repository — `.opencode/agents/*.md` copied from `dist/opencode/`, plus an `opencode.json`. `opencode debug config` listed the consumer's own files as sources and never the provider; `debug agents` listed the built-ins only. The documentation page has a "References" heading with no content under it. The `repository`/`branch` form was not run: it is the same mechanism with a remote source, and the local one delivered nothing.
+
+### Plugins: the documented shape is rejected, and the real API has no `add` for agents
+
+The documented shape — `export const Plugin = async ({project, client, $, directory, worktree}) => hooks` — fails at load with `Plugin must export a default definition with an id and an effect or setup function` (server log, `failed to load plugin`; both `.opencode/plugin/` and `.opencode/plugins/` are scanned). The shape that loads at 2.0.18 is `export default { id, setup(ctx) }`, and `setup` receives a context whose namespaces are `agent`, `command`, `skill`, `permission`, `reference`, `plugin`, `tool`, `mcp`, `catalog`, `integration`, `worktree`, `location` and `app` — a `v2` API the installed `@opencode-ai/plugin` 1.18.15 package already types under `dist/v2/`. Each namespace offers `transform(draft => …)`. What each draft can do, measured by dumping its methods from inside the hook and then trying them:
+
+| draft | methods at 2.0.18 | can a plugin deliver this? |
+|---|---|---|
+| `agent` | `list`, `get`, `default`, `update`, `remove` | **no** — there is no `add`. A plugin can modify, hide or default agents that already exist, and at transform time the draft held only the seven built-ins, so even `update("reviewer", …)` did not reach a project agent |
+| `command` | `add` | yes |
+| `skill` | `list`, `get`, `add`, `update`, `remove` | yes |
+
+`debug agents` afterwards listed the fixture's fourteen agents unchanged: no `plugin-agent`, the reviewer's description untouched. The package's types agree — its `AgentDraft` has the same five methods and no `add` — while the runtime's command draft has an `add` the package's `CommandDraft` type lacks, so the binary is ahead of the package, not behind it.
+
+### Consequences
+
+1. **opencode cannot be a plugin host for the team at 2.0.18.** Agents load from exactly `~/.config/opencode/agents/`, `.opencode/agents/` and the config's `agent` key. The documentation says so, and the plugin API confirms it by omission. The delivery choice for #24 is project files or user-scope files, not a plugin.
+2. Commands and skills *could* ship from a plugin. Nothing here needs that yet; it is recorded so the next reader does not re-derive it.
+3. OC-11's "no bundle format" moves from documentation to measured, with the reason.
+
+**Method note, so the next probe does not lose an hour to it**: `opencode debug agents` returns `[]` for a few seconds after the background service starts or restarts, and returned `[]` throughout for directories the service had not settled on. Every reading above was taken after polling until the list was non-empty. A reading of `[]` is not a finding.
+
+**Host state**: the probe plugins lived in a fixture's `.opencode/plugins/` and were removed; nothing under `~/.config/opencode` changed; the background service was stopped afterwards.
