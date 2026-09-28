@@ -56,6 +56,11 @@ claude --agent tech-lead
 Delegation uses the qualified name — `e-colleagues:reviewer`, not `reviewer`. A bare name
 resolves for the `--agent` flag but not for the `Agent` tool's `subagent_type`.
 
+Both lines are needed even when a repository's own `.claude/settings.json` declares this
+marketplace and enables the plugin: trusting such a clone registers and fetches the
+marketplace but does not load the plugin, and nothing on screen says so
+(`docs/experiments.md`, E23 addendum).
+
 ### opencode
 
 There is no bundle format, so `ec-init` writes the files into the project:

@@ -20,7 +20,7 @@ Tranches: **A** automated, **B** interactive — needing a TTY or a trust dialog
 | Q10 | A+B | `-c developer_instructions=""` clears the project value for one session | **settled** (E14 profile layer, E22 project layer) |
 | Q11 | A | `agy plugin install <github-url>` syntax | **settled** (E8) |
 | Q12 | A | `agy plugin install <dir>` destination, and second-install behaviour | **settled** (E8) |
-| Q13 | B | a project-enabled plugin sourced `./`: auto-installed on trust, or external | **settled for a local source** (E23); github source needs the published repo |
+| Q13 | B | a project-enabled plugin sourced `./`: auto-installed on trust, or external | **settled** (E23 and its addendum): a `directory` source loads on trust; a `github` source is registered and fetched on trust but loads only after `claude plugin install`, and nothing says so |
 | Q14 | — | Codex read-only sandbox blocks network, so read-only specialists cannot post | **retired by design** (E1) |
 | Q15 | A | Codex plugin cache layout, for locating the bundled bootstrap script | **settled** (E6) |
 | Q16 | A | V2 concurrency ceiling for the onboarding audit waves | **settled** (E11) |
@@ -1146,6 +1146,28 @@ No warning, and with the folder trusted:
 3. `check.py` must validate any `extraKnownMarketplaces` entry it writes against the object form, because a wrong shape is silently skipped after one dismissible warning — and the plugin then simply never appears.
 
 **Limitation, stated because it bounds the conclusion**: this was measured with a **`directory`** source using an absolute path — which a shipped repository cannot hardcode. The design's real distribution is a `github` source, and CC-06's v2.1.195 restriction is written specifically about "an external source (GitHub, npm)". So this result does **not** show that a github-sourced self-marketplace skips the install step; that remains open until the repository is published and can be tested as `{"source": "github", "repo": "<owner>/e-colleagues"}`. It folds into the same follow-up as E8's residual directory-name question.
+
+### Addendum 2026-09-28 — the `github` source: registered and fetched on trust, but the plugin does not load (#4)
+
+**Claude Code 2.1.284.** The repository is public, so the shape a repository would actually ship could be measured: a fresh clone carrying `.claude/settings.json` with `extraKnownMarketplaces["e-colleagues"] = {"source": {"source": "github", "repo": "<owner>/e-colleagues"}}` and `enabledPlugins["e-colleagues@e-colleagues"] = true`. Claude's plugin state was cleaned first — the `directory`-source registration E23's re-run had left under the same name was removed with `claude plugin marketplace remove` — so the machine held no `e-colleagues` marketplace and no installed plugin, which is what a cloning teammate has.
+
+The folder was trusted through the dialog. The first screen showed **nothing**: no settings warning, no install instruction, no visible fetch — straight to the prompt.
+
+| check | result |
+|---|---|
+| marketplace registered on the machine | **yes** — `known_marketplaces.json` gained `e-colleagues` with the `github` source and an `installLocation` under `~/.claude/plugins/marketplaces/`, and that directory is a checkout of the repository at its current head |
+| appears in `claude plugin list` | **no** |
+| present in `installed_plugins.json` | **no** |
+| `subagent_type` offered inside the clone, with the marketplace already on disk | **no** — `NO-E-COLLEAGUES-AGENTS` |
+| the plugin's skills inside the clone | **no** — `NO-E-COLLEAGUES-SKILLS` |
+| a live spawn of `e-colleagues:reviewer` inside the clone | **fails** — `Agent type 'e-colleagues:reviewer' not found`, followed by the built-in list |
+| outside the clone (control) | `NO-E-COLLEAGUES-AGENTS`, as before |
+
+**Verdict**: for a **`github`** source, trust registers and fetches the marketplace but does **not** load the plugin. `claude plugin install e-colleagues@e-colleagues` is still required, exactly as CC-06's v2.1.195 restriction says for an external source. E23's result stands for a `directory` source only. What CC-06 did not say: at 2.1.284 **nothing tells the user**. The digest says the install command is "shown"; here the absence was silent in the interactive first screen and in `-p`, and `claude plugin list` shows nothing for it.
+
+**Consequences**:
+1. The README's Claude install keeps both commands. A teammate who clones a repository that declares the marketplace, and trusts it, gets the marketplace registered and nothing else; the install line is not optional, and the tech-lead body's "running without the persona" check is what tells them.
+2. Design §7's Claude install cell and §10 step 6 say so, and the question closes in `acceptance.md`.
 
 ---
 
