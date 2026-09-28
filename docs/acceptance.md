@@ -88,10 +88,11 @@ Then, per host, by hand — because no static check can prove a runtime behaviou
   whole system prompt. A cloned repository can set a session's persona before its owner
   trusts the folder. That is Claude Code's behaviour, not this package's, but anyone
   recommending the key should know it.
-- **One question stays open now the repository is published**: whether a github-sourced
-  self-marketplace skips the Claude install step the way a local one does (E23). The other —
-  where `agy plugin install <github-url>` lands — is settled: a directory named after the
-  repository (E8 addendum).
+- **Both questions left open at publication are settled.** A github-sourced self-marketplace
+  does *not* skip the Claude install step: trusting the folder registers and fetches the
+  marketplace, the plugin loads only after `claude plugin install`, and nothing is printed to
+  say so (E23 addendum). `agy plugin install <github-url>` lands in a directory named after
+  the repository (E8 addendum).
 - **A user-scope install keeps no record of its profile.** `bootstrap.py --scope user --check`
   defaults to the `default` roster regardless of which profile was installed, so pass
   `--profile` to both or it will report agents missing that were never meant to be there. A

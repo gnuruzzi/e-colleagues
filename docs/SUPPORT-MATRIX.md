@@ -70,7 +70,7 @@ Rejected at 1.1.27 and again at 1.2.6, despite appearing in the binary's strings
 | `CC-03` | Claude Code 2.1.283 (E24; first 2.1.263) | confirmed | **corrected** | E10, E24 | bare subagent_type does NOT resolve; qualified form does |
 | `CC-04` | Claude Code 2.1.263 | confirmed | runtime | E10 | three validate modes; validate . is marketplace mode |
 | `CC-05` | Claude Code 2.1.263 | confirmed | docs/source only | — | — |
-| `CC-06` | Claude Code 2.1.283 (E24; first 2.1.263) | confirmed | runtime | E23, E24 | local-source project plugin loads on trust, no install step (2.1.263 and 2.1.283) |
+| `CC-06` | Claude Code 2.1.284 (E23 addendum; first 2.1.263) | confirmed | runtime | E23, E24, E23 addendum | a `directory`-source project plugin loads on trust with no install step (2.1.263, 2.1.283); a `github` source is registered and fetched on trust but does not load until `claude plugin install`, and nothing says so (2.1.284) |
 | `CC-07` | Claude Code 2.1.283 (E24; first 2.1.263) | confirmed | **corrected** | E13, E15, E24 | tools allowlist holds for editors; validate does NOT catch the fail-open |
 | `CC-08` | Claude Code 2.1.263 | confirmed | docs/source only | — | — |
 | `CC-09` | Claude Code 2.1.283 (E24; first 2.1.263) | confirmed | runtime | E13, E24 | read-only reviewer still writes via Bash |
@@ -167,7 +167,7 @@ Every claim id cited anywhere in this repository resolves here, so a citation ne
 
 **`CC-05`** — Third-party install is two steps: `/plugin marketplace add owner/repo` (also git URL, `git@host:path`, `owner/repo@ref`, `url#ref`, local path, or marketplace.json URL) then `/plugin install plugin@marketplace` (scope picker user/project/local). Non-interactive: `claude plugin marketplace add owner/repo [--scope …
 
-**`CC-06`** — Project `.claude/settings.json` supports `extraKnownMarketplaces` (name → {source, autoUpdate?}) and `enabledPlugins` (`plugin@marketplace` → bool). Both are honored only after the user accepts the workspace-trust dialog for that folder (a `-p` run or trusting a parent does not count); the marketplace is then added …
+**`CC-06`** — Project `.claude/settings.json` supports `extraKnownMarketplaces` (name → {source, autoUpdate?}) and `enabledPlugins` (`plugin@marketplace` → bool). Both are honored only after the user accepts the workspace-trust dialog for that folder (a `-p` run or trusting a parent does not count); the marketplace is then added … **E23 addendum (2.1.284)**: measured for the `github` source — trust registers the marketplace and fetches it under `~/.claude/plugins/marketplaces/`, and the plugin does not load until `claude plugin install`; nothing is printed to say so, so the "shown" install command is not shown.
 
 **`CC-07`** — Plugin-shipped agents support `name`, `description`, `model`, `effort`, `maxTurns`, `tools`, `disallowedTools`, `skills`, `memory`, `background`, `isolation`; 'For security reasons, plugin subagents don't support the hooks, mcpServers, or permissionMode frontmatter fields. These fields are ignored when loading agents …
 
