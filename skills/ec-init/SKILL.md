@@ -57,6 +57,10 @@ team's, and no future update rewrites it.
 Use `--check` in CI or before an update; it exits non-zero when the file would change or when
 `AGENTS.md` exceeds 30 KiB.
 
+`--scope user` is a different job and writes no project file: it installs the personas for
+this machine — the Codex role files and the tech-lead profile under `~/.codex/`, and the
+opencode agents under `~/.config/opencode/agents/` — as real files for the chosen profile.
+
 ## 5. Report
 
 State the roster, where the block was placed, what the interview settled, and anything the

@@ -103,7 +103,7 @@ Rejected at 1.1.27 and again at 1.2.6, despite appearing in the binary's strings
 
 | claim | last confirmed at | verdict | how | evidence | what was measured |
 |---|---|---|---|---|---|
-| `OC-01` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum | project agents load from .opencode/agents |
+| `OC-01` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum, E25 addendum | project agents load from .opencode/agents; user agents load from the config home's opencode/agents (E25 addendum) |
 | `OC-02` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum | permission edit:deny holds on a subagent; `task`/`subagent` and `bash`/`shell` both accepted at 2.0.18, so the renderer emits both |
 | `OC-03` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum | default_agent applies to opencode run; modes correct; `agent list` gone at 2.0.18, use `debug agents` |
 | `OC-04` | opencode 1.18.29 | confirmed | docs/source only | — | — |

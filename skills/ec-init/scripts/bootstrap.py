@@ -17,6 +17,7 @@ import argparse
 import datetime
 import hashlib
 import json
+import os
 import pathlib
 import re
 import sys
@@ -247,7 +248,7 @@ def budgets(root: pathlib.Path, content: str, warn) -> list[str]:
 
 
 def install_personas(dist: pathlib.Path, dest: pathlib.Path, roster: list[str],
-                     dry_run: bool) -> tuple[list[str], list[str]]:
+                     dry_run: bool, ext: str = ".toml") -> tuple[list[str], list[str]]:
     """Copy the rendered role files to a Codex agents directory as REAL FILES.
 
     Never symlinks: Codex opens a role's config with O_NOFOLLOW at spawn, so a symlinked
@@ -256,11 +257,11 @@ def install_personas(dist: pathlib.Path, dest: pathlib.Path, roster: list[str],
     """
     written, skipped = [], []
     for name in roster:
-        src = dist / f"{name}.toml"
-        if not src.exists():          # the tech-lead is developer_instructions, not a role
+        src = dist / f"{name}{ext}"
+        if not src.exists():          # on Codex the tech-lead is developer_instructions, not a role
             skipped.append(name)
             continue
-        target = dest / f"{name}.toml"
+        target = dest / f"{name}{ext}"
         if target.is_symlink():
             # replacing a symlink in place would write through it; remove it first
             if not dry_run:
@@ -272,11 +273,19 @@ def install_personas(dist: pathlib.Path, dest: pathlib.Path, roster: list[str],
     return written, skipped
 
 
+def opencode_agents_dir() -> pathlib.Path:
+    """opencode's user agents directory: XDG on Linux, and its config root elsewhere [OC-01]."""
+    base = os.environ.get("XDG_CONFIG_HOME") or str(pathlib.Path.home() / ".config")
+    return pathlib.Path(base) / "opencode" / "agents"
+
+
 def install_user_scope(team: dict, a) -> int:
     """§9 route A: personas and the tech-lead profile, for this machine.
 
     Writes no project files: a per-user install and a per-project contract are different
-    jobs. Never writes ~/.codex/config.toml — Codex rewrites that file itself.
+    jobs. Never writes ~/.codex/config.toml — Codex rewrites that file itself — and never
+    writes the user's opencode config either. opencode has no bundle or plugin route for
+    agents (experiments.md E25), so its agents are delivered here, per machine, like Codex's.
     """
     here = pathlib.Path(__file__).resolve()
     dist = a.dist
@@ -292,6 +301,8 @@ def install_user_scope(team: dict, a) -> int:
     roster = roster_of(team, a.profile or "default")
     codex_home = pathlib.Path.home() / ".codex"
     dest = codex_home / "agents"
+    oc_dist = dist.parent.parent / "opencode" / "agents"
+    oc_dest = opencode_agents_dir()
 
     if a.check:
         stale = []
@@ -314,6 +325,14 @@ def install_user_scope(team: dict, a) -> int:
                 stale.append("e-colleagues.config.toml is not installed")
             elif profile_dst.read_text() != profile_src.read_text():
                 stale.append("e-colleagues.config.toml is out of date")
+        if oc_dist.exists():
+            for name in roster:
+                src = oc_dist / f"{name}.md"
+                if not src.exists():
+                    continue
+                t = oc_dest / f"{name}.md"
+                if not t.exists() or t.read_text() != src.read_text():
+                    stale.append(f"opencode/agents/{name}.md is missing or out of date")
         for s_ in stale:
             print(f"  {s_}")
         print("up to date" if not stale else f"{len(stale)} file(s) need --write")
@@ -330,6 +349,14 @@ def install_user_scope(team: dict, a) -> int:
     if profile_src.exists():
         (codex_home / "e-colleagues.config.toml").write_text(profile_src.read_text())
         print("installed ~/.codex/e-colleagues.config.toml — run `codex --profile e-colleagues`")
+
+    if oc_dist.exists():
+        written, _ = install_personas(oc_dist, oc_dest, roster, dry_run=False, ext=".md")
+        shown = str(oc_dest).replace(str(pathlib.Path.home()), "~", 1)
+        print(f"installed {len(written)} agents into {shown}: {', '.join(written)}")
+        print("start with `opencode run --agent tech-lead`; in the TUI pick it with Tab, or set "
+              "`default_agent` in your global opencode config, which this script never writes "
+              "[OC-03]")
     return 0
 
 

@@ -1245,3 +1245,14 @@ The documented shape — `export const Plugin = async ({project, client, $, dire
 **Method note, so the next probe does not lose an hour to it**: `opencode debug agents` returns `[]` for a few seconds after the background service starts or restarts, and returned `[]` throughout for directories the service had not settled on. Every reading above was taken after polling until the list was non-empty. A reading of `[]` is not a finding.
 
 **Host state**: the probe plugins lived in a fixture's `.opencode/plugins/` and were removed; nothing under `~/.config/opencode` changed; the background service was stopped afterwards.
+
+### Addendum 2026-09-29 — the user-scope route, measured
+
+The route that remains was run end to end. `bootstrap.py --scope user --write --profile library`, with `HOME` and `XDG_CONFIG_HOME` pointed at a throwaway home, wrote the five roster agents to `<config-home>/opencode/agents/*.md` as real files and touched no real directory. Then, from an empty project with only `XDG_CONFIG_HOME` redirected:
+
+| command | result |
+|---|---|
+| `opencode run --standalone --agent tech-lead "Say only the word ping."` with the agents installed | `> tech-lead · gemini-3.5-flash-lite` and `👨‍💻 Tech-Lead: ping` |
+| the same with the real config home, where nothing is installed | `Error: Agent not found: "tech-lead"`, exit 1 |
+
+**Verdict**: opencode 2.0.18 loads agents from the user directory the installer writes to, and the tech-lead's body reaches the model from there. OC-01's user-directory half moves from documentation to measured. The global config was not written and was not needed for `--agent`; a `default_agent` for the TUI stays the user's own edit [OC-03].
