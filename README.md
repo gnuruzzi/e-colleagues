@@ -22,8 +22,9 @@ Version 0.1.0. Six personas, rendered from one source into four host dialects.
 
 Known limits, stated because a guarantee that is really a request is worth naming:
 Codex's read-only sandbox blocks **every** write including `/tmp`, so a project whose tests
-write anything needs an explicit override; Antigravity has no per-project roster and its
-re-install merges rather than replaces; and `AGENTS.md` never reaches an Antigravity agent, so
+write anything needs an explicit override; Antigravity and opencode have no per-project
+roster from this package, both being installed per machine, and an Antigravity re-install
+merges rather than replaces; and `AGENTS.md` never reaches an Antigravity agent, so
 its personas carry the contract in their own bodies. The full list, with what each rests on,
 is in [`docs/acceptance.md`](docs/acceptance.md).
 
@@ -63,8 +64,15 @@ marketplace but does not load the plugin, and nothing on screen says so
 
 ### opencode
 
-There is no bundle format, so `ec-init` writes the files into the project:
-`.opencode/agents/*.md` plus an `opencode.json` carrying `default_agent: tech-lead`.
+```bash
+python3 skills/ec-init/scripts/bootstrap.py --scope user --write   # ~/.config/opencode/agents/*.md
+opencode run --agent tech-lead
+```
+
+opencode has no bundle format and no plugin route for agents — a plugin can add commands
+and skills, not agents (`docs/experiments.md`, E25) — so the agents are installed per
+machine, as real files, for the chosen profile. Your global opencode config is never
+written: in the TUI pick the tech-lead with Tab, or set `default_agent: tech-lead` yourself.
 
 ### Antigravity
 

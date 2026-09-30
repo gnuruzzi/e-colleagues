@@ -103,7 +103,7 @@ Rejected at 1.1.27 and again at 1.2.6, despite appearing in the binary's strings
 
 | claim | last confirmed at | verdict | how | evidence | what was measured |
 |---|---|---|---|---|---|
-| `OC-01` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum | project agents load from .opencode/agents |
+| `OC-01` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum, E25 addendum | project agents load from .opencode/agents; user agents load from the config home's opencode/agents (E25 addendum) |
 | `OC-02` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum | permission edit:deny holds on a subagent; `task`/`subagent` and `bash`/`shell` both accepted at 2.0.18, so the renderer emits both |
 | `OC-03` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum | default_agent applies to opencode run; modes correct; `agent list` gone at 2.0.18, use `debug agents` |
 | `OC-04` | opencode 1.18.29 | confirmed | docs/source only | — | — |
@@ -112,7 +112,7 @@ Rejected at 1.1.27 and again at 1.2.6, despite appearing in the binary's strings
 | `OC-08` | opencode 1.18.29 | refuted | docs/source only | — | — |
 | `OC-09` | opencode 2.0.18 (E20 addendum; first 1.18.29) | refuted | runtime | E20, E20 addendum | AGENTS.md reaches a task child |
 | `OC-10` | opencode 1.18.29 | refuted | docs/source only | — | — |
-| `OC-11` | opencode 1.18.29 | confirmed | docs/source only | — | — |
+| `OC-11` | opencode 2.0.18 (E25; first 1.18.29) | confirmed | runtime | E25 | the documented plugin shape is rejected; the v2 agent draft has no `add`, so a plugin cannot deliver agents; commands and skills it can |
 
 ### Antigravity
 
@@ -249,7 +249,7 @@ Every claim id cited anywhere in this repository resolves here, so a citation ne
 
 > **The correction, which is the truth:** The load order, mergeDeep semantics, `{env:}`/`{file:}` substitution, directory subfolder names and the generated-files side effect are all real, but two specifics are wrong. (1) It is NOT `bun install`: the installer is the `Npm` service in `packages/core/src/npm.ts`, which drives `@npmcli/arborist` and reads/writes `package-lock.json`. Locally …
 
-**`OC-11`** — An opencode plugin is a JS/TS module (`(input, options?) => Promise<Hooks>`, type `Plugin` from `@opencode-ai/plugin`) loaded from `.opencode/plugin(s)/*.{ts,js}`, `~/.config/opencode/plugin(s)/`, or `plugin` array entries (npm spec, `./local.ts`, `file:///...`, `[name, {options}]`); `opencode plugin <module> [-g] …
+**`OC-11`** — An opencode plugin is a JS/TS module (`(input, options?) => Promise<Hooks>`, type `Plugin` from `@opencode-ai/plugin`) loaded from `.opencode/plugin(s)/*.{ts,js}`, `~/.config/opencode/plugin(s)/`, or `plugin` array entries (npm spec, `./local.ts`, `file:///...`, `[name, {options}]`); `opencode plugin <module> [-g] … **E25 (2.0.18)**: the runtime rejects that shape (`Plugin must export a default definition with an id and an effect or setup function`) and loads `export default { id, setup(ctx) }`; `ctx.agent.transform` offers `list`, `get`, `default`, `update`, `remove` and no `add`, so a plugin cannot deliver agents, while the `command` and `skill` drafts have `add`.
 
 
 ### Antigravity

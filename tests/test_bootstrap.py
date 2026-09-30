@@ -365,7 +365,8 @@ class TestUserScopeInstall(Base):
     """§9 route A: personas reach ~/.codex/agents as REAL FILES, never symlinks (E5)."""
 
     def install(self, home, profile="library"):
-        env = {**__import__("os").environ, "HOME": str(home)}
+        env = {**__import__("os").environ, "HOME": str(home),
+               "XDG_CONFIG_HOME": str(home / ".config")}
         return subprocess.run(
             [sys.executable, str(BOOTSTRAP), str(self.root), "--write", "--scope", "user",
              "--profile", profile, "--team-json", str(TEAM),
@@ -411,7 +412,8 @@ class TestUserScopeInstall(Base):
         home = self.root / "fakehome"
         (home / ".codex" / "agents").mkdir(parents=True)
         self.install(home)                                   # everything current
-        env = {**__import__("os").environ, "HOME": str(home)}
+        env = {**__import__("os").environ, "HOME": str(home),
+               "XDG_CONFIG_HOME": str(home / ".config")}
         # the same profile the install used: user scope keeps no lock, so --check cannot
         # infer it (noted in docs/acceptance.md as a known rough edge)
         args = [sys.executable, str(BOOTSTRAP), "--scope", "user", "--check",
@@ -424,6 +426,49 @@ class TestUserScopeInstall(Base):
         r = subprocess.run(args, capture_output=True, text=True, env=env)
         self.assertEqual(r.returncode, 1)
         self.assertIn("e-colleagues.config.toml", r.stdout)
+
+    def test_installs_the_opencode_agents_for_the_roster(self):
+        """opencode has no bundle or plugin route for agents (E25), so the user-scope install
+        delivers them the way it delivers Codex roles: real files, the roster only."""
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        home = self.root / "fakehome"
+        (home / ".codex" / "agents").mkdir(parents=True)
+        r = self.install(home)                                    # profile library
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        d = home / ".config" / "opencode" / "agents"
+        self.assertEqual(sorted(p.name for p in d.glob("*.md")),
+                         ["developer.md", "platform.md", "reviewer.md", "security.md",
+                          "tech-lead.md"])
+        for f in d.glob("*.md"):
+            self.assertFalse(f.is_symlink())
+            self.assertEqual(f.read_text(),
+                             (ROOT / "dist" / "opencode" / "agents" / f.name).read_text())
+        self.assertIn("opencode", r.stdout)
+
+    def test_never_writes_the_users_opencode_config(self):
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        home = self.root / "fakehome"
+        (home / ".codex" / "agents").mkdir(parents=True)
+        self.install(home)
+        for name in ("opencode.json", "opencode.jsonc"):
+            self.assertFalse((home / ".config" / "opencode" / name).exists(), name)
+
+    def test_check_notices_a_stale_opencode_agent(self):
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        home = self.root / "fakehome"
+        (home / ".codex" / "agents").mkdir(parents=True)
+        self.install(home)
+        env = {**__import__("os").environ, "HOME": str(home),
+               "XDG_CONFIG_HOME": str(home / ".config")}
+        args = [sys.executable, str(BOOTSTRAP), "--scope", "user", "--check",
+                "--profile", "library",
+                "--team-json", str(TEAM), "--dist", str(ROOT / "dist" / "codex" / "agents")]
+        self.assertEqual(subprocess.run(args, capture_output=True, text=True,
+                                        env=env).returncode, 0)
+        (home / ".config" / "opencode" / "agents" / "reviewer.md").write_text("old\n")
+        r = subprocess.run(args, capture_output=True, text=True, env=env)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("reviewer.md", r.stdout)
 
     def test_project_scope_touches_no_home_directory(self):
         self.seed(**{"AGENTS.md": "# proj\n"})
