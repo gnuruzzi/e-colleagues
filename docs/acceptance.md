@@ -18,7 +18,7 @@ the feature was introduced in. Below it, nothing is promised.
 | Claude Code | **2.1.263** | plugin `agents` takes a file list and replaces the default scan (E10); `subagent_type` needs the qualified name (E10). Re-verified at 2.1.283 (E24) |
 | opencode | **1.18.29** | the 15 permission keys and `AgentConfig`'s 15 properties, re-derived from the published schema (E16 C3). Re-verified at 2.0.18 (E20 addendum) |
 | Google Antigravity (`agy`) | **1.1.27** | the 15-name tool registry (E17, re-verified unchanged at 1.2.6 and 1.2.10); global install is the only delivery route (E18, again at 1.2.10) |
-| Antigravity desktop | 2.17.0 *(observed)* | **not a floor** — the desktop was inspected, never driven. At 2.12.2 it lacked the `agents:` key the CLI had (E16); at 2.17.0 it carries it (E24). The renderer still never emits the key, so that agents render the same on every version of either binary |
+| Antigravity desktop | 2.17.0 *(observed)* | **not a floor** — inspected at 2.12.2, driven once at 2.17.0 (E19 addendum): the `tools` allowlist holds there too and `AGENTS.md` does not arrive. At 2.12.2 it lacked the `agents:` key the CLI had (E16); at 2.17.0 it carries it (E24). The renderer still never emits the key, so that agents render the same on every version of either binary |
 | Python | **3.11** | `tomllib` is standard library from 3.11; the shipped scripts use nothing else |
 
 `tools/gen.py` and `tools/check.py` additionally need PyYAML. Anything that ships to a user —
@@ -101,5 +101,7 @@ Then, per host, by hand — because no static check can prove a runtime behaviou
   defaults to the `default` roster regardless of which profile was installed, so pass
   `--profile` to both or it will report agents missing that were never meant to be there. A
   project install has no such problem: the roster is recorded in `lock.json`.
-- **Three behaviours were never exercised**: the opencode Tab and `@` menus, and the
-  Antigravity desktop's subagent-inheritance default. All three need a human at a UI.
+- **The three UI behaviours are now exercised** (E20 TUI addendum, E19 addendum). In the
+  opencode TUI the agent cycle is Shift+Tab, not Tab, and it cycles primaries only; `@` offers
+  every specialist and also the built-ins the allowlist denies, and a mention routes through
+  the tech-lead. The Antigravity desktop honours an explicit `tools` list the way the CLI does.

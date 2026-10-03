@@ -282,7 +282,7 @@ So **staleness detection is a `git diff`, not a feature**: `git diff --name-only
 
 ### 5.4 The retrieval rule
 
-Ambient injection is trusted for the **contract only**. Claude subagents receive the whole CLAUDE.md hierarchy including the `@AGENTS.md` import [CC-12]; the Antigravity CLI inherits rules by default since 1.1.25 while the desktop default is UNVERIFIED [AG-05]; Codex children **do** re-run AGENTS.md discovery, independently of history forking (Q9 settled, E9); opencode task children **do** receive it (Q7 settled, E20); and on Antigravity **no agent receives it at all** — neither a custom agent nor the default one had the workspace `AGENTS.md` in context (Q8, E19), so Antigravity children start clean [AG-04] and so do Antigravity primaries.
+Ambient injection is trusted for the **contract only**. Claude subagents receive the whole CLAUDE.md hierarchy including the `@AGENTS.md` import [CC-12]; the Antigravity CLI inherits rules by default since 1.1.25, and an explicit `tools` list overrides that inheritance on the CLI and, measured at 2.17.0, on the desktop (E19 addendum) [AG-05]; Codex children **do** re-run AGENTS.md discovery, independently of history forking (Q9 settled, E9); opencode task children **do** receive it (Q7 settled, E20); and on Antigravity **no agent receives it at all** — neither a custom agent nor the default one had the workspace `AGENTS.md` in context (Q8, E19), so Antigravity children start clean [AG-04] and so do Antigravity primaries.
 
 Therefore **knowledge is never assumed to arrive ambiently**: the delegation brief names the files (T2). This is host-independent, works today, and leaves nothing to verify. It is now measured on all four hosts, and on Antigravity it is not a fallback but **the only mechanism** — since `AGENTS.md` never reaches an agy agent, the managed block is invisible there and the Antigravity persona bodies must carry the contract themselves (E19). R1 keeps "read the contract if it is not in context" as the belt-and-braces fallback.
 
@@ -464,7 +464,7 @@ Invoke from inside the tool: `$ec-init` (Codex) [CX-07], `/e-colleagues:ec-init`
 9. Budgets: package-owned managed region at most 2 KB; template plus block at most 16 KiB; `bootstrap.py --check` fails above 30 KiB total [CX-11]; 12,000 characters printed as an Antigravity caution [AG-11].
 10. Bootstrap tests (pytest, stdlib only): `--write` into a temp directory seeded with an existing `CLAUDE.md`, `AGENTS.md`, `.claude/settings.json`, `opencode.json` and `.codex/config.toml`; assert nothing outside owned keys and markers changed, the second run is a no-op, `--check` is clean, a hand edit flips a file to project-owned, `--update` rewrites only stale files, and `--prune` leaves no dangling opencode reference.
 11. Minimum versions live in `docs/acceptance.md`, one row per claim id the package rests on (`docs/SUPPORT-MATRIX.md`).
-12. Manual release checklist: Codex `$ec-init` resolves and a spawned reviewer cannot write even via an approved command [CX-05][CX-02]; then `claude --plugin-dir . --agent tech-lead` cannot spawn Explore or Plan but can spawn the roster as `e-colleagues:<name>` (bare names do not resolve, E10) [CC-09][CC-10]; opencode Tab shows tech-lead as default and `@reviewer` cannot edit [OC-03][OC-05]; `agy --agent tech-lead` can `invoke_subagent` the roster and a specialist cannot invoke a sibling [AG-03][AG-06].
+12. Manual release checklist: Codex `$ec-init` resolves and a spawned reviewer cannot write even via an approved command [CX-05][CX-02]; then `claude --plugin-dir . --agent tech-lead` cannot spawn Explore or Plan but can spawn the roster as `e-colleagues:<name>` (bare names do not resolve, E10) [CC-09][CC-10]; opencode starts on the tech-lead, Shift+Tab cycles the primaries, and `@reviewer` cannot edit [OC-03][OC-05]; `agy --agent tech-lead` can `invoke_subagent` the roster and a specialist cannot invoke a sibling [AG-03][AG-06].
 
 ---
 
@@ -521,9 +521,9 @@ largest being that seven Antigravity tool names the vendor documentation lists a
 the tool registry and abort an agent at startup — so a renderer built from the documentation
 would have produced agents that could not start at all.
 
-Three behaviours remain unexercised because they need a human at a user interface. They are
-listed under "Known limitations" in [`acceptance.md`](acceptance.md), marked untested rather
-than assumed.
+The three behaviours that needed a human at a user interface — the opencode Tab and `@`
+menus, and the Antigravity desktop's inheritance default — were exercised last, with a person at
+the screen and the readings recorded (`experiments.md`, E20 TUI addendum and E19 addendum).
 
 ---
 

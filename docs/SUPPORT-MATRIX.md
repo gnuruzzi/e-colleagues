@@ -12,7 +12,7 @@ Every claim id is stated in full under [The claims themselves](#the-claims-thems
 | Codex CLI | 0.153.4 | `codex exec`, `codex sandbox`, `codex plugin …` — **re-verified at 0.154.0** (E24) |
 | opencode | 1.18.29 | `opencode run`, `agent list`, `run --command` — **re-verified at 2.0.18** (E20 addendum): every runtime row holds; `agent list` is now `debug agents` and `run --command` is a slash command in the prompt |
 | agy (Antigravity CLI) | 1.1.27 | `agy --print`, `--agent`, `plugin install/validate` — **tool registry re-verified unchanged at 1.2.6 and 1.2.10** (E17 addendum, E24) |
-| Antigravity desktop | 2.12.2 | binary inspection only — no session was driven; **2.17.0 carries the `agents:` tag the 2.12.2 binary lacked** (E24) |
+| Antigravity desktop | 2.12.2 | binary inspection only at 2.12.2; **driven once at 2.17.0** (E19 addendum): the `tools` allowlist holds, `AGENTS.md` does not arrive, and the binary carries the `agents:` tag 2.12.2 lacked (E24) |
 
 **Re-verify before relying on a version-gated claim.** Four of the five tools moved within a day of the original research (`experiments.md` E2) and one gate had already flipped (E3). A claim marked *docs/source only* has never been exercised against a running tool.
 
@@ -105,8 +105,8 @@ Rejected at 1.1.27 and again at 1.2.6, despite appearing in the binary's strings
 |---|---|---|---|---|---|
 | `OC-01` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum, E25 addendum | project agents load from .opencode/agents; user agents load from the config home's opencode/agents (E25 addendum) |
 | `OC-02` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum | permission edit:deny holds on a subagent; `task`/`subagent` and `bash`/`shell` both accepted at 2.0.18, so the renderer emits both |
-| `OC-03` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum | default_agent applies to opencode run; modes correct; `agent list` gone at 2.0.18, use `debug agents` |
-| `OC-04` | opencode 1.18.29 | confirmed | docs/source only | — | — |
+| `OC-03` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | **corrected** | E20, E20 addenda | default_agent applies to opencode run and the TUI starts on it; modes correct; `agent list` gone at 2.0.18, use `debug agents`; the TUI agent cycle is Shift+Tab, not Tab |
+| `OC-04` | opencode 2.0.18 (E20 TUI addendum; first 1.18.29) | confirmed | runtime | E20 TUI addendum | `@` offers the specialists and the built-ins; a mention routes through the primary, which delegates with the task tool |
 | `OC-05` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum | permission.task allowlist evaluated mechanically, as `subagent` at 2.0.18; nested spawns stopped by the depth limit |
 | `OC-07` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | **corrected** | E20, E20 addendum | run --command as subtask; command schema keys corrected; at 2.0.18 the flag is gone, a slash command in the prompt expands, and the file form loads from `command/` not `commands/` |
 | `OC-08` | opencode 1.18.29 | refuted | docs/source only | — | — |
@@ -119,14 +119,14 @@ Rejected at 1.1.27 and again at 1.2.6, despite appearing in the binary's strings
 | claim | last confirmed at | verdict | how | evidence | what was measured |
 |---|---|---|---|---|---|
 | `AG-02` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | **corrected** | E16, E19, E24 | desktop lacked agents: at 2.12.2 and carries it at 2.17.0; body is not sliced at the first H1 |
-| `AG-03` | agy 1.1.27 / desktop 2.12.2 | confirmed | runtime | E19 | agy --agent runs a mainAgent persona |
+| `AG-03` | agy 1.2.10 / desktop 2.17.0 (E19 addendum; first 1.1.27) | confirmed | runtime | E19, E19 addendum | agy --agent runs a mainAgent persona; the desktop selector lists mainAgent personas and hides sub-agents |
 | `AG-04` | agy 1.1.27 / desktop 2.12.2 | confirmed | docs/source only | — | — |
-| `AG-05` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | runtime | E19, E24 | a tools allowlist DOES override ambient subagent inheritance |
+| `AG-05` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | runtime | E19, E24, E19 addendum | a tools allowlist DOES override ambient subagent inheritance, on the CLI and on the desktop |
 | `AG-06` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | **corrected** | E17, E24 | SEVEN of the listed tool names are not in the registry |
 | `AG-07` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | runtime | E7, E18, E24 | validate [ok]; only a global install delivers agents |
 | `AG-08` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | runtime | E8, E18, E24 | destination measured; re-install merges; github URL works and lands in a directory named after the repo (E8 addendum, agy 1.2.6); `plugin@marketplace` is parsed at 1.2.10 but no marketplace is known or registrable (E8 addendum 2) |
 | `AG-10` | agy 1.1.27 / desktop 2.12.2 | confirmed | docs/source only | — | — |
-| `AG-11` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | **corrected** | E19, E24 | AGENTS.md does NOT reach any agy agent |
+| `AG-11` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | **corrected** | E19, E24, E19 addendum | AGENTS.md does NOT reach any agy agent, CLI or desktop |
 | `AG-12` | agy 1.1.27 / desktop 2.12.2 | confirmed | **corrected** | E18 | no workspace root delivers agents, so collisions are moot |
 
 ### Prior art
@@ -229,9 +229,9 @@ Every claim id cited anywhere in this repository resolves here, so a citation ne
 
 **`OC-02`** — opencode agent frontmatter keys (`KNOWN_KEYS`): `name`, `model`, `variant`, `prompt`, `description` (docs: required), `temperature`, `top_p`, `mode` (`subagent|primary|all`, default `all` for custom agents), `hidden`, `color`, `steps`, `maxSteps` (deprecated), `options`, `permission` (object keyed by tool: read, edit … **E20 addendum (2.0.18)**: the runtime reports `task` as `subagent` and `bash` as `shell`, accepts either spelling, and the published schema still lists only the old ones; unknown permission keys are schema-valid, so the renderer emits both and `check.py` requires the pair.
 
-**`OC-03`** — opencode selects the primary agent with `opencode --agent <name>` / `opencode run --agent <name>` or config `default_agent` ('Must be a primary agent. Falls back to build if not set or if the specified agent is invalid'; errors if hidden). In the TUI the keybinds are `agent_cycle` (default `tab`) … **E20 addendum (2.0.18)**: `opencode agent list` no longer exists; `opencode debug agents` lists agents with their modes.
+**`OC-03`** — opencode selects the primary agent with `opencode --agent <name>` / `opencode run --agent <name>` or config `default_agent` ('Must be a primary agent. Falls back to build if not set or if the specified agent is invalid'; errors if hidden). In the TUI the keybinds are `agent_cycle` (default `tab`) … **E20 addendum (2.0.18)**: `opencode agent list` no longer exists; `opencode debug agents` lists agents with their modes. **E20 TUI addendum (2.0.18)**: the TUI starts on `default_agent`; the agent cycle is **Shift+Tab**, not Tab, and cycles primaries only.
 
-**`OC-04`** — opencode subagents are invoked (1) by the model calling the built-in `task` tool with `description`, `prompt`, `subagent_type` (= agent name), optional `task_id`, `command`, `background` (needs `OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=true`); the tool description appends 'Available agent types and the tools they …
+**`OC-04`** — opencode subagents are invoked (1) by the model calling the built-in `task` tool with `description`, `prompt`, `subagent_type` (= agent name), optional `task_id`, `command`, `background` (needs `OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=true`); the tool description appends 'Available agent types and the tools they … **E20 TUI addendum (2.0.18)**: `@` offers every specialist and the built-ins `general` and `explore` regardless of the allowlist; `@reviewer …` goes to the primary, which delegates through the task tool and relays the reply.
 
 **`OC-05`** — On opencode, `permission.task` on the INVOKING agent is a map of agent-name glob patterns → allow|ask|deny (e.g. `{"*":"deny","orchestrator-*":"allow"}`), evaluated in insertion order, last match wins; `deny` removes the agent from the task tool description. The built-in `plan` agent carries `{permission: task … **E20 addendum (2.0.18)**: the runtime evaluates the key under the name `subagent` (`Permission denied: subagent`), and a child spawning a child is stopped by `subagent_depth` (default 1) rather than by a session-level deny.
 
@@ -256,11 +256,11 @@ Every claim id cited anywhere in this repository resolves here, so a citation ne
 
 **`AG-02`** — Antigravity `agent.md` = YAML frontmatter + Markdown body (the system prompt). Documented fields: `name` (required), `description` (required), `tools` string[] default [], `mainAgent` bool default true, `subagent` bool default true, `model` `inherit|flash|pro` default inherit, `commandExecutionPolicy` … **E24**: desktop 2.17.0 carries the `agents:` tag; the CLI/desktop divergence E16 measured at 2.12.2 is gone.
 
-**`AG-03`** — An Antigravity custom agent runs as PRIMARY when `mainAgent` is true (default): 'If true, allows selection as the primary agent in chat interfaces.' CLI: `agy --agent <name>` (help: 'Agent for the current CLI session'; added in 1.1.1 with the `agent/agents` subcommand), value = frontmatter `name`; or the `/agents` …
+**`AG-03`** — An Antigravity custom agent runs as PRIMARY when `mainAgent` is true (default): 'If true, allows selection as the primary agent in chat interfaces.' CLI: `agy --agent <name>` (help: 'Agent for the current CLI session'; added in 1.1.1 with the `agent/agents` subcommand), value = frontmatter `name`; or the `/agents` … **E19 addendum (desktop 2.17.0)**: the desktop's agent selector lists the `mainAgent` personas and hides the sub-agents.
 
 **`AG-04`** — Antigravity delegation: 'The parent agent calls the invoke_subagent tool', addressing by name via `TypeName` with `Workspace` of `inherit`, `branch` (isolated git worktree) or `share`. Only agents with `subagent: true` are invocable (1.1.4 fix). Subagents start with a clean context. `define_subagent` creates transient …
 
-**`AG-05`** — Since 1.1.25 Markdown-defined Antigravity agents 'inherit ambient skills, rules, and subagents by default, matching the configuration of default agents.' Scoping knobs: `inheritCustomizations` (1.1.14: one switch for skills, rules, plugins, subagents and MCP servers), a `rules:` list (1.1.15: named rule files always …
+**`AG-05`** — Since 1.1.25 Markdown-defined Antigravity agents 'inherit ambient skills, rules, and subagents by default, matching the configuration of default agents.' Scoping knobs: `inheritCustomizations` (1.1.14: one switch for skills, rules, plugins, subagents and MCP servers), a `rules:` list (1.1.15: named rule files always … **E19 addendum (desktop 2.17.0)**: the explicit `tools` list holds on the desktop too — the reviewer reports no `invoke_subagent`.
 
 **`AG-06`** — Antigravity `tools` is an explicit allowlist ('e.g. view_file, replace_file_content, grep_search, run_command'; the blog also lists `manage_task`), with the warning 'Specifying an unmapped or misspelled tool name in the tools list may cause the subagent process to hang'. Tool names present in the binary include …
 
