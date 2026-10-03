@@ -470,6 +470,40 @@ class TestUserScopeInstall(Base):
         self.assertEqual(r.returncode, 1)
         self.assertIn("reviewer.md", r.stdout)
 
+    def test_installs_the_four_skills_for_opencode(self):
+        """opencode has no plugin to carry the skills, so the user-scope install copies them
+        into the skills directory it reads [OC-08], beside the agents."""
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        home = self.root / "fakehome"
+        (home / ".codex" / "agents").mkdir(parents=True)
+        r = self.install(home)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        d = home / ".config" / "opencode" / "skills"
+        self.assertEqual(sorted(p.name for p in d.iterdir()),
+                         ["ec-init", "ec-onboard", "ec-status", "ec-tech-lead"])
+        for name in ("ec-init", "ec-onboard", "ec-status", "ec-tech-lead"):
+            self.assertEqual((d / name / "SKILL.md").read_text(),
+                             (ROOT / "skills" / name / "SKILL.md").read_text())
+        self.assertTrue((d / "ec-init" / "scripts" / "bootstrap.py").exists())
+        self.assertEqual(list(d.rglob("__pycache__")), [])
+
+    def test_check_notices_a_stale_opencode_skill(self):
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        home = self.root / "fakehome"
+        (home / ".codex" / "agents").mkdir(parents=True)
+        self.install(home)
+        env = {**__import__("os").environ, "HOME": str(home),
+               "XDG_CONFIG_HOME": str(home / ".config")}
+        args = [sys.executable, str(BOOTSTRAP), "--scope", "user", "--check",
+                "--profile", "library",
+                "--team-json", str(TEAM), "--dist", str(ROOT / "dist" / "codex" / "agents")]
+        self.assertEqual(subprocess.run(args, capture_output=True, text=True,
+                                        env=env).returncode, 0)
+        (home / ".config" / "opencode" / "skills" / "ec-status" / "SKILL.md").write_text("old\n")
+        r = subprocess.run(args, capture_output=True, text=True, env=env)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("ec-status", r.stdout)
+
     def test_project_scope_touches_no_home_directory(self):
         self.seed(**{"AGENTS.md": "# proj\n"})
         home = self.root / "fakehome"

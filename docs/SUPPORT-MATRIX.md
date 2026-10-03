@@ -109,7 +109,7 @@ Rejected at 1.1.27 and again at 1.2.6, despite appearing in the binary's strings
 | `OC-04` | opencode 2.0.18 (E20 TUI addendum; first 1.18.29) | confirmed | runtime | E20 TUI addendum | `@` offers the specialists and the built-ins; a mention routes through the primary, which delegates with the task tool |
 | `OC-05` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum | permission.task allowlist evaluated mechanically, as `subagent` at 2.0.18; nested spawns stopped by the depth limit |
 | `OC-07` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | **corrected** | E20, E20 addendum | run --command as subtask; command schema keys corrected; at 2.0.18 the flag is gone, a slash command in the prompt expands, and the file form loads from `command/` not `commands/` |
-| `OC-08` | opencode 1.18.29 | refuted | docs/source only | — | — |
+| `OC-08` | opencode 2.0.18 (E25 addendum; first 1.18.29) | refuted | runtime | E25 addendum | skills in the user skills directory are listed by the agent and run when asked for by name |
 | `OC-09` | opencode 2.0.18 (E20 addendum; first 1.18.29) | refuted | runtime | E20, E20 addendum | AGENTS.md reaches a task child |
 | `OC-10` | opencode 1.18.29 | refuted | docs/source only | — | — |
 | `OC-11` | opencode 2.0.18 (E25; first 1.18.29) | confirmed | runtime | E25 | the documented plugin shape is rejected; the v2 agent draft has no `add`, so a plugin cannot deliver agents; commands and skills it can |
