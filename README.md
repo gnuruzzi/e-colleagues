@@ -1,252 +1,181 @@
-# e-colleagues
+<h1 align="center">e-colleagues</h1>
 
-A team of AI personas that installs into your coding agent, learns your project from
-several angles, and works to the rules your project already has.
+<p align="center">
+A team of AI personas for your coding agent: one tech-lead that plans and reports, specialists it delegates to,<br/>
+and a reviewer that cannot edit your files. Installed once. Rendered for Codex CLI, Claude Code, opencode and Antigravity.
+</p>
 
-Six personas ship, **tech-lead, developer, reviewer, security, designer, platform**, authored
-once and rendered for OpenAI Codex CLI, Claude Code, opencode and Google Antigravity. They
-are a catalog, not a fixed cast: a project uses the subset it needs, and adding a persona of
-your own is one YAML file plus a re-render ([`docs/design.md`](docs/design.md) §16). The
-tech-lead is your single point of contact; the reviewer and security personas cannot edit
-your files.
+<p align="center">
+<a href="https://github.com/gnuruzzi/e-colleagues/actions/workflows/check.yml"><img alt="checks" src="https://github.com/gnuruzzi/e-colleagues/actions/workflows/check.yml/badge.svg"></a>
+<img alt="version" src="https://img.shields.io/badge/version-0.1.0-informational">
+<img alt="hosts" src="https://img.shields.io/badge/hosts-Codex%20%C2%B7%20Claude%20Code%20%C2%B7%20opencode%20%C2%B7%20Antigravity-5c6bc0">
+<img alt="evidence" src="https://img.shields.io/badge/claims%20measured-52%20%2F%2025%20experiments-2e7d32">
+<a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-blue"></a>
+</p>
 
-## Why
+---
 
-A coding agent arrives as one voice holding every tool. Ask it to implement a change and
-review it, and the same model, in the same thread, with the same write access, does both,
-then reports on its own work in its own words. The rules of your project, who may push, what
-gets reviewed, where findings go, live in someone's head or in a prompt retyped every session.
-
-e-colleagues splits that one voice into a team whose roles hold:
-
-- **One point of contact.** The tech-lead plans, delegates each piece with a brief, checks
-  what comes back against acceptance criteria, and is the only persona that speaks to you or
-  posts anywhere. Specialists return findings; they never touch your tracker.
-- **Roles the host enforces, where it can.** The reviewer and the security persona have no
-  edit tools on any host. On Codex the sandbox makes that a filesystem guarantee; elsewhere it
-  is the tool list, and the table below says which is which, because the difference matters.
-- **Rules that live in the repository.** `ec-init` writes the operating contract into your
-  `AGENTS.md` as one managed block, so every session, on every host, on every teammate's
-  machine, starts from the same rules.
-- **Knowledge that knows when it is stale.** `ec-onboard` indexes what your project already
-  documents before writing anything, and every file it does write records the commit and the
-  paths it came from, so staleness is a `git diff`, not a feeling.
-
-It is for teams and solo developers already using Codex, Claude Code, opencode or Antigravity
-who want that structure without changing tools: one install per machine, one block in one
-file per project.
-
-## At a glance
-
-| | |
-|---|---|
-| **A catalog of personas, one source** | Six ship, authored once in `personas/` and rendered into the four host dialects by `tools/gen.py`; a project picks the subset it needs, you can add your own, and a drift gate fails when the rendered tree and the source disagree |
-| **One external voice** | Only the tech-lead speaks to you or posts to a tracker; specialists hand back structured findings (design §0, D6) |
-| **Read-only roles that hold** | Reviewer and security have no edit tools on any host; on Codex the read-only sandbox blocks every write, measured (E4) |
-| **The contract in your repository** | `ec-init` interviews you once and writes one managed block in `AGENTS.md`; idempotent, and `--check` guards it in CI |
-| **A six-angle audit that indexes first** | `ec-onboard` records where your project already documents each angle and writes a knowledge file only where nothing does |
-| **Staleness as a `git diff`** | Every knowledge file records the commit and paths it came from; `ec-status` reports which lenses went stale and which no persona can ever audit |
-| **Install once per machine** | A plugin for Codex, Claude Code and Antigravity; `bootstrap.py --scope user` for the Codex roles and the opencode agents |
-| **Every claim measured** | 25 experiments against the installed tools, 52 claims each stamped with the version it was last confirmed at, re-verified as one snapshot in September 2026 |
-
-## See it in action
-
-Both excerpts are unedited output from headless runs on 2026-10-03, cut with `…` where noted.
-
-**The tech-lead delegating a review, Claude Code 2.1.284.** A four-file demo repository: a
-one-line pricing helper, one test, and a bug the test does not catch. The prompt was *"Review
-the change in the last commit for correctness before we merge it. Delegate the review to the
-reviewer and report back."*
+Ask the tech-lead to review a change. It delegates to the reviewer, checks the evidence itself, and comes back with a verdict and a question for you. Unedited, Claude Code 2.1.284, headless:
 
 ```text
-👨‍💻 Tech-Lead: Both spot-checks confirm the Reviewer's evidence — I have what I need,
-no further lookups required. Here's the report.
+> Review the change in the last commit for correctness before we merge it.
 
-## Verdict: do not merge yet — REQUEST CHANGES
-Reviewed: commit fbc32cd "add discount helper" on master (4 new files, 17 lines).
-Reviewer: 🕵️ e-colleagues:reviewer, read-only, no files touched.
+👨‍💻 Tech-Lead: Both spot-checks confirm the Reviewer's evidence. Here's the report.
 
-### Blocking — src/pricing.py:5 returns a float, never an int
-`return price_cents - price_cents * percent / 100` uses true division, so the function
-violates its own `-> int` annotation and the docstring's "in cents" on every input.
-I reproduced the Reviewer's probe myself:
+Verdict: do not merge yet — REQUEST CHANGES
+Reviewed: commit fbc32cd "add discount helper". Reviewer: 🕵️ e-colleagues:reviewer,
+read-only, no files touched.
+
+Blocking — src/pricing.py:5 returns a float, never an int
+  `price_cents - price_cents * percent / 100` uses true division. I reproduced the probe:
     (1000, 10) -> 900.0               float
     (999, 33)  -> 669.3299999999999   float
-The shipped test passes only because 900 == 900.0 is True in Python. …
-The fix needs a decision from you, not just code: which rounding applies to fractional
-cents? …
+  The shipped test passes only because 900 == 900.0 is True in Python.
+  The fix needs a decision from you: which rounding applies to fractional cents?
 
-### Recommended next step
-Tell me the rounding policy (and whether negative prices are valid). I'll then brief the
-Developer to fix the arithmetic and extend the tests, and send it back through the
-Reviewer before I call it done.
+Recommended next step: tell me the rounding policy. I'll brief the Developer to fix the
+arithmetic and extend the tests, and send it back through the Reviewer before I call it done.
 ```
 
-**The reviewer's sandbox on Codex 0.154.0, no model turn.** The reviewer's role file sets
-`sandbox_mode = "read-only"` and `approval_policy = "never"`. The project's test suite runs;
-a write does not, anywhere, including `/tmp`:
+## What you get
 
-```console
-$ codex sandbox -c sandbox_mode=read-only -c approval_policy=never -- make test
-Ran 2 tests in 0.000s
-OK
-$ codex sandbox -c sandbox_mode=read-only -c approval_policy=never -- sh -c "echo note > REVIEW.md"
-sh: line 1: REVIEW.md: Read-only file system
+- **One voice, a whole team behind it.** You talk to the tech-lead. It plans, delegates each piece with a brief, verifies the result against acceptance criteria, and reports once, with evidence. Specialists return findings; only the tech-lead speaks to you or posts anywhere.
+- **Roles that hold.** The reviewer and the security persona have no edit tools on any host. On Codex the sandbox makes that a filesystem guarantee; elsewhere it is the tool list, and the table below says which is which.
+- **Your rules, in your repository.** `ec-init` interviews you once and writes the operating contract as one managed block in `AGENTS.md`. `ec-onboard` has each persona learn its angle of the project, indexing what you already document before writing anything. Every knowledge file records the commit it came from, so going stale is a `git diff`.
+
+## How it works
+
+```mermaid
+flowchart LR
+    U([you]) <--> TL["👨‍💻 Tech-Lead<br/>plans · delegates · verifies · reports"]
+    TL --> DEV["🛠️ Developer"]
+    TL --> REV["🕵️ Reviewer<br/><i>read-only</i>"]
+    TL --> SEC["🛡️ Security<br/><i>read-only</i>"]
+    TL --> DES["🎨 Designer"]
+    TL --> PLT["⚙️ Platform"]
+    DEV & REV & SEC & DES & PLT -. RETURN: status · evidence · findings .-> TL
+    TL -- the only voice outward --> EXT[(your tracker, your PRs)]
 ```
 
-## Install
+| persona | does | edits files |
+|---|---|---|
+| 👨‍💻 **Tech-Lead** | plans, delegates, verifies, reports; owns `AGENTS.md` | yes |
+| 🛠️ **Developer** | implements a specified change and writes its tests | yes |
+| 🕵️ **Reviewer** | reads the change as an adversary: edge cases, races, coverage | **no** |
+| 🛡️ **Security** | audits for vulnerabilities, secrets handling, dependency and CVE exposure, attack surface | **no** |
+| 🎨 **Designer** | user-interface and user-experience work, implementation-ready specs | yes |
+| ⚙️ **Platform** | CI/CD, deployment, infrastructure and observability | yes |
 
-Once per machine. Clone this repository first; the lines for Codex, Claude Code and opencode
-run from inside the clone.
+The six are a catalog, not a fixed cast. A project uses the subset it needs, `library` drops the designer and `minimal` keeps three, and adding a persona of your own is one YAML file plus a re-render ([design §16](docs/design.md)). Everything is authored once in `personas/` and rendered into each host's dialect; a drift gate fails when the two disagree.
+
+## Get started
+
+Pick your tool. Each block is complete: install once per machine, start the tech-lead in a project, run the three onboarding skills, make your first request.
+
+<details>
+<summary><b>Claude Code</b></summary>
 
 ```bash
 git clone https://github.com/gnuruzzi/e-colleagues ~/e-colleagues && cd ~/e-colleagues
+claude plugin marketplace add "$PWD"
+claude plugin install e-colleagues@e-colleagues
+
+cd ~/your-project && claude --agent tech-lead
 ```
 
-### Codex CLI
+In the session:
+
+```text
+/e-colleagues:ec-init        the contract: roster, tracker, who may merge → one block in AGENTS.md
+/e-colleagues:ec-onboard     each persona learns its angle of the project
+/e-colleagues:ec-status      later: which of that knowledge went stale
+Review the change in the last commit before we merge it.
+```
+
+Delegation uses the qualified name, `e-colleagues:reviewer`. Both install lines are needed even for a repository whose own settings declare this marketplace: trust registers it but does not load the plugin, silently (E23 addendum).
+
+</details>
+
+<details>
+<summary><b>Codex CLI</b></summary>
 
 ```bash
+git clone https://github.com/gnuruzzi/e-colleagues ~/e-colleagues && cd ~/e-colleagues
 codex plugin marketplace add "$PWD"
 codex plugin add e-colleagues@e-colleagues
 python3 skills/ec-init/scripts/bootstrap.py --scope user --write
-```
 
-The plugin carries the four skills. The personas go to `~/.codex/` as real files, because a
-symlinked role is found and then fails at spawn (E5).
-
-### Claude Code
-
-```bash
-claude plugin marketplace add "$PWD"
-claude plugin install e-colleagues@e-colleagues
-```
-
-Both lines are needed even for a repository whose own settings declare this marketplace:
-trust registers it but does not load the plugin, silently (E23 addendum).
-
-### opencode
-
-```bash
-python3 skills/ec-init/scripts/bootstrap.py --scope user --write
-```
-
-opencode has no plugin route for agents (E25), so the agents and the four skills install as
-real files under `~/.config/opencode/`. Your global config is never written.
-
-### Antigravity
-
-```bash
-agy plugin install https://github.com/gnuruzzi/e-colleagues
-```
-
-Only a global install delivers agents, so the roster is per machine. A re-install merges
-rather than replaces; uninstall first when the roster shrinks (E8).
-
-To update any of them, `git pull` in the clone and re-run the lines above;
-`bootstrap.py --scope user --check` reports what is out of date.
-
-## Onboard a project
-
-Start the tech-lead in your project and run three skills, in order. `ec-init` proposes a
-roster from what the repository contains, asks you what only a human knows (where work is
-tracked, who may merge, how to build and test), and writes one managed block at the top of
-`AGENTS.md`; an empty repository gets a fresh one, an existing one is never restructured.
-`ec-onboard` has each persona learn its angle, indexing what you already document and
-writing a knowledge file only where nothing covers that angle. `ec-status`, any time later,
-says which of that knowledge has gone stale.
-
-### Codex CLI
-
-```bash
 cd ~/your-project && codex --profile e-colleagues
 ```
+
+In the session:
 
 ```text
 $ec-init
 $ec-onboard
 $ec-status
+Review the change in the last commit before we merge it.
 ```
 
-### Claude Code
+The plugin carries the skills; the personas are written to `~/.codex/` as real files, because a symlinked role is found and then fails at spawn (E5). The reviewer runs under `sandbox_mode = "read-only"`: the project's tests run, and nothing can be written, `/tmp` included.
+
+</details>
+
+<details>
+<summary><b>opencode</b></summary>
 
 ```bash
-cd ~/your-project && claude --agent tech-lead
-```
+git clone https://github.com/gnuruzzi/e-colleagues ~/e-colleagues && cd ~/e-colleagues
+python3 skills/ec-init/scripts/bootstrap.py --scope user --write
 
-```text
-/e-colleagues:ec-init
-/e-colleagues:ec-onboard
-/e-colleagues:ec-status
-```
-
-### opencode
-
-```bash
-cd ~/your-project && opencode run --agent tech-lead "use the ec-init skill"
+cd ~/your-project
+opencode run --agent tech-lead "use the ec-init skill"
 opencode run --agent tech-lead "use the ec-onboard skill"
-opencode run --agent tech-lead "use the ec-status skill"
+opencode run --agent tech-lead "Review the change in the last commit before we merge it."
 ```
 
-In the TUI, Shift+Tab cycles to the tech-lead and `@` lists the skills.
+In the TUI, Shift+Tab cycles to the tech-lead and `@` lists the skills and the specialists. opencode has no plugin route for agents (E25), so the agents and the four skills install as real files under `~/.config/opencode/`; your global config is never written.
 
-### Antigravity
+</details>
+
+<details>
+<summary><b>Antigravity</b></summary>
 
 ```bash
+agy plugin install https://github.com/gnuruzzi/e-colleagues
+
 cd ~/your-project && agy --agent tech-lead
 ```
+
+In the session:
 
 ```text
 /ec-init
 /ec-onboard
 /ec-status
+Audit the CI pipeline and tell me what a new contributor would trip over.
 ```
 
-## Use
+Only a global install delivers agents, so the roster is per machine; a re-install merges rather than replaces, so uninstall first when it shrinks (E8).
 
-Talk to the tech-lead as you would to any session. It plans, delegates each piece to a
-specialist with a brief, checks what comes back against acceptance criteria, and reports once
-with evidence. Specialists hand their findings back; only the tech-lead speaks to you or
-posts anywhere. The reviewer and security personas cannot edit your files.
+</details>
 
-### Codex CLI
+To update, `git pull` in the clone and re-run your tool's install lines. `bootstrap.py --scope user --check` reports what is out of date.
 
-```text
-Review the change in the last commit before we merge it.
-```
+## What to ask it
 
-The tech-lead spawns the reviewer under the read-only sandbox, where the project's tests run
-and nothing can be written, and relays its signed findings.
+The tech-lead handles anything you would ask a session, and routes the parts that need a specialist:
 
-### Claude Code
+- *"Review the change in the last commit before we merge it."* The reviewer reads it as an adversary and returns findings with evidence; the tech-lead verifies and reports.
+- *"Plan the rename of the billing module and delegate the pieces."* A plan for your approval, then developer work in slices, each reviewed before it is called done.
+- *"Is this endpoint safe to expose?"* The security persona, read-only, on vulnerabilities, secrets handling and attack surface.
+- *"Audit the CI pipeline and tell me what a new contributor would trip over."* The platform persona, from the workflow files up.
 
-```bash
-claude --agent tech-lead -p "Review the change in the last commit before we merge it."
-```
+Every delegation ends in a RETURN block the tech-lead relays: status, what changed, evidence (the commands run and their exit codes), findings, risks, follow-ups, and the questions only you can decide. "Done" means reviewed.
 
-Headless or interactive. Delegation uses the qualified name, `e-colleagues:reviewer`; the
-excerpt under [See it in action](#see-it-in-action) is one such run.
+## What is guaranteed, and what is only asked
 
-### opencode
-
-```bash
-opencode run --agent tech-lead "Plan the rename of the billing module and delegate the pieces."
-```
-
-In the TUI, `@reviewer` is a routing hint: the tech-lead receives it and delegates.
-
-### Antigravity
-
-```bash
-agy --agent tech-lead --print "Audit the CI pipeline and tell me what a new contributor would trip over."
-```
-
-Profiles pick the roster: `default` is all six personas, `library` drops the designer,
-`minimal` is tech-lead, developer and reviewer. `ec-init` proposes one; the scripts take
-`--profile`.
-
-## Hosts and guarantees
-
-Version 0.1.0. Every claim below was measured at the version shown.
+A guarantee that is really a request is worth naming.
 
 | host | floor | re-verified at | tech-lead is primary by | "cannot edit" is enforced by |
 |---|---|---|---|---|
@@ -255,24 +184,19 @@ Version 0.1.0. Every claim below was measured at the version shown.
 | opencode | 1.18.29 | 2.0.18 | `default_agent` (mechanical) | permissions; the shell narrowed by patterns |
 | Antigravity | agy 1.1.27 | agy 1.2.10, desktop 2.17.0 | `mainAgent` (mechanical) | the tool list; `run_command` can still write |
 
-Known limits, because a guarantee that is really a request is worth naming:
+- Codex's read-only sandbox blocks **every** write, so a test suite that writes anything needs an explicit override.
+- Antigravity and opencode have no per-project roster from this package; both install per machine.
+- `AGENTS.md` never reaches an Antigravity agent, so its personas carry the contract in their own bodies.
 
-- Codex's read-only sandbox blocks **every** write, `/tmp` included, so a test suite that
-  writes anything needs an explicit override.
-- Antigravity and opencode have no per-project roster from this package; both install per
-  machine.
-- `AGENTS.md` never reaches an Antigravity agent, so its personas carry the contract in
-  their own bodies.
+The full list, with what each rests on, is in [`docs/acceptance.md`](docs/acceptance.md).
 
-The full list, and what each rests on, is in [`docs/acceptance.md`](docs/acceptance.md).
+## Built on evidence
 
-## How this was built
+Every path, key and command in the design cites a fact-checked claim or says UNVERIFIED. [`docs/SUPPORT-MATRIX.md`](docs/SUPPORT-MATRIX.md) states all 52 claims with the version each was last confirmed at; [`docs/experiments.md`](docs/experiments.md) holds the 25 experiments behind them, exact command and raw output included, and an experiment outranks any claim it contradicts. That discipline caught seven Antigravity tool names the vendor's documentation lists that abort an agent at startup, and a tool registry, a keybinding and a plugin API that moved between releases.
 
-Every path, key and command in the design cites a fact-checked claim or says UNVERIFIED.
-[`docs/SUPPORT-MATRIX.md`](docs/SUPPORT-MATRIX.md) states all 52 claims with the version each
-was last confirmed at, and [`docs/experiments.md`](docs/experiments.md) holds the 25
-experiments behind them, exact command and raw output included; an experiment outranks any
-claim it contradicts. The design is [`docs/design.md`](docs/design.md).
+- [`docs/design.md`](docs/design.md): the decision record, and how to add a host or a persona
+- [`docs/acceptance.md`](docs/acceptance.md): minimum versions, guarantees, known limits
+- [`docs/experiments.md`](docs/experiments.md): what was run, and what came back
 
 ## Licence
 
