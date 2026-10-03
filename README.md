@@ -3,9 +3,12 @@
 A team of AI personas that installs into your coding agent, learns your project from
 several angles, and works to the rules your project already has.
 
-Six personas, **tech-lead, developer, reviewer, security, designer, platform**, authored once
-and rendered for OpenAI Codex CLI, Claude Code, opencode and Google Antigravity. The tech-lead
-is your single point of contact; the reviewer and security personas cannot edit your files.
+Six personas ship, **tech-lead, developer, reviewer, security, designer, platform**, authored
+once and rendered for OpenAI Codex CLI, Claude Code, opencode and Google Antigravity. They
+are a catalog, not a fixed cast: a project uses the subset it needs, and adding a persona of
+your own is one YAML file plus a re-render ([`docs/design.md`](docs/design.md) §16). The
+tech-lead is your single point of contact; the reviewer and security personas cannot edit
+your files.
 
 ## Why
 
@@ -37,7 +40,7 @@ file per project.
 
 | | |
 |---|---|
-| **Six personas, one source** | Authored once in `personas/`, rendered into Codex, Claude Code, opencode and Antigravity dialects by `tools/gen.py`; a drift gate fails when the rendered tree and the source disagree |
+| **A catalog of personas, one source** | Six ship, authored once in `personas/` and rendered into the four host dialects by `tools/gen.py`; a project picks the subset it needs, you can add your own, and a drift gate fails when the rendered tree and the source disagree |
 | **One external voice** | Only the tech-lead speaks to you or posts to a tracker; specialists hand back structured findings (design §0, D6) |
 | **Read-only roles that hold** | Reviewer and security have no edit tools on any host; on Codex the read-only sandbox blocks every write, measured (E4) |
 | **The contract in your repository** | `ec-init` interviews you once and writes one managed block in `AGENTS.md`; idempotent, and `--check` guards it in CI |
@@ -91,103 +94,121 @@ $ codex sandbox -c sandbox_mode=read-only -c approval_policy=never -- sh -c "ech
 sh: line 1: REVIEW.md: Read-only file system
 ```
 
-## Quick start
+## Codex CLI
 
-Clone once; the install lines below run from inside the clone. Then pick your tool.
+**Install**, once per machine. The personas are written as real files under `~/.codex/`,
+because a symlinked role is found and then fails at spawn (E5).
 
 ```bash
 git clone https://github.com/gnuruzzi/e-colleagues ~/e-colleagues && cd ~/e-colleagues
-```
-
-### Codex CLI
-
-```bash
-codex plugin marketplace add "$PWD"                                 # install, once per machine
+codex plugin marketplace add "$PWD"
 codex plugin add e-colleagues@e-colleagues
 python3 skills/ec-init/scripts/bootstrap.py --scope user --write
-cd ~/your-project && codex --profile e-colleagues                   # start the tech-lead
 ```
 
-In the session:
-
-```text
-$ec-init        set up the contract: roster, tracker, who may merge → one block in AGENTS.md
-$ec-onboard     each persona learns its angle of the project and records where it came from
-$ec-status      later: which of that knowledge has gone stale
-Review the change in the last commit before we merge it.      ← any request; the lead delegates
-```
-
-The personas are written as real files under `~/.codex/`, because a symlinked role is found
-and then fails at spawn (E5).
-
-### Claude Code
+**Onboard** a project. Start the tech-lead there, then type the skills in the session.
 
 ```bash
-claude plugin marketplace add "$PWD"                                # install, once per machine
-claude plugin install e-colleagues@e-colleagues
-cd ~/your-project && claude --agent tech-lead                       # start the tech-lead
+cd ~/your-project && codex --profile e-colleagues
 ```
 
-In the session:
+```text
+$ec-init        proposes the roster, asks what only you know, writes one block in AGENTS.md
+$ec-onboard     each persona learns its angle and records where the knowledge came from
+$ec-status      later: which of that knowledge has gone stale
+```
+
+**Use** it like any session; the tech-lead delegates and reports back.
+
+```text
+Review the change in the last commit before we merge it.
+Plan the rename of the billing module and delegate the pieces.
+```
+
+## Claude Code
+
+**Install**, once per machine. Both lines are needed even for a repository whose own
+settings declare this marketplace: trust registers it but does not load the plugin, silently
+(E23 addendum).
+
+```bash
+git clone https://github.com/gnuruzzi/e-colleagues ~/e-colleagues && cd ~/e-colleagues
+claude plugin marketplace add "$PWD"
+claude plugin install e-colleagues@e-colleagues
+```
+
+**Onboard** a project.
+
+```bash
+cd ~/your-project && claude --agent tech-lead
+```
 
 ```text
 /e-colleagues:ec-init
 /e-colleagues:ec-onboard
 /e-colleagues:ec-status
-Plan the rename of the billing module and delegate the pieces.
 ```
 
-Both install lines are needed even for a repository whose own settings declare this
-marketplace: trust registers it but does not load the plugin, silently (E23 addendum).
-
-### opencode
-
-```bash
-python3 skills/ec-init/scripts/bootstrap.py --scope user --write    # install: ~/.config/opencode/agents/
-cd ~/your-project && opencode run --agent tech-lead "Review the change in the last commit."
-opencode                                                             # or the TUI: Shift+Tab to the tech-lead
-```
-
-opencode carries no skills, so run the contract script yourself and fill in the two headings
-it leaves, then ask the tech-lead to follow the onboarding skill by path:
-
-```bash
-python3 ~/e-colleagues/skills/ec-init/scripts/bootstrap.py . --write
-python3 ~/e-colleagues/skills/ec-status/scripts/status.py .
-```
+**Use** it like any session. Delegation uses the qualified name, `e-colleagues:reviewer`.
 
 ```text
-Read ~/e-colleagues/skills/ec-onboard/SKILL.md and follow it for this project.
+Review the change in the last commit before we merge it.
 ```
 
-No bundle or plugin route for agents exists (E25), so they install per machine as real
-files. Your global config is never written; set `default_agent` yourself if you want it.
+## opencode
 
-### Antigravity
+**Install**, once per machine. opencode has no bundle or plugin route for agents (E25), so
+they install as real files under `~/.config/opencode/agents/`. Your global config is never
+written.
 
 ```bash
-agy plugin install https://github.com/gnuruzzi/e-colleagues        # install, once per machine
-cd ~/your-project && agy --agent tech-lead                          # start the tech-lead
+git clone https://github.com/gnuruzzi/e-colleagues ~/e-colleagues && cd ~/e-colleagues
+python3 skills/ec-init/scripts/bootstrap.py --scope user --write
 ```
 
-In the session:
+**Onboard** a project. opencode carries no skills, so run the contract script, fill in the
+two headings it leaves you, then ask the tech-lead to follow the onboarding skill by path.
+
+```bash
+cd ~/your-project
+python3 ~/e-colleagues/skills/ec-init/scripts/bootstrap.py . --write
+opencode run --agent tech-lead "Read ~/e-colleagues/skills/ec-onboard/SKILL.md and follow it for this project."
+python3 ~/e-colleagues/skills/ec-status/scripts/status.py .        # later: what has gone stale
+```
+
+**Use** it from the command line or the TUI, where Shift+Tab cycles to the tech-lead.
+
+```bash
+opencode run --agent tech-lead "Review the change in the last commit before we merge it."
+opencode
+```
+
+## Antigravity
+
+**Install**, once per machine. Only a global install delivers agents, so the roster is per
+machine; a re-install merges rather than replaces, so uninstall first when it shrinks (E8).
+
+```bash
+agy plugin install https://github.com/gnuruzzi/e-colleagues
+```
+
+**Onboard** a project.
+
+```bash
+cd ~/your-project && agy --agent tech-lead
+```
 
 ```text
 /ec-init
 /ec-onboard
 /ec-status
-Audit the CI pipeline and tell me what a new contributor would trip over.
 ```
 
-Only a global install delivers agents, so the roster is per machine. A re-install merges
-rather than replaces; uninstall first when the roster shrinks (E8).
+**Use** it like any session.
 
-### Profiles and updates
-
-`ec-init` proposes a roster from what the repository contains; the scripts take `--profile`:
-`default` is all six personas, `library` drops the designer, `minimal` is tech-lead,
-developer and reviewer. To update, `git pull` in the clone and re-run your tool's install
-lines; `bootstrap.py --scope user --check` reports what is out of date.
+```text
+Audit the CI pipeline and tell me what a new contributor would trip over.
+```
 
 ## Hosts and guarantees
 
