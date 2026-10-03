@@ -81,8 +81,8 @@ Then, per host, by hand — because no static check can prove a runtime behaviou
 - **Antigravity has no per-project roster.** No workspace directory delivers agents at 1.1.27
   (E18), so the roster is per-user and two projects on one machine share it.
 - **opencode's roster is per-machine too.** `bootstrap.py --scope user` writes the agents to
-  `~/.config/opencode/agents/`; nothing writes them into a project, and there is no bundle or
-  plugin route (E25). The global config is never written, so the tech-lead is chosen per
+  `~/.config/opencode/agents/` and the four skills to `~/.config/opencode/skills/`; nothing
+  writes them into a project, and there is no bundle or plugin route (E25). The global config is never written, so the tech-lead is chosen per
   session with `--agent`, with Tab in the TUI, or by a `default_agent` the user sets.
 - **An Antigravity re-install merges rather than replaces** (E8), so an update that drops a
   persona leaves the old agent in place and selectable. Uninstall first when the roster shrinks.

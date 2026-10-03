@@ -18,6 +18,7 @@ import datetime
 import hashlib
 import json
 import os
+import shutil
 import pathlib
 import re
 import sys
@@ -303,6 +304,10 @@ def install_user_scope(team: dict, a) -> int:
     dest = codex_home / "agents"
     oc_dist = dist.parent.parent / "opencode" / "agents"
     oc_dest = opencode_agents_dir()
+    # opencode has no plugin to carry the skills, so they install beside the agents, in the
+    # user skills directory it reads [OC-08]; the skills are host-neutral by gate (§13 item 6).
+    skills_src = dist.parent.parent.parent / "skills"
+    oc_skills_dest = oc_dest.parent / "skills"
 
     if a.check:
         stale = []
@@ -333,6 +338,14 @@ def install_user_scope(team: dict, a) -> int:
                 t = oc_dest / f"{name}.md"
                 if not t.exists() or t.read_text() != src.read_text():
                     stale.append(f"opencode/agents/{name}.md is missing or out of date")
+            for skill in sorted(skills_src.glob("ec-*")) if skills_src.exists() else []:
+                for src in skill.rglob("*"):
+                    if not src.is_file() or "__pycache__" in src.parts:
+                        continue
+                    t = oc_skills_dest / src.relative_to(skills_src)
+                    if not t.exists() or t.read_bytes() != src.read_bytes():
+                        stale.append(f"opencode/skills/{skill.name} is missing or out of date")
+                        break
         for s_ in stale:
             print(f"  {s_}")
         print("up to date" if not stale else f"{len(stale)} file(s) need --write")
@@ -354,9 +367,19 @@ def install_user_scope(team: dict, a) -> int:
         written, _ = install_personas(oc_dist, oc_dest, roster, dry_run=False, ext=".md")
         shown = str(oc_dest).replace(str(pathlib.Path.home()), "~", 1)
         print(f"installed {len(written)} agents into {shown}: {', '.join(written)}")
-        print("start with `opencode run --agent tech-lead`; in the TUI pick it with Tab, or set "
-              "`default_agent` in your global opencode config, which this script never writes "
-              "[OC-03]")
+        if skills_src.exists():
+            names = []
+            for skill in sorted(skills_src.glob("ec-*")):
+                target = oc_skills_dest / skill.name
+                if target.exists():
+                    shutil.rmtree(target)
+                shutil.copytree(skill, target, ignore=shutil.ignore_patterns("__pycache__"))
+                names.append(skill.name)
+            shown = str(oc_skills_dest).replace(str(pathlib.Path.home()), "~", 1)
+            print(f"installed {len(names)} skills into {shown}: {', '.join(names)}")
+        print("start with `opencode run --agent tech-lead`; in the TUI cycle to it with Shift+Tab, "
+              "or set `default_agent` in your global opencode config, which this script never "
+              "writes [OC-03]")
     return 0
 
 

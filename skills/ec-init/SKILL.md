@@ -59,7 +59,8 @@ Use `--check` in CI or before an update; it exits non-zero when the file would c
 
 `--scope user` is a different job and writes no project file: it installs the personas for
 this machine — the Codex role files and the tech-lead profile under `~/.codex/`, and the
-opencode agents under `~/.config/opencode/agents/` — as real files for the chosen profile.
+opencode agents and these four skills under `~/.config/opencode/` — as real files for the
+chosen profile.
 
 ## 5. Report
 
