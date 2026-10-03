@@ -14,8 +14,8 @@ Tranches: **A** automated, **B** interactive — needing a TTY or a trust dialog
 | Q4 | A | Codex `O_NOFOLLOW`: symlinked role TOMLs fail at spawn | **settled** (E5) |
 | Q5 | A | Codex root-as-plugin marketplace entry `path: "./"` | **settled** (E6) |
 | Q6 | A | `agy plugin validate` / `install` on a tree carrying all three manifests | **settled** (E7) |
-| Q7 | B | opencode runtime: Tab and `@` menus, `default_agent`, subtask `ask`, AGENTS.md in task children | **mostly settled** (E20, re-verified at 2.0.18 in its addendum); Tab and `@` menus still open |
-| Q8 | B | Antigravity: `tools` allowlist versus ambient subagent inheritance, `tools: []`, H1 slicing, name collisions | **mostly settled** (E17–E19); desktop inheritance default still open |
+| Q7 | B | opencode runtime: Tab and `@` menus, `default_agent`, subtask `ask`, AGENTS.md in task children | **settled** (E20, its 2.0.18 addendum, and the TUI addendum: Shift+Tab cycles the primaries, `@` offers the specialists and routes through the tech-lead) |
+| Q8 | B | Antigravity: `tools` allowlist versus ambient subagent inheritance, `tools: []`, H1 slicing, name collisions | **settled** (E17–E19, and the E19 addendum: the desktop at 2.17.0 behaves as the CLI); `tools: []` alone not isolated |
 | Q9 | A | does a spawned Codex child re-run AGENTS.md discovery | **settled** (E9) |
 | Q10 | A+B | `-c developer_instructions=""` clears the project value for one session | **settled** (E14 profile layer, E22 project layer) |
 | Q11 | A | `agy plugin install <github-url>` syntax | **settled** (E8) |
@@ -928,7 +928,21 @@ With deliberately distinct canaries — `WALRUS-3092` in the workspace `AGENTS.m
 
 ### Still open in Q8
 
-The **Antigravity desktop's** inheritance default (`inheritCustomizations`) is untested — it needs the desktop app, not the CLI. `tools: []` semantics were not isolated either, because the empty-list agent was superseded by the registry work; the practical answer is covered by AG-06's "an omitted `tools` list means no tools", which remains unverified for the empty-list case.
+The **Antigravity desktop's** inheritance default (`inheritCustomizations`) was untested until the addendum below — it needs the desktop app, not the CLI. `tools: []` semantics were not isolated either, because the empty-list agent was superseded by the registry work; the practical answer is covered by AG-06's "an omitted `tools` list means no tools", which remains unverified for the empty-list case.
+
+### Addendum 2026-10-03 — the desktop, driven (#5)
+
+**Antigravity desktop 2.17.0** (About dialog), with the E19 probe plugin installed globally from the CLI (`q8-lead` with `invoke_subagent`; `q8-reviewer` without it; `q8-leaky` to be reached), a workspace folder carrying an `AGENTS.md` with `Canary: WALRUS-3092`, and a person at the app.
+
+| step | observed |
+|---|---|
+| the agent selector | `Main Agent`, `q8-lead`, `firestore-rules-author`, `flutter_a11y_agent`. The two sub-agents are absent, as `mainAgent: false` predicts [AG-03]. `firestore-rules-author` is a Google plugin's agent the CLI's `agy agents` did not list at the time, because the desktop refreshed that plugin on launch |
+| the E19 prompt to `q8-lead` | `REVIEWER-SAID: Q8-REVIEWER-ACTIVE. The invocation could not happen because I do not have the invoke_subagent tool.` |
+| body canary and `AGENTS.md` canary | `BODY: YES` / `PROJECT: NONE` |
+
+**Verdict**: the desktop behaves as the CLI did in E19 on every point. An explicit `tools` list omitting `invoke_subagent` holds there too, so the enforcement-matrix cell "specialists cannot spawn" is mechanical on the desktop as well; the whole body arrives; the workspace `AGENTS.md` does not. Q8 closes, with `tools: []` still not isolated.
+
+**Host state**: the probe plugin was uninstalled and none of its files remain. The desktop, run for the first time in this period, wrote two migration flags into `config.json` and refreshed Google's bundled plugins on launch; that is the desktop's own doing, recorded so the next snapshot diff is read correctly.
 
 ---
 
@@ -992,6 +1006,19 @@ Two runs were killed at their timeouts (600 s and 240 s) and looked like hangs. 
 **Verdict**: every row E20 established holds at 2.0.18. What moved is the surface around them: two commands the matrix cites are gone, the file-form command directory is singular, and the two "cannot" results now rest on a dismissed question and a depth limit rather than on session permissions. The schema at `opencode.ai/config.json` is unchanged (39,039 bytes; E24), so the gate's key lists still match the file format, while the runtime already speaks the new names — the renderer decision is #12.
 
 **Host state**: nothing under `~/.config/opencode` changed; opencode wrote its own logs and snapshots under `~/.local/share/opencode`, as it does for every run. The background service it starts was stopped afterwards.
+
+### Addendum 2026-10-03 — the TUI menus, row 8 (#5)
+
+**opencode 2.0.18**, a project carrying the rendered `.opencode/agents/*.md` and `opencode.json` with `default_agent: tech-lead`, a person at the TUI.
+
+| step | observed |
+|---|---|
+| on start | the session shows `tech-lead`; the status line reads `Tech-Lead · GLM-5.3 Default / OpenCode · max` |
+| Tab | does nothing. **Shift+Tab** cycles the primaries: `tech-lead`, `build`, `plan`. The footer says so: `shift+tab agents  ctrl+p commands`. Specialists are not in the cycle, as `mode: subagent` predicts |
+| `@` in the prompt | a list of skills, then agents `@general`, `@explore`, `@designer`, `@developer`, `@platform`, `@reviewer`, `@security`, then files. All five specialists are offered. So are the built-ins `general` and `explore`, which the tech-lead's allowlist denies — the menu does not filter by permission |
+| `@reviewer reply with exactly AT-MENTION-OK` | the **tech-lead** answered: it read for a contract, spawned the Reviewer as a sub-agent, and relayed `🕵️ Reviewer: AT-MENTION-OK`. A mention is a routing hint to the primary, which delegates through the task tool, not a direct line to the specialist |
+
+**Verdict**: row 8 closes and Q7 is fully settled. One correction: OC-03 says the agent cycle is `agent_cycle` on Tab; at 2.0.18 it is Shift+Tab.
 
 ---
 
