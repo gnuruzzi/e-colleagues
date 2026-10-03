@@ -7,7 +7,7 @@ and a reviewer that cannot edit your files. Installed once. Rendered for Codex C
 
 <p align="center">
 <a href="https://github.com/gnuruzzi/e-colleagues/actions/workflows/check.yml"><img alt="checks" src="https://github.com/gnuruzzi/e-colleagues/actions/workflows/check.yml/badge.svg"></a>
-<img alt="version" src="https://img.shields.io/badge/version-0.1.0-informational">
+<img alt="version" src="https://img.shields.io/badge/version-0.1.1-informational">
 <img alt="hosts" src="https://img.shields.io/badge/hosts-Codex%20%C2%B7%20Claude%20Code%20%C2%B7%20opencode%20%C2%B7%20Antigravity-5c6bc0">
 <img alt="evidence" src="https://img.shields.io/badge/claims%20measured-52%20%2F%2025%20experiments-2e7d32">
 <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-blue"></a>

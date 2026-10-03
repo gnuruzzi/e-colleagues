@@ -4,12 +4,12 @@
     "name": "e-colleagues"
   },
   "description": "A team of AI personas \u2014 tech-lead, developer, reviewer, security, designer, platform \u2014 with an operating contract, a portable floor and a knowledge store.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "plugins": [
     {
       "name": "e-colleagues",
       "source": "./",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "description": "A team of AI personas \u2014 tech-lead, developer, reviewer, security, designer, platform \u2014 with an operating contract, a portable floor and a knowledge store."
     }
   ]

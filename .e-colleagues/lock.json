@@ -1,5 +1,5 @@
 {
-  "package_version": "0.1.0",
+  "package_version": "0.1.1",
   "profile": "library",
   "roster": [
     "tech-lead",
@@ -16,7 +16,7 @@
     "ci-cd-and-infra"
   ],
   "written": {
-    "AGENTS.md": "379e0679049bfaa2bfdca381232dd2f6478a4d9b2811f09018cc0982e8004161",
+    "AGENTS.md": "f575642a3fdaf04182a855f3b94ba66f1b6ed13f4bcd5f3d191a440c872d1fc1",
     "CLAUDE.md": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49"
   },
   "completed_lenses": [
@@ -26,5 +26,5 @@
     "security-posture",
     "ci-cd-and-infra"
   ],
-  "updated": "2026-09-27"
+  "updated": "2026-10-03"
 }

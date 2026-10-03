@@ -79,7 +79,25 @@ def check_personas():
             fail(f"{p['prompt']}: missing r4 frontmatter")
     if primaries != ["tech-lead"]:
         fail(f"exactly one primary expected, got {primaries}")
-    ok(f"personas ({len(catalog)}) and team.yaml consistent")
+
+    # One version, stamped everywhere a host reads it. The renderer stamps dist/team.json;
+    # the four manifests and VERSION are source files, and a release bump missed them once.
+    want = str(team["version"])
+    for rel in ("VERSION", "plugin.json", ".codex-plugin/plugin.json",
+                ".claude-plugin/plugin.json", ".claude-plugin/marketplace.json"):
+        f = ROOT / rel
+        if not f.exists():
+            fail(f"{rel}: missing")
+            continue
+        if rel == "VERSION":
+            got = [f.read_text().strip()]
+        else:
+            doc = json.loads(f.read_text())
+            got = [str(doc.get("version"))] + [str(pl.get("version")) for pl in doc.get("plugins", [])]
+        for g in got:
+            if g != want:
+                fail(f"{rel}: version {g} but team.yaml says {want}")
+    ok(f"personas ({len(catalog)}) and team.yaml consistent; version {want} stamped everywhere")
 
 
 # --------------------------------------------------------------------------- codex dialect
