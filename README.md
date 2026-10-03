@@ -1,13 +1,11 @@
 # e-colleagues
 
-A team of AI personas that installs into your coding agent, learns your project from several angles, and works to the rules your project already has.
+A team of AI personas that installs into your coding agent, learns your project from
+several angles, and works to the rules your project already has.
 
-Six personas — **tech-lead, developer, reviewer, security, designer, platform** — authored once and rendered into each host's own dialect. The tech-lead is your single point of contact: it plans, delegates to the specialists, checks their work against acceptance criteria, and is the only one that posts anywhere public. Reviewer and security cannot edit your files, and on Codex that is enforced by the sandbox rather than by asking nicely.
-
-Two things it does to a repository:
-
-- **`ec-init`** establishes the operating contract — who is on the team, which platforms and tools the project uses, the branching and merge rules, who may push or tag. Interview-derived, because only a human knows those. It lands as one small managed block at the top of your `AGENTS.md`, and your own content is never restructured.
-- **`ec-onboard`** learns the project. Each persona audits from its own angle — architecture, build and test reality, coverage and standards, security posture, design system, CI/CD and infrastructure — and **indexes what your project already documents first**, authoring a knowledge file only where there is no home for that angle. Every file records the commit and the paths it was derived from, so going stale is detectable with a `git diff`.
+Six personas, **tech-lead, developer, reviewer, security, designer, platform**, authored once
+and rendered for OpenAI Codex CLI, Claude Code, opencode and Google Antigravity. The tech-lead
+is your single point of contact; the reviewer and security personas cannot edit your files.
 
 ## Why
 
@@ -71,12 +69,9 @@ violates its own `-> int` annotation and the docstring's "in cents" on every inp
 I reproduced the Reviewer's probe myself:
     (1000, 10) -> 900.0               float
     (999, 33)  -> 669.3299999999999   float
-    (10**17, 3)-> 9.7e+16             float   # integer precision lost
-The shipped test passes only because 900 == 900.0 is True in Python and 1000 × 10 / 100
-happens to divide exactly. …
-
+The shipped test passes only because 900 == 900.0 is True in Python. …
 The fix needs a decision from you, not just code: which rounding applies to fractional
-cents? Floor, round-half-even, or round-half-up … …
+cents? …
 
 ### Recommended next step
 Tell me the rounding policy (and whether negative prices are valid). I'll then brief the
@@ -96,111 +91,106 @@ $ codex sandbox -c sandbox_mode=read-only -c approval_policy=never -- sh -c "ech
 sh: line 1: REVIEW.md: Read-only file system
 ```
 
-## What works today
+## Quick start
 
-Version 0.1.0. Six personas, rendered from one source into four host dialects.
+**1. Install once per machine.** Clone this repository and follow the four lines for your
+tool under [Install](#install). Then start the tech-lead: `codex --profile e-colleagues`,
+`claude --agent tech-lead`, `opencode run --agent tech-lead`, or `agy --agent tech-lead`.
 
-| host | minimum version | the tech-lead is primary by | "cannot edit" is enforced by |
-|---|---|---|---|
-| OpenAI Codex CLI | 0.153.4 | `developer_instructions` (prose) | **the sandbox** — the only host where it is a filesystem guarantee |
-| Claude Code | 2.1.263 | `--agent` (mechanical) | the tool list; the shell can still write |
-| opencode | 1.18.29 | `default_agent` (mechanical) | permissions; bash narrowed by patterns |
-| Google Antigravity | agy 1.1.27 | `mainAgent` (mechanical) | the tool list; `run_command` can still write |
+**2. Set up a project.** In your project, existing or empty, ask the tech-lead to run
+`ec-init`: `$ec-init` on Codex, `/e-colleagues:ec-init` on Claude Code, `/ec-init` on
+Antigravity. It proposes a roster from what the repository contains, asks you the few things
+only a human knows (where work is tracked, who may merge, how to build and test), and writes
+one managed block at the top of `AGENTS.md`. An empty repository gets a fresh `AGENTS.md`; an
+existing one is never restructured. opencode carries no skills, so there run the script and
+fill in the two headings it leaves you:
 
-Known limits, stated because a guarantee that is really a request is worth naming:
-Codex's read-only sandbox blocks **every** write including `/tmp`, so a project whose tests
-write anything needs an explicit override; Antigravity and opencode have no per-project
-roster from this package, both being installed per machine, and an Antigravity re-install
-merges rather than replaces; and `AGENTS.md` never reaches an Antigravity agent, so
-its personas carry the contract in their own bodies. The full list, with what each rests on,
-is in [`docs/acceptance.md`](docs/acceptance.md).
+```bash
+python3 ~/e-colleagues/skills/ec-init/scripts/bootstrap.py . --write
+```
+
+**3. Let the team learn the project.** Run `ec-onboard` the same way. Each persona audits
+its own angle, indexes what you already document, and writes a knowledge file only where
+nothing covers that angle. Later, `ec-status` says which of that knowledge has gone stale:
+
+```bash
+python3 ~/e-colleagues/skills/ec-status/scripts/status.py .
+```
+
+Profiles pick the roster: `default` is all six, `library` drops the designer, `minimal` is
+tech-lead, developer and reviewer. `ec-init` proposes one; the scripts take `--profile`.
 
 ## Install
 
-Nothing here needs network access beyond cloning.
-
-### Codex CLI
-
 ```bash
-codex plugin marketplace add /path/to/e-colleagues
-codex plugin add e-colleagues@e-colleagues          # the four skills
-python3 skills/ec-init/scripts/bootstrap.py --scope user --write   # the personas, as real files
+git clone https://github.com/gnuruzzi/e-colleagues ~/e-colleagues && cd ~/e-colleagues
 ```
 
-The second line installs `ec-init`, `ec-onboard`, `ec-status` and `ec-tech-lead`. The third
-writes `~/.codex/agents/*.toml` and `~/.codex/e-colleagues.config.toml`; run
-`codex --profile e-colleagues` to make the tech-lead primary. They must be **real files** —
-Codex opens a role file with `O_NOFOLLOW` at spawn, so a symlinked persona is discovered and
-then fails with `agent type is currently not available`.
-
-### Claude Code
+**Codex CLI.** The plugin carries the four skills; the script writes the personas as real
+files under `~/.codex/`, because a symlinked role is found and then fails at spawn (E5).
 
 ```bash
-claude plugin marketplace add /path/to/e-colleagues
+codex plugin marketplace add "$PWD"
+codex plugin add e-colleagues@e-colleagues
+python3 skills/ec-init/scripts/bootstrap.py --scope user --write
+```
+
+**Claude Code.** Both lines are needed even for a repository whose own settings declare this
+marketplace: trust registers it but does not load the plugin, silently (E23 addendum).
+Delegation uses the qualified name `e-colleagues:reviewer`.
+
+```bash
+claude plugin marketplace add "$PWD"
 claude plugin install e-colleagues@e-colleagues
-claude --agent tech-lead
 ```
 
-Delegation uses the qualified name — `e-colleagues:reviewer`, not `reviewer`. A bare name
-resolves for the `--agent` flag but not for the `Agent` tool's `subagent_type`.
-
-Both lines are needed even when a repository's own `.claude/settings.json` declares this
-marketplace and enables the plugin: trusting such a clone registers and fetches the
-marketplace but does not load the plugin, and nothing on screen says so
-(`docs/experiments.md`, E23 addendum).
-
-### opencode
+**opencode.** No bundle or plugin route for agents exists (E25), so the agents install per
+machine as real files. Your global config is never written: use `--agent`, Shift+Tab in the
+TUI, or set `default_agent` yourself.
 
 ```bash
-python3 skills/ec-init/scripts/bootstrap.py --scope user --write   # ~/.config/opencode/agents/*.md
-opencode run --agent tech-lead
+python3 skills/ec-init/scripts/bootstrap.py --scope user --write
 ```
 
-opencode has no bundle format and no plugin route for agents — a plugin can add commands
-and skills, not agents (`docs/experiments.md`, E25) — so the agents are installed per
-machine, as real files, for the chosen profile. Your global opencode config is never
-written: in the TUI pick the tech-lead with Tab, or set `default_agent: tech-lead` yourself.
-
-### Antigravity
+**Antigravity.** Only a global install delivers agents, so the roster is per machine. A
+re-install merges rather than replaces; uninstall first when the roster shrinks (E8).
 
 ```bash
-agy plugin install https://github.com/gnuruzzi/e-colleagues     # or a local path
-agy --agent tech-lead
+agy plugin install https://github.com/gnuruzzi/e-colleagues
 ```
 
-A **global** install is the only route that delivers agents — no workspace directory does at
-agy 1.1.27 — so the roster is per-user rather than per-project there. A re-install merges
-rather than replaces, so uninstall first when the roster shrinks.
+To update, `git pull` in the clone and re-run the lines for your tool;
+`bootstrap.py --scope user --check` reports what is out of date.
 
-## Bootstrap a project
+## Hosts and guarantees
 
-```bash
-python3 skills/ec-init/scripts/bootstrap.py /path/to/project --write --profile default
-python3 skills/ec-status/scripts/status.py  /path/to/project
-```
+Version 0.1.0. Every claim below was measured at the version shown.
 
-Profiles are `default` (all six), `library` (no designer, for projects with no user
-interface) and `minimal`. `--check` exits non-zero when the contract is out of date or
-`AGENTS.md` would exceed 30 KiB — above that Codex truncates the tail, and the raised cap
-lives in a trust-gated config an untrusted teammate never gets.
+| host | floor | re-verified at | tech-lead is primary by | "cannot edit" is enforced by |
+|---|---|---|---|---|
+| Codex CLI | 0.153.4 | 0.154.0 | `developer_instructions` (prose) | **the sandbox**: the one filesystem guarantee |
+| Claude Code | 2.1.263 | 2.1.284 | `--agent` (mechanical) | the tool list; the shell can still write |
+| opencode | 1.18.29 | 2.0.18 | `default_agent` (mechanical) | permissions; the shell narrowed by patterns |
+| Antigravity | agy 1.1.27 | agy 1.2.10, desktop 2.17.0 | `mainAgent` (mechanical) | the tool list; `run_command` can still write |
+
+Known limits, because a guarantee that is really a request is worth naming:
+
+- Codex's read-only sandbox blocks **every** write, `/tmp` included, so a test suite that
+  writes anything needs an explicit override.
+- Antigravity and opencode have no per-project roster from this package; both install per
+  machine.
+- `AGENTS.md` never reaches an Antigravity agent, so its personas carry the contract in
+  their own bodies.
+
+The full list, and what each rests on, is in [`docs/acceptance.md`](docs/acceptance.md).
 
 ## How this was built
 
-Every path, key and command in the design cites a fact-checked claim, or says UNVERIFIED. The
-claims are stated in full in [`docs/SUPPORT-MATRIX.md`](docs/SUPPORT-MATRIX.md), together with
-the version each was last confirmed at and whether it was exercised at runtime or rests on
-documentation alone.
-
-They are not taken on faith. [`docs/experiments.md`](docs/experiments.md) records 25
-experiments run against the installed tools, with the exact command, the version and the raw
-output — and where an experiment contradicts a claim, the experiment wins. That discipline
-paid for itself: seven tool names the Antigravity documentation lists are absent from its tool
-registry and abort an agent at startup, so a renderer built from the documentation would have
-produced agents that could not start on that host at all.
-
-It is worth the ceremony because these tools move fast. Four of the five targets released a
-new version within a day of the research being written, and one version gate had already
-flipped by the time it was checked.
+Every path, key and command in the design cites a fact-checked claim or says UNVERIFIED.
+[`docs/SUPPORT-MATRIX.md`](docs/SUPPORT-MATRIX.md) states all 52 claims with the version each
+was last confirmed at, and [`docs/experiments.md`](docs/experiments.md) holds the 25
+experiments behind them, exact command and raw output included; an experiment outranks any
+claim it contradicts. The design is [`docs/design.md`](docs/design.md).
 
 ## Licence
 
