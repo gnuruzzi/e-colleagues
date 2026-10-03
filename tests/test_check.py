@@ -116,3 +116,45 @@ class TestOpencodeGate(unittest.TestCase):
         r = self.check()
         self.assertEqual(r.returncode, 1)
         self.assertIn("opencode.json: permission `task`", r.stdout)
+
+
+@unittest.skipUnless(yaml, "check.py needs PyYAML")
+class TestVersionStamp(unittest.TestCase):
+    """The renderer stamps dist/team.json; VERSION and the four manifests are source files,
+    and a release bump missed them once. The personas gate now checks all five."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = pathlib.Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+        (self.root / "tools").mkdir()
+        shutil.copy(ROOT / "tools" / "check.py", self.root / "tools" / "check.py")
+        for f in ("team.yaml", "VERSION", "plugin.json"):
+            shutil.copy(ROOT / f, self.root / f)
+        for d in ("personas", ".codex-plugin", ".claude-plugin"):
+            shutil.copytree(ROOT / d, self.root / d)
+
+    def check(self):
+        return subprocess.run([sys.executable, str(self.root / "tools" / "check.py"),
+                               "--personas"], capture_output=True, text=True)
+
+    def test_a_consistent_tree_passes(self):
+        r = self.check()
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("stamped everywhere", r.stdout)
+
+    def test_a_manifest_left_behind_fails(self):
+        p = self.root / ".claude-plugin" / "marketplace.json"
+        doc = json.loads(p.read_text())
+        doc["plugins"][0]["version"] = "0.0.0"               # the nested entry, easiest to miss
+        p.write_text(json.dumps(doc, indent=2) + "\n")
+        r = self.check()
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("marketplace.json: version 0.0.0 but team.yaml says", r.stdout)
+
+    def test_a_stale_VERSION_file_fails(self):
+        (self.root / "VERSION").write_text("0.0.0\n")
+        r = self.check()
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("VERSION: version 0.0.0", r.stdout)
+

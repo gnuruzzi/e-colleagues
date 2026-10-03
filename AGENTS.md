@@ -1,7 +1,7 @@
 # e-colleagues
 
 
-<!-- e-colleagues:begin v=0.1.0 profile=library -->
+<!-- e-colleagues:begin v=0.1.1 profile=library -->
 ## E-Colleagues
 
 | Colleague | Signature | Spawn name |
