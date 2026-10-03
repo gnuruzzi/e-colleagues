@@ -93,74 +93,101 @@ sh: line 1: REVIEW.md: Read-only file system
 
 ## Quick start
 
-**1. Install once per machine.** Clone this repository and follow the four lines for your
-tool under [Install](#install). Then start the tech-lead: `codex --profile e-colleagues`,
-`claude --agent tech-lead`, `opencode run --agent tech-lead`, or `agy --agent tech-lead`.
-
-**2. Set up a project.** In your project, existing or empty, ask the tech-lead to run
-`ec-init`: `$ec-init` on Codex, `/e-colleagues:ec-init` on Claude Code, `/ec-init` on
-Antigravity. It proposes a roster from what the repository contains, asks you the few things
-only a human knows (where work is tracked, who may merge, how to build and test), and writes
-one managed block at the top of `AGENTS.md`. An empty repository gets a fresh `AGENTS.md`; an
-existing one is never restructured. opencode carries no skills, so there run the script and
-fill in the two headings it leaves you:
-
-```bash
-python3 ~/e-colleagues/skills/ec-init/scripts/bootstrap.py . --write
-```
-
-**3. Let the team learn the project.** Run `ec-onboard` the same way. Each persona audits
-its own angle, indexes what you already document, and writes a knowledge file only where
-nothing covers that angle. Later, `ec-status` says which of that knowledge has gone stale:
-
-```bash
-python3 ~/e-colleagues/skills/ec-status/scripts/status.py .
-```
-
-Profiles pick the roster: `default` is all six, `library` drops the designer, `minimal` is
-tech-lead, developer and reviewer. `ec-init` proposes one; the scripts take `--profile`.
-
-## Install
+Clone once; the install lines below run from inside the clone. Then pick your tool.
 
 ```bash
 git clone https://github.com/gnuruzzi/e-colleagues ~/e-colleagues && cd ~/e-colleagues
 ```
 
-**Codex CLI.** The plugin carries the four skills; the script writes the personas as real
-files under `~/.codex/`, because a symlinked role is found and then fails at spawn (E5).
+### Codex CLI
 
 ```bash
-codex plugin marketplace add "$PWD"
+codex plugin marketplace add "$PWD"                                 # install, once per machine
 codex plugin add e-colleagues@e-colleagues
 python3 skills/ec-init/scripts/bootstrap.py --scope user --write
+cd ~/your-project && codex --profile e-colleagues                   # start the tech-lead
 ```
 
-**Claude Code.** Both lines are needed even for a repository whose own settings declare this
-marketplace: trust registers it but does not load the plugin, silently (E23 addendum).
-Delegation uses the qualified name `e-colleagues:reviewer`.
+In the session:
+
+```text
+$ec-init        set up the contract: roster, tracker, who may merge → one block in AGENTS.md
+$ec-onboard     each persona learns its angle of the project and records where it came from
+$ec-status      later: which of that knowledge has gone stale
+Review the change in the last commit before we merge it.      ← any request; the lead delegates
+```
+
+The personas are written as real files under `~/.codex/`, because a symlinked role is found
+and then fails at spawn (E5).
+
+### Claude Code
 
 ```bash
-claude plugin marketplace add "$PWD"
+claude plugin marketplace add "$PWD"                                # install, once per machine
 claude plugin install e-colleagues@e-colleagues
+cd ~/your-project && claude --agent tech-lead                       # start the tech-lead
 ```
 
-**opencode.** No bundle or plugin route for agents exists (E25), so the agents install per
-machine as real files. Your global config is never written: use `--agent`, Shift+Tab in the
-TUI, or set `default_agent` yourself.
+In the session:
+
+```text
+/e-colleagues:ec-init
+/e-colleagues:ec-onboard
+/e-colleagues:ec-status
+Plan the rename of the billing module and delegate the pieces.
+```
+
+Both install lines are needed even for a repository whose own settings declare this
+marketplace: trust registers it but does not load the plugin, silently (E23 addendum).
+
+### opencode
 
 ```bash
-python3 skills/ec-init/scripts/bootstrap.py --scope user --write
+python3 skills/ec-init/scripts/bootstrap.py --scope user --write    # install: ~/.config/opencode/agents/
+cd ~/your-project && opencode run --agent tech-lead "Review the change in the last commit."
+opencode                                                             # or the TUI: Shift+Tab to the tech-lead
 ```
 
-**Antigravity.** Only a global install delivers agents, so the roster is per machine. A
-re-install merges rather than replaces; uninstall first when the roster shrinks (E8).
+opencode carries no skills, so run the contract script yourself and fill in the two headings
+it leaves, then ask the tech-lead to follow the onboarding skill by path:
 
 ```bash
-agy plugin install https://github.com/gnuruzzi/e-colleagues
+python3 ~/e-colleagues/skills/ec-init/scripts/bootstrap.py . --write
+python3 ~/e-colleagues/skills/ec-status/scripts/status.py .
 ```
 
-To update, `git pull` in the clone and re-run the lines for your tool;
-`bootstrap.py --scope user --check` reports what is out of date.
+```text
+Read ~/e-colleagues/skills/ec-onboard/SKILL.md and follow it for this project.
+```
+
+No bundle or plugin route for agents exists (E25), so they install per machine as real
+files. Your global config is never written; set `default_agent` yourself if you want it.
+
+### Antigravity
+
+```bash
+agy plugin install https://github.com/gnuruzzi/e-colleagues        # install, once per machine
+cd ~/your-project && agy --agent tech-lead                          # start the tech-lead
+```
+
+In the session:
+
+```text
+/ec-init
+/ec-onboard
+/ec-status
+Audit the CI pipeline and tell me what a new contributor would trip over.
+```
+
+Only a global install delivers agents, so the roster is per machine. A re-install merges
+rather than replaces; uninstall first when the roster shrinks (E8).
+
+### Profiles and updates
+
+`ec-init` proposes a roster from what the repository contains; the scripts take `--profile`:
+`default` is all six personas, `library` drops the designer, `minimal` is tech-lead,
+developer and reviewer. To update, `git pull` in the clone and re-run your tool's install
+lines; `bootstrap.py --scope user --check` reports what is out of date.
 
 ## Hosts and guarantees
 
