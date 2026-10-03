@@ -94,50 +94,80 @@ $ codex sandbox -c sandbox_mode=read-only -c approval_policy=never -- sh -c "ech
 sh: line 1: REVIEW.md: Read-only file system
 ```
 
-## Codex CLI
+## Install
 
-**Install**, once per machine. The personas are written as real files under `~/.codex/`,
-because a symlinked role is found and then fails at spawn (E5).
+Once per machine. Clone this repository first; the lines for Codex, Claude Code and opencode
+run from inside the clone.
 
 ```bash
 git clone https://github.com/gnuruzzi/e-colleagues ~/e-colleagues && cd ~/e-colleagues
+```
+
+### Codex CLI
+
+```bash
 codex plugin marketplace add "$PWD"
 codex plugin add e-colleagues@e-colleagues
 python3 skills/ec-init/scripts/bootstrap.py --scope user --write
 ```
 
-**Onboard** a project. Start the tech-lead there, then type the skills in the session.
+The plugin carries the four skills. The personas go to `~/.codex/` as real files, because a
+symlinked role is found and then fails at spawn (E5).
+
+### Claude Code
+
+```bash
+claude plugin marketplace add "$PWD"
+claude plugin install e-colleagues@e-colleagues
+```
+
+Both lines are needed even for a repository whose own settings declare this marketplace:
+trust registers it but does not load the plugin, silently (E23 addendum).
+
+### opencode
+
+```bash
+python3 skills/ec-init/scripts/bootstrap.py --scope user --write
+```
+
+opencode has no plugin route for agents (E25), so the agents and the four skills install as
+real files under `~/.config/opencode/`. Your global config is never written.
+
+### Antigravity
+
+```bash
+agy plugin install https://github.com/gnuruzzi/e-colleagues
+```
+
+Only a global install delivers agents, so the roster is per machine. A re-install merges
+rather than replaces; uninstall first when the roster shrinks (E8).
+
+To update any of them, `git pull` in the clone and re-run the lines above;
+`bootstrap.py --scope user --check` reports what is out of date.
+
+## Onboard a project
+
+Start the tech-lead in your project and run three skills, in order. `ec-init` proposes a
+roster from what the repository contains, asks you what only a human knows (where work is
+tracked, who may merge, how to build and test), and writes one managed block at the top of
+`AGENTS.md`; an empty repository gets a fresh one, an existing one is never restructured.
+`ec-onboard` has each persona learn its angle, indexing what you already document and
+writing a knowledge file only where nothing covers that angle. `ec-status`, any time later,
+says which of that knowledge has gone stale.
+
+### Codex CLI
 
 ```bash
 cd ~/your-project && codex --profile e-colleagues
 ```
 
 ```text
-$ec-init        proposes the roster, asks what only you know, writes one block in AGENTS.md
-$ec-onboard     each persona learns its angle and records where the knowledge came from
-$ec-status      later: which of that knowledge has gone stale
+$ec-init
+$ec-onboard
+$ec-status
 ```
 
-**Use** it like any session; the tech-lead delegates and reports back.
-
-```text
-Review the change in the last commit before we merge it.
-Plan the rename of the billing module and delegate the pieces.
-```
-
-## Claude Code
-
-**Install**, once per machine. Both lines are needed even for a repository whose own
-settings declare this marketplace: trust registers it but does not load the plugin, silently
-(E23 addendum).
-
-```bash
-git clone https://github.com/gnuruzzi/e-colleagues ~/e-colleagues && cd ~/e-colleagues
-claude plugin marketplace add "$PWD"
-claude plugin install e-colleagues@e-colleagues
-```
-
-**Onboard** a project.
+### Claude Code
 
 ```bash
 cd ~/your-project && claude --agent tech-lead
@@ -149,50 +179,17 @@ cd ~/your-project && claude --agent tech-lead
 /e-colleagues:ec-status
 ```
 
-**Use** it like any session. Delegation uses the qualified name, `e-colleagues:reviewer`.
-
-```text
-Review the change in the last commit before we merge it.
-```
-
-## opencode
-
-**Install**, once per machine. opencode has no bundle or plugin route for agents (E25), so
-they install as real files under `~/.config/opencode/agents/`. Your global config is never
-written.
+### opencode
 
 ```bash
-git clone https://github.com/gnuruzzi/e-colleagues ~/e-colleagues && cd ~/e-colleagues
-python3 skills/ec-init/scripts/bootstrap.py --scope user --write
+cd ~/your-project && opencode run --agent tech-lead "use the ec-init skill"
+opencode run --agent tech-lead "use the ec-onboard skill"
+opencode run --agent tech-lead "use the ec-status skill"
 ```
 
-**Onboard** a project. opencode carries no skills, so run the contract script, fill in the
-two headings it leaves you, then ask the tech-lead to follow the onboarding skill by path.
+In the TUI, Shift+Tab cycles to the tech-lead and `@` lists the skills.
 
-```bash
-cd ~/your-project
-python3 ~/e-colleagues/skills/ec-init/scripts/bootstrap.py . --write
-opencode run --agent tech-lead "Read ~/e-colleagues/skills/ec-onboard/SKILL.md and follow it for this project."
-python3 ~/e-colleagues/skills/ec-status/scripts/status.py .        # later: what has gone stale
-```
-
-**Use** it from the command line or the TUI, where Shift+Tab cycles to the tech-lead.
-
-```bash
-opencode run --agent tech-lead "Review the change in the last commit before we merge it."
-opencode
-```
-
-## Antigravity
-
-**Install**, once per machine. Only a global install delivers agents, so the roster is per
-machine; a re-install merges rather than replaces, so uninstall first when it shrinks (E8).
-
-```bash
-agy plugin install https://github.com/gnuruzzi/e-colleagues
-```
-
-**Onboard** a project.
+### Antigravity
 
 ```bash
 cd ~/your-project && agy --agent tech-lead
@@ -204,11 +201,48 @@ cd ~/your-project && agy --agent tech-lead
 /ec-status
 ```
 
-**Use** it like any session.
+## Use
+
+Talk to the tech-lead as you would to any session. It plans, delegates each piece to a
+specialist with a brief, checks what comes back against acceptance criteria, and reports once
+with evidence. Specialists hand their findings back; only the tech-lead speaks to you or
+posts anywhere. The reviewer and security personas cannot edit your files.
+
+### Codex CLI
 
 ```text
-Audit the CI pipeline and tell me what a new contributor would trip over.
+Review the change in the last commit before we merge it.
 ```
+
+The tech-lead spawns the reviewer under the read-only sandbox, where the project's tests run
+and nothing can be written, and relays its signed findings.
+
+### Claude Code
+
+```bash
+claude --agent tech-lead -p "Review the change in the last commit before we merge it."
+```
+
+Headless or interactive. Delegation uses the qualified name, `e-colleagues:reviewer`; the
+excerpt under [See it in action](#see-it-in-action) is one such run.
+
+### opencode
+
+```bash
+opencode run --agent tech-lead "Plan the rename of the billing module and delegate the pieces."
+```
+
+In the TUI, `@reviewer` is a routing hint: the tech-lead receives it and delegates.
+
+### Antigravity
+
+```bash
+agy --agent tech-lead --print "Audit the CI pipeline and tell me what a new contributor would trip over."
+```
+
+Profiles pick the roster: `default` is all six personas, `library` drops the designer,
+`minimal` is tech-lead, developer and reviewer. `ec-init` proposes one; the scripts take
+`--profile`.
 
 ## Hosts and guarantees
 
