@@ -5,8 +5,7 @@ description: Run several tech-leads at once, one per issue, each in its own git 
 
 # ec-fleet
 
-Several tech-leads, one issue each. Each asks and waits in its own session, and the person
-answers there. Nothing relays between sessions.
+Each tech-lead asks and waits in its own session, and the person answers there.
 
 ## Which part applies
 
@@ -27,10 +26,11 @@ python3 scripts/fleet.py start <reference> --host <host>
 
 - `--host` is your own host, one of `antigravity`, `codex`, `opencode` or `claude`, unless
   the person names another. Leave it out if the config sets `default_host`.
-- Add `--name` and `--base` (what to branch from) only when the contract or the person gives
-  them. The name follows the contract's naming line. If it needs the issue's title and you can
-  read the tracker, build the name, with no spaces, and pass `--name`. Otherwise leave it out
-  and the script names the worktree from the reference (`12` becomes `issue-12`).
+- Pass `--base` (what to branch from) only when the contract or the person gives it.
+- Pass `--name` when the person gives a name. Otherwise, if the contract has a naming line,
+  build the name from it, with no spaces, and pass `--name`. Leave it out, and the script
+  names the worktree from the reference (`12` becomes `issue-12`), only when there is no
+  naming line, or the line needs the issue's title and you cannot read the tracker.
 
 On success it prints one line, `started <name>`, naming the worktree. If it fails, show its
 message; do not retry with other flags.
@@ -76,12 +76,12 @@ You work on one issue, in its own worktree.
    still applies to anything beyond its scope, to writing `AGENTS.md`, and to restricted
    actions.
 3. When you need the person, ask in this session and wait. Never guess and carry on.
-4. Every time you stop, end your message with the RETURN block below, unchanged: `status`,
-   and under `questions` either the decision you need or `ready to push`. The overview reads
-   it from your screen, only what is visible, and only a complete block from `### RETURN`
-   through `knowledge:`. So give every key, put the block at the very end with nothing after
-   it, and keep it short enough to fit on one screen. It is your own block; relay your
-   specialists' blocks as T5 says.
+4. Every time you stop, end your message with the RETURN block below in a code fence, its
+   keys unchanged and in this order, each filled in for this stop: under `questions`, the
+   decision you need or `ready to push`. The overview reads only what is visible on your
+   screen, and only a complete block from `### RETURN` through `knowledge:`. So give every
+   key, put the block at the very end with nothing after it, and keep it short enough to fit
+   on one screen. It is your own block; relay your specialists' blocks as T5 says.
 5. Do not push unless the contract grants pushing to your role (R6). Otherwise finish
    everything else, then stop with `ready to push`.
 6. After a push, open the change request if the contract grants that, then stay in this
@@ -100,9 +100,9 @@ You work in the main checkout. The person starts you there; dispatch does not.
    person asks.
 2. Write no file in the checkout. Plans go where the contract says plans live, in the
    project's own management system. A document that belongs in the repository becomes an
-   issue and is written in a worktree. Nothing stops you from editing; the rule is trusted to
-   you. It does not touch `ec-init` and `ec-onboard`, which the person invokes and which write
-   at the project root.
+   issue and is written in a worktree. Nothing enforces this; it is trusted to you. It does
+   not touch `ec-init` and `ec-onboard`, which the person invokes and which write at the
+   project root.
 3. Collect follow-ups: find the `## Follow-ups` heading in open and recently merged change
    requests and their issues, merge duplicates, and propose issues. The person picks.
 4. Before you answer a question about the whole fleet, such as "can we release?", run the
