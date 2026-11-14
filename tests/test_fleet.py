@@ -1,4 +1,4 @@
-"""fleet.py: config, naming, start. Standard library only, like the script."""
+"""fleet.py: config, naming, start, overview. Standard library only, like the script."""
 from __future__ import annotations
 
 import importlib.util
@@ -23,6 +23,13 @@ elif sys.argv[1] == "capture":
     sys.stdout.write(open(os.path.join(d, sys.argv[2] + ".screen")).read())
 elif sys.argv[1] == "add" and os.path.exists(os.path.join(d, "fail")):
     sys.stderr.write("worktree already exists\\n"); sys.exit(3)
+elif sys.argv[1] == "add" and os.path.exists(os.path.join(d, "exit")):
+    code = int(open(os.path.join(d, "exit")).read())
+    if code < 0:
+        os.kill(os.getpid(), -code)
+    sys.exit(code)
+elif sys.argv[1] == "add" and os.path.exists(os.path.join(d, "read-stdin")):
+    open(os.path.join(d, "stdin.log"), "w").write(sys.stdin.read())
 '''
 
 
@@ -42,6 +49,7 @@ class Base(unittest.TestCase):
         self.fake.write_text(FAKE)
         self.log = self.dir / "log"
         self.cfg = self.dir / "fleet.toml"
+        (self.dir / "xdg").mkdir()
 
     def write_cfg(self, top="", extra=""):
         py, fake = json.dumps(sys.executable), json.dumps(str(self.fake))
@@ -51,13 +59,17 @@ class Base(unittest.TestCase):
             f'status = [{py}, {fake}, "status"]\n'
             f'capture = [{py}, {fake}, "capture", "{{name}}"]\n' + extra)
 
-    def run_fleet(self, *args, config=True, env=None):
-        e = {**os.environ, "FAKE_LOG": str(self.log), "FAKE_DIR": str(self.dir),
-             "EC_FLEET_CONFIG": str(self.cfg if config else self.dir / "absent.toml")}
+    def run_fleet(self, *args, config=True, env=None, stdin=None):
+        e = {**os.environ, "FAKE_LOG": str(self.log), "FAKE_DIR": str(self.dir)}
+        if config:
+            e["EC_FLEET_CONFIG"] = str(self.cfg)
+        else:
+            e.pop("EC_FLEET_CONFIG", None)
+            e["XDG_CONFIG_HOME"] = str(self.dir / "xdg")
         e.pop("TMUX_PANE", None)
         e.update(env or {})
         return subprocess.run([sys.executable, str(FLEET), *args],
-                              capture_output=True, text=True, env=e)
+                              capture_output=True, text=True, env=e, input=stdin)
 
     def logged(self):
         return [json.loads(ln) for ln in self.log.read_text().splitlines()]
@@ -120,6 +132,44 @@ class TestStart(Base):
                                config=False)
             self.assertEqual(r.returncode, 2, bad)
 
+    def test_a_base_that_reads_as_an_option_is_refused(self):
+        for bad in ("-x", "two words", ""):
+            r = self.run_fleet("start", "12", f"--base={bad}", "--host", "claude", "--dry-run",
+                               config=False)
+            self.assertEqual(r.returncode, 2, bad)
+            self.assertIn("--base", r.stderr)
+
+    def test_an_empty_reference_is_refused(self):
+        for bad in ("", "  "):
+            r = self.run_fleet("start", bad, "--name", "x", "--host", "claude", "--dry-run",
+                               config=False)
+            self.assertEqual(r.returncode, 2, repr(bad))
+
+    def test_placeholders_inside_a_value_are_never_expanded(self):
+        r = self.run_fleet("start", "12 {name}", "--host", "claude", "--dry-run", config=False)
+        self.assertEqual(json.loads(r.stdout)[-1],
+                         "Use the ec-fleet skill. Your assignment: issue 12 {name}.")
+        r = self.run_fleet("start", "12", "--name", "a{prompt}b", "--host", "claude",
+                           "--dry-run", config=False)
+        self.assertEqual(json.loads(r.stdout)[2], "a{prompt}b")
+
+    def test_a_missing_explicit_config_is_an_error_not_a_default(self):
+        r = self.run_fleet("start", "12", "--host", "claude", "--dry-run")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn(f"{self.cfg}: no such config file", r.stderr)
+        absent = self.dir / "absent.toml"
+        r = self.run_fleet("--config", str(absent), "start", "12", "--host", "claude",
+                           "--dry-run", config=False)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn(str(absent), r.stderr)
+
+    def test_an_empty_launcher_command_is_an_error(self):
+        for key in ("start", "status", "capture"):
+            self.cfg.write_text(f"[launcher]\n{key} = []\n")
+            r = self.run_fleet("start", "12", "--host", "claude", "--dry-run")
+            self.assertEqual(r.returncode, 2, key)
+            self.assertIn(f"launcher.{key}: expected a non-empty list", r.stderr)
+
     def test_a_mistyped_config_key_is_an_error_not_a_default(self):
         self.cfg.write_text('[launcer]\nstatus = ["x"]\n')
         r = self.run_fleet("start", "12", "--host", "claude", "--dry-run")
@@ -138,6 +188,33 @@ class TestStart(Base):
         r = self.run_fleet("start", "12", "--host", "claude")
         self.assertEqual(r.returncode, 3)
         self.assertIn("worktree already exists", r.stderr)
+
+    def test_a_launcher_that_fails_silently_still_says_so(self):
+        self.write_cfg()
+        for code, want in (("4", 4), ("-15", 1)):
+            (self.dir / "exit").write_text(code)
+            r = self.run_fleet("start", "12", "--host", "claude")
+            self.assertEqual(r.returncode, want, code)
+            self.assertIn(f"fleet: launcher exited with {code}", r.stderr)
+
+    def test_the_launcher_gets_no_input(self):
+        self.write_cfg()
+        (self.dir / "read-stdin").write_text("")
+        r = self.run_fleet("start", "12", "--host", "claude", stdin="y\n")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual((self.dir / "stdin.log").read_text(), "")
+
+    def test_a_launcher_that_cannot_run_is_named(self):
+        launcher = self.dir / "not-executable"
+        launcher.write_text("#!/bin/sh\n")
+        launcher.chmod(0o644)
+        argv0 = json.dumps(str(launcher))
+        self.cfg.write_text(f'[launcher]\nstart = [{argv0}, "{{name}}"]\nstatus = [{argv0}]\n')
+        for args in (("start", "12", "--host", "claude"), ("overview",)):
+            r = self.run_fleet(*args)
+            self.assertEqual(r.returncode, 126, args)
+            self.assertIn(f"fleet: cannot run launcher {launcher}: ", r.stderr)
+            self.assertNotIn("Traceback", r.stderr)
 
     def test_a_missing_launcher_is_named(self):
         self.cfg.write_text('[launcher]\nstart = ["no-such-launcher-xyz", "{name}"]\n')
@@ -227,6 +304,16 @@ class TestLastReturn(unittest.TestCase):
         got = self.f.last_return(block("Choose A or B,\n  risks: of A are high"))
         self.assertEqual(got["questions"], "Choose A or B, risks: of A are high")
 
+    def test_the_four_statuses_are_read(self):
+        for status in ("done", "partial", "blocked", "needs-decision"):
+            got = self.f.last_return(BLOCK.replace("status: needs-decision", f"status: {status}"))
+            self.assertEqual(got["status"], status)
+
+    def test_a_status_that_is_not_one_of_the_four_is_unreadable(self):
+        for line in ("status: done | partial | blocked | needs-decision", "**status:** done"):
+            self.assertIsNone(self.f.last_return(BLOCK.replace("status: needs-decision", line)),
+                              line)
+
     def test_a_block_cut_off_before_its_status_is_unreadable(self):
         self.assertIsNone(self.f.last_return("### RETURN\n"))
 
@@ -285,6 +372,40 @@ class TestOverview(Base):
         (self.dir / "issue-19.screen").write_text("Allow this command? [y/n]\n")
         self.assertIn("no RETURN block on screen", self.run_fleet("overview").stdout)
 
+    def test_a_screen_that_cannot_be_read_says_so(self):
+        self.seed([{"worktree": "issue-19", "status": "done", "pane_id": "%3"},
+                   {"worktree": "issue-12", "status": "working", "pane_id": "%1"}])
+        r = self.run_fleet("overview")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        lines = r.stdout.splitlines()
+        self.assertTrue(lines[1].endswith("could not read its screen"), lines[1])
+        self.assertEqual(lines[2].split(), ["issue-12", "working"])
+        row = json.loads(self.run_fleet("overview", "--json").stdout)[0]
+        self.assertIsNone(row["return_status"])
+        self.assertIsNone(row["questions"])
+
+    def test_a_row_without_a_usable_name_is_not_captured(self):
+        self.seed([{"status": "done", "pane_id": "%2"},
+                   {"worktree": "-x", "status": "done", "pane_id": "%3"}])
+        r = self.run_fleet("overview")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual([c for c in self.logged() if c[0] == "capture"], [])
+        self.assertEqual(r.stdout.count("could not read its screen"), 2)
+
+    def test_a_cell_that_is_not_text_is_shown_as_text(self):
+        self.seed([{"worktree": "issue-15", "status": "done", "agent_kind": 7, "pane_id": "%2"}])
+        (self.dir / "issue-15.screen").write_text(BLOCK)
+        r = self.run_fleet("overview")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout.splitlines()[1].split()[:3], ["issue-15", "done", "7"])
+
+    def test_status_items_that_are_not_sessions_are_an_error(self):
+        self.write_cfg()
+        (self.dir / "status.json").write_text(json.dumps({"agents": ["x"]}))
+        r = self.run_fleet("overview")
+        self.assertEqual(r.returncode, 1)
+        self.assertTrue(r.stderr.startswith("fleet: "), r.stderr)
+
     def test_no_sessions_is_not_an_error(self):
         self.seed([])
         r = self.run_fleet("overview")
@@ -296,6 +417,7 @@ class TestOverview(Base):
         (self.dir / "status.json").write_text("workmux: not in a git repository\n")
         r = self.run_fleet("overview")
         self.assertEqual(r.returncode, 1)
+        self.assertTrue(r.stderr.startswith("fleet: "), r.stderr)
         self.assertIn("not in a git repository", r.stderr)
 
 

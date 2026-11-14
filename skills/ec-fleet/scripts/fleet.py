@@ -41,6 +41,12 @@ class ConfigError(Exception):
     pass
 
 
+class LauncherError(Exception):
+    def __init__(self, argv0: str, e: OSError):
+        super().__init__(f"cannot run launcher {argv0}: {e.strerror or e}")
+        self.code = 127 if isinstance(e, FileNotFoundError) else 126
+
+
 def safe_name(ref: str) -> str:
     name = re.sub(r"[^a-z0-9]+", "-", ref.lower()).strip("-")
     if not name:
@@ -57,6 +63,8 @@ def _check(table: object, allowed: dict, where: str) -> dict:
             raise ConfigError(f"{dotted}: unknown key (allowed: {', '.join(sorted(allowed))})")
         if not isinstance(value, allowed[key]):
             raise ConfigError(f"{dotted}: expected {allowed[key].__name__}")
+        if allowed[key] is list and not value:
+            raise ConfigError(f"{dotted}: expected a non-empty list")
         if allowed[key] is list and not all(isinstance(i, str) for i in value):
             raise ConfigError(f"{dotted}: expected a list of strings")
     return table
@@ -73,8 +81,11 @@ def config_path(path: pathlib.Path | None) -> pathlib.Path:
 
 def load_config(path: pathlib.Path | None) -> dict:
     cfg = copy.deepcopy(DEFAULTS)
+    explicit = path or os.environ.get("EC_FLEET_CONFIG")
     p = config_path(path)
     if not p.exists():
+        if explicit:
+            raise ConfigError(f"{p}: no such config file")
         return cfg
     try:
         data = tomllib.loads(p.read_text())
@@ -100,11 +111,22 @@ def fill(argv: list[str], values: dict[str, str]) -> list[str]:
 
 
 def run_launcher(argv: list[str]) -> subprocess.CompletedProcess:
-    return subprocess.run(argv, capture_output=True, text=True, stdin=subprocess.DEVNULL)
+    try:
+        return subprocess.run(argv, capture_output=True, text=True, stdin=subprocess.DEVNULL)
+    except OSError as e:
+        raise LauncherError(argv[0], e)
+
+
+def check_flag(flag: str, value: str) -> None:
+    if not value or value.startswith("-") or re.search(r"\s", value):
+        raise ConfigError(f"{flag} {value!r} must be non-empty, not start with '-', "
+                          "and contain no whitespace")
 
 
 def start_argv(cfg: dict, ref: str, name: str | None, host: str | None,
                base: str | None) -> tuple[list[str], str]:
+    if not ref.strip():
+        raise ConfigError("the reference must not be empty")
     host = host or cfg["default_host"]
     hosts = cfg["hosts"]
     if not host:
@@ -114,13 +136,14 @@ def start_argv(cfg: dict, ref: str, name: str | None, host: str | None,
         raise ConfigError(f"unknown host {host!r}; known: {', '.join(sorted(hosts))}")
     if name is None:
         name = safe_name(ref)
-    elif not name or name.startswith("-") or re.search(r"\s", name):
-        raise ConfigError(f"--name {name!r} must be non-empty, not start with '-', "
-                          "and contain no whitespace")
+    else:
+        check_flag("--name", name)
+    if base is not None:
+        check_flag("--base", base)
     prompt = hosts[host].get("prompt", PROMPT).replace("{ref}", ref)
     argv = fill(cfg["launcher"]["start"],
                 {"name": name, "agent": hosts[host]["start"], "prompt": prompt})
-    if base:
+    if base is not None:
         argv += [cfg["launcher"]["base_flag"], base]
     return argv, name
 
@@ -130,7 +153,9 @@ RETURN_KEYS = ("status", "task", "changed", "evidence", "findings", "risks", "fo
 KEY_LINE = re.compile(r"^(%s):" % "|".join(RETURN_KEYS))
 NON_ALNUM = re.compile(r"^[^0-9A-Za-z]+")
 FRAMING = re.compile(r"^[\s\u2500-\u257f]+")
+STATUSES = ("done", "partial", "blocked", "needs-decision")
 NO_BLOCK = "no RETURN block on screen"
+NO_SCREEN = "could not read its screen"
 
 
 def last_return(screen: str) -> dict | None:
@@ -154,9 +179,10 @@ def last_return(screen: str) -> dict | None:
             text = FRAMING.sub("", ln).strip()
             if text:
                 fields[key].append(text)
-    if not {"questions", "knowledge"} <= fields.keys() or not " ".join(fields.get("status", [])).strip():
+    status = " ".join(fields.get("status", [])).strip()
+    if not {"questions", "knowledge"} <= fields.keys() or status not in STATUSES:
         return None
-    return {k: " ".join(p for p in fields.get(k, []) if p) for k in ("status", "questions")}
+    return {"status": status, "questions": " ".join(p for p in fields["questions"] if p)}
 
 
 def _clip(text: str, width: int = 100) -> str:
@@ -168,7 +194,7 @@ def collect_rows(cfg: dict) -> list[dict]:
     r = run_launcher(launcher["status"])
     try:
         agents = json.loads(r.stdout)["agents"]
-        if not isinstance(agents, list):
+        if not isinstance(agents, list) or not all(isinstance(a, dict) for a in agents):
             raise TypeError
     except (ValueError, KeyError, TypeError):
         raise ConfigError((r.stderr + r.stdout).strip() or "status printed nothing")
@@ -179,8 +205,10 @@ def collect_rows(cfg: dict) -> list[dict]:
                "state": a.get("status"), "updated_ts": a.get("updated_ts"),
                "self": bool(me) and a.get("pane_id") == me,
                "return_status": None, "questions": None, "captured": False}
-        if row["state"] != "working" and not row["self"]:
-            c = run_launcher(fill(launcher["capture"], {"name": row["name"]}))
+        name = row["name"]
+        usable = isinstance(name, str) and name and not name.startswith("-")
+        if row["state"] != "working" and not row["self"] and usable:
+            c = run_launcher(fill(launcher["capture"], {"name": name}))
             if not c.returncode:
                 row["captured"] = True
                 got = last_return(c.stdout)
@@ -199,10 +227,13 @@ def render_table(rows: list[dict]) -> str:
             q = "(this session)"
         elif r["questions"] is not None:
             q = _clip(r["questions"])
+        elif r["state"] == "working":
+            q = ""
         else:
-            q = NO_BLOCK if r["captured"] else ""
-        table.append((r["name"] or "", r["state"] or "", r["host"] or "",
-                      r["return_status"] or "", q))
+            q = NO_BLOCK if r["captured"] else NO_SCREEN
+        cells = ["" if v is None else str(v)
+                 for v in (r["name"], r["state"], r["host"], r["return_status"])]
+        table.append((*cells, q))
     widths = [max(len(t[i]) for t in table) for i in range(4)]
     return "\n".join(("  ".join(c.ljust(w) for c, w in zip(t, widths)) + "  " + t[4]).rstrip()
                      for t in table)
@@ -211,11 +242,11 @@ def render_table(rows: list[dict]) -> str:
 def overview(cfg: dict, as_json: bool) -> int:
     try:
         rows = collect_rows(cfg)
-    except FileNotFoundError as e:
-        print(f"fleet: launcher not found: {e.filename}", file=sys.stderr)
-        return 127
+    except LauncherError as e:
+        print(f"fleet: {e}", file=sys.stderr)
+        return e.code
     except ConfigError as e:
-        print(e, file=sys.stderr)
+        print(f"fleet: {e}", file=sys.stderr)
         return 1
     if as_json:
         print(json.dumps([{k: v for k, v in r.items() if k != "captured"} for r in rows]))
@@ -252,12 +283,12 @@ def main() -> int:
         return 0
     try:
         r = run_launcher(argv)
-    except FileNotFoundError:
-        print(f"fleet: launcher not found: {argv[0]}", file=sys.stderr)
-        return 127
+    except LauncherError as e:
+        print(f"fleet: {e}", file=sys.stderr)
+        return e.code
     if r.returncode:
-        sys.stderr.write(r.stderr or r.stdout)
-        return r.returncode
+        sys.stderr.write(r.stderr or r.stdout or f"fleet: launcher exited with {r.returncode}\n")
+        return r.returncode if r.returncode > 0 else 1
     print(f"started {name}")
     return 0
 
