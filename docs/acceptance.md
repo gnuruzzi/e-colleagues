@@ -81,7 +81,7 @@ Then, per host, by hand — because no static check can prove a runtime behaviou
 - **Antigravity has no per-project roster.** No workspace directory delivers agents at 1.1.27
   (E18), so the roster is per-user and two projects on one machine share it.
 - **opencode's roster is per-machine too.** `bootstrap.py --scope user` writes the agents to
-  `~/.config/opencode/agents/` and the four skills to `~/.config/opencode/skills/`; nothing
+  `~/.config/opencode/agents/` and the five skills to `~/.config/opencode/skills/`; nothing
   writes them into a project, and there is no bundle or plugin route (E25). The global config is never written, so the tech-lead is chosen per
   session with `--agent`, with Tab in the TUI, or by a `default_agent` the user sets.
 - **An Antigravity re-install merges rather than replaces** (E8), so an update that drops a
@@ -105,3 +105,12 @@ Then, per host, by hand — because no static check can prove a runtime behaviou
   opencode TUI the agent cycle is Shift+Tab, not Tab, and it cycles primaries only; `@` offers
   every specialist and also the built-ins the allowlist denies, and a mention routes through
   the tech-lead. The Antigravity desktop honours an explicit `tools` list the way the CLI does.
+- **`ec-fleet` needs workmux and is measured on Antigravity only** (E26). workmux needs its
+  status hooks set up for every agent CLI it detects (`workmux setup`). On Codex, opencode and
+  Claude Code the skill is UNVERIFIED.
+- **For an Antigravity session workmux reports only `working` and `done`** (E26). A session at
+  one of agy's approval prompts reads `working`, and the overview does not look inside a
+  `working` session, so it cannot show that approval. A session at the first-run trust dialog
+  reads `done`, and the overview shows `no RETURN block on screen`.
+- **Away from the desk rests on each host's own remote feature.** The package builds none, and
+  none is measured reaching a session in a window; E26 records one report for agy 1.5.3.

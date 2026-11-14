@@ -27,7 +27,7 @@ Each is binding. Changing one is a design change: update this table and everythi
 | D3 | **Roster is a catalog with a default of six** — tech-lead, developer, reviewer, security, designer, **platform** (new) | `ec-init` proposes the per-project roster from what the codebase justifies; the user approves it. The roster is a variable, so the managed block, the delegation surface and opencode's `permission.task` must stay consistent with it [OC-03][OC-07] |
 | D4 | **Contract + index + multi-angle audit**, with knowledge in a layered store | `AGENTS.md` stays small; deep knowledge lives outside it; the audit indexes the project's own docs first and only authors a file where the project has no home for that lens |
 | D5 | **Every knowledge file records provenance** (commit sha + paths read) | Staleness detection becomes a `git diff`, so the living-knowledge upgrade is additive rather than a redesign |
-| D6 | **The tech-lead is the only external voice.** Specialists never post; they return structured findings the lead posts verbatim | Read-only specialists need no network, so Codex's `read-only` sandbox is strict *and* usable; Claude's allowlist stripping MCP [CC-09] stops mattering; no specialist needs platform credentials. Retires Q14 |
+| D6 | **Only tech-leads speak and post externally, each within its own assignment.** Specialists never post; they return structured findings the lead posts verbatim | Read-only specialists need no network, so Codex's `read-only` sandbox is strict *and* usable; Claude's allowlist stripping MCP [CC-09] stops mattering; no specialist needs platform credentials. Retires Q14. With one tech-lead, as before; with several, see §17 |
 | D7 | **Portable floor is the tech-lead only.** Specialists ship as native agents exclusively | A skill cannot restrict tools portably, so a skill-adopted reviewer would run in a thread that can write — the exact fail-open the redesign exists to remove |
 | D8 | **The repository is public and self-contained; the evidence ships, the raw research does not** | Superseded on publication. D8 originally kept the sanitized research in-tree; it was removed before going public — 4.7 MB of vendored third-party documentation and the previous package's prompts — so what ships is the *evidence*: `experiments.md` (23 experiments run against the installed tools) and `SUPPORT-MATRIX.md`, which now states all 52 claims in full so every citation resolves inside the repository. No claim id points outward |
 
@@ -309,6 +309,7 @@ e-colleagues/                          # dir name is load-bearing [AG-07][AG-08]
 │   ├── ec-onboard/                    # knowledge: the multi-angle audit
 │   ├── ec-onboard/                     # knowledge: SKILL.md, scripts/knowledge.py
 │   ├── ec-status/                      # staleness: SKILL.md, scripts/status.py
+│   ├── ec-fleet/                       # several tech-leads at once: SKILL.md, scripts/fleet.py
 │   ├── ec-review/  ec-audit/
 │   └── ec-tech-lead/                  # GENERATED portable floor (D7)
 ├── agents/<name>/agent.md             # GENERATED Antigravity dialect
@@ -545,3 +546,73 @@ use it, because every host routes on that sentence.
 reports staleness and the metadata to refresh it exists, but a refresh writes files and needs
 approval. External posting by anyone but the tech-lead, which D6 forecloses. And per-project
 rosters on Antigravity, which the host does not currently allow.
+
+---
+
+## 17. Several tech-leads at once
+
+`ec-fleet` lets one person run several tech-leads at once, one per issue, each in its own git
+worktree and terminal window, with one overview. It is one skill with `scripts/fleet.py`
+beside it, standard library only. The persona and its rendered bodies are unchanged: the rules
+live in the skill, and a tech-lead started without it behaves as before.
+
+**Nothing relays.** Questions and approvals stay in each tech-lead's own session, and the
+person answers there. The dispatching session never sends text or keys to another session, and
+never answers or approves for the person.
+
+**Start and overview.** `fleet.py start <reference> --host <host>` runs
+`workmux add <name> --background --agent "<start command>" --prompt "<prompt>"` (E26), the
+prompt naming the skill and the assignment. `fleet.py overview` reads `workmux status --json`
+(E26); for each session that is not `working` it runs `workmux capture <name> --lines 200`
+(E26) and takes `status` and `questions` from the last RETURN block (§4), only when the block is
+complete on screen, from `### RETURN` through `knowledge:`. Otherwise the row says
+`no RETURN block on screen`. A `working` session is never looked inside.
+
+**Two assignments.** *issue*, one per worktree: the issue is the brief and the person's pick
+approves implementing it, T1 still governing anything beyond; every stop ends with the RETURN
+block, `questions` holding the decision needed or `ready to push`; follow-ups are recorded under
+`## Follow-ups` on its change request or issue. *plan*, in the main checkout, started by the
+person: grooms, creates issues, collects follow-ups, and writes no file in the checkout. D6 is
+read per assignment: an issue tech-lead posts only on its own issue and change request.
+
+**The contract lines** sit under `### Parallel work` in the project bindings. `ec-init` writes
+them only after a yes to "several tech-leads at once?": naming, where plans live, what an issue
+tech-lead may post, whether it may create follow-up issues, whether it may push. A missing line
+never fails a start; its default applies: the name comes from the reference (`12` becomes
+`issue-12`), plans go to the tracker the contract names (else ask), nothing is posted that the
+contract does not already grant, follow-ups are recorded and not created, and a tech-lead stops
+at `ready to push`.
+
+**The config** is optional: `~/.config/e-colleagues/fleet.toml` (under `$XDG_CONFIG_HOME` when
+set) or the path in `$EC_FLEET_CONFIG`. It sets `default_host`, a `start` command and `prompt`
+per host, and the launcher's `start`, `status`, `capture` and `base_flag`; a mistyped key is an
+error. The default start commands are `agy --agent tech-lead` [AG-03],
+`codex --profile e-colleagues` (E14), `opencode --agent tech-lead` [OC-03] and
+`claude --agent tech-lead` [CC-10]. Only the workmux default is tested.
+
+**Prerequisite:** workmux, with its status hooks set up by `workmux setup` for every agent CLI
+it detects. Without them, `workmux add` stopped at its own question about another agent's hooks
+(E26).
+
+**Measured on Antigravity** (E26, agy 1.5.3, workmux 0.1.281):
+
+- an agy session can run `workmux add` and create the worktree;
+- `--agent "agy --agent tech-lead"` starts the tech-lead with its prompt, and it can commit in
+  the worktree;
+- workmux reports only `working` and `done` for it, never `waiting`. A session at one of agy's
+  approval prompts reads `working`, so that prompt shows only in the session or the host's own
+  remote app;
+- every new worktree raises agy's trust dialog, and a session sitting at it reads `done`, so its
+  row says `no RETURN block on screen`. The default start command trusts nothing on the
+  person's behalf: the person accepts the dialog in the new window, or sets their own start
+  command in the config;
+- a capture is the visible screen only, so a block taller than the pane is not read.
+
+**UNVERIFIED:** that a dispatched tech-lead loads the skill from its start prompt, and that the
+overview reads a real stop end to end; all of this on Codex, opencode and Claude Code; and
+remote use on every host. At agy 1.5.3 a session started with `--remote-control` in a window was
+reported reachable from a phone (E26, reported, not measured).
+
+**Prose only:** every rule in the skill, among them the assignments, one voice per assignment,
+the RETURN block at every stop, never answering for the person, and "a planning tech-lead writes
+nothing in the checkout". No host enforces them.

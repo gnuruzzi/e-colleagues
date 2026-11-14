@@ -134,7 +134,7 @@ opencode run --agent tech-lead "use the ec-onboard skill"
 opencode run --agent tech-lead "Review the change in the last commit before we merge it."
 ```
 
-In the TUI, Shift+Tab cycles to the tech-lead and `@` lists the skills and the specialists. opencode has no plugin route for agents (E25), so the agents and the four skills install as real files under `~/.config/opencode/`; your global config is never written.
+In the TUI, Shift+Tab cycles to the tech-lead and `@` lists the skills and the specialists. opencode has no plugin route for agents (E25), so the agents and the five skills install as real files under `~/.config/opencode/`; your global config is never written.
 
 </details>
 
@@ -172,6 +172,17 @@ The tech-lead handles anything you would ask a session, and routes the parts tha
 - *"Audit the CI pipeline and tell me what a new contributor would trip over."* The platform persona, from the workflow files up.
 
 Every delegation ends in a RETURN block the tech-lead relays: status, what changed, evidence (the commands run and their exit codes), findings, risks, follow-ups, and the questions only you can decide. "Done" means reviewed.
+
+## Several issues at once
+
+The `ec-fleet` skill starts one tech-lead per issue, each in its own git worktree and terminal window, and shows in one table which are working and why each stopped:
+
+```text
+start 12 and 15
+overview
+```
+
+Each tech-lead asks its questions and waits for approvals in its own session, and you answer there; nothing is relayed between sessions. It needs workmux, with its status hooks set up by `workmux setup`, and so far it is measured on Antigravity only (E26). There, each new worktree first asks you to trust the folder, and the default start command trusts nothing for you: accept it in that window, or set your own start command in `~/.config/e-colleagues/fleet.toml`.
 
 ## What is guaranteed, and what is only asked
 
