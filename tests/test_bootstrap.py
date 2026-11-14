@@ -470,7 +470,7 @@ class TestUserScopeInstall(Base):
         self.assertEqual(r.returncode, 1)
         self.assertIn("reviewer.md", r.stdout)
 
-    def test_installs_the_four_skills_for_opencode(self):
+    def test_installs_the_five_skills_for_opencode(self):
         """opencode has no plugin to carry the skills, so the user-scope install copies them
         into the skills directory it reads [OC-08], beside the agents."""
         self.seed(**{"AGENTS.md": "# proj\n"})
@@ -481,10 +481,11 @@ class TestUserScopeInstall(Base):
         d = home / ".config" / "opencode" / "skills"
         self.assertEqual(sorted(p.name for p in d.iterdir()),
                          ["ec-fleet", "ec-init", "ec-onboard", "ec-status", "ec-tech-lead"])
-        for name in ("ec-init", "ec-onboard", "ec-status", "ec-tech-lead"):
+        for name in ("ec-fleet", "ec-init", "ec-onboard", "ec-status", "ec-tech-lead"):
             self.assertEqual((d / name / "SKILL.md").read_text(),
                              (ROOT / "skills" / name / "SKILL.md").read_text())
         self.assertTrue((d / "ec-init" / "scripts" / "bootstrap.py").exists())
+        self.assertTrue((d / "ec-fleet" / "scripts" / "fleet.py").exists())
         self.assertEqual(list(d.rglob("__pycache__")), [])
 
     def test_check_notices_a_stale_opencode_skill(self):

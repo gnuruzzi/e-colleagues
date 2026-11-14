@@ -158,3 +158,34 @@ class TestVersionStamp(unittest.TestCase):
         self.assertEqual(r.returncode, 1)
         self.assertIn("VERSION: version 0.0.0", r.stdout)
 
+
+@unittest.skipUnless(yaml, "check.py needs PyYAML")
+class TestSkillsGate(unittest.TestCase):
+    """A skill that quotes the RETURN block must quote the one the personas use."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = pathlib.Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+        (self.root / "tools").mkdir()
+        shutil.copy(ROOT / "tools" / "check.py", self.root / "tools" / "check.py")
+        for d in ("personas", "skills"):
+            shutil.copytree(ROOT / d, self.root / d)
+        self.skill = self.root / "skills" / "ec-fleet" / "SKILL.md"
+
+    def check(self):
+        return subprocess.run([sys.executable, str(self.root / "tools" / "check.py"),
+                               "--skills"], capture_output=True, text=True)
+
+    def test_the_shipped_skills_pass(self):
+        r = self.check()
+        self.assertEqual(r.returncode, 0, r.stdout)
+
+    def test_a_return_block_that_drifted_fails(self):
+        self.skill.write_text(self.skill.read_text().replace(
+            "status: done | partial | blocked | needs-decision", "status: done | blocked"))
+        r = self.check()
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("ec-fleet", r.stdout)
+        self.assertIn("RETURN", r.stdout)
+
