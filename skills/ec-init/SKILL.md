@@ -39,6 +39,19 @@ Ask only what the repository cannot tell you, in one round, and accept "skip" fo
 - The commands for build, test and lint, if they are not already in the repository
 - Where findings should be posted, and by which tool. If the answer is "nowhere", say so
   explicitly — the Tech-Lead then reports to the user only.
+- Will several tech-leads work on this project at once, each on its own issue?
+
+On "no" or "skip" to the last, ask nothing more about it and write nothing for it. On "yes",
+ask these five in one round, each accepting "skip":
+
+- How an issue maps to a branch and worktree name
+- Where plans and planning documents live
+- What an issue tech-lead may post on its own issue and change request
+- Whether an issue tech-lead may create follow-up issues, or only record them
+- Whether a tech-lead may push on its own
+
+State the two defaults: follow-ups are recorded, not created, and a tech-lead stops at
+"ready to push".
 
 ## 4. Write
 
@@ -51,15 +64,16 @@ python3 scripts/bootstrap.py <project-root> --write
 It writes exactly three things: the package region of `AGENTS.md`, a `CLAUDE.md` importing
 it, and `.e-colleagues/lock.json`. Everything outside the markers belongs to the project and
 is left alone. Then fill in the **Platforms and tools** and **Workflow and permissions**
-headings under the project-bindings marker with the interview answers — that region is the
-team's, and no future update rewrites it.
+headings under the project-bindings marker with the interview answers, and on a "yes" to
+several tech-leads add a third heading, `### Parallel work`, with those answers — that region
+is the team's, and no future update rewrites it.
 
 Use `--check` in CI or before an update; it exits non-zero when the file would change or when
 `AGENTS.md` exceeds 30 KiB.
 
 `--scope user` is a different job and writes no project file: it installs the personas for
 this machine — the Codex role files and the tech-lead profile under `~/.codex/`, and the
-opencode agents and these four skills under `~/.config/opencode/` — as real files for the
+opencode agents and these five skills under `~/.config/opencode/` — as real files for the
 chosen profile.
 
 ## 5. Report
