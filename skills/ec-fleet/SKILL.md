@@ -11,35 +11,37 @@ Each tech-lead asks and waits in its own session, and the person answers there.
 
 If you were given an assignment (your start prompt says "Your assignment: issue <ref>", or
 the person told you "plan"), follow it under **Your assignment**. An issue tech-lead ignores
-**Dispatching**. A plan tech-lead uses it when the person asks to start issues or for an
-overview. With no assignment, you are the dispatching session.
+**Dispatching**. A plan tech-lead also uses it: to start the issues the person picks, and for
+the overview. With no assignment, you are the dispatching session.
+
+Whichever part applies, read `AGENTS.md` first if it is not in context.
 
 ## Dispatching
 
 ### Start
 
-Run the script beside this file once per issue:
+Run the script beside this file once per issue the person names:
 
 ```
-python3 scripts/fleet.py start <reference> --host <host>
+python3 scripts/fleet.py start <reference>
 ```
 
-- `--host` is your own host, one of `antigravity`, `codex`, `opencode` or `claude`, unless
-  the person names another. Leave it out if the config sets `default_host`.
+- Pass `--host` only when the person names a host. If the script then says `no host chosen`,
+  run it again with your own: `antigravity`, `codex`, `opencode` or `claude`.
 - Pass `--base` (what to branch from) only when the contract or the person gives it.
 - Pass `--name` when the person gives a name. Otherwise, if the contract has a naming line,
   build the name from it, with no spaces, and pass `--name`. Leave it out, and the script
   names the worktree from the reference (`12` becomes `issue-12`), only when there is no
   naming line, or the line needs the issue's title and you cannot read the tracker.
 
-On success it prints one line, `started <name>`, naming the worktree. If it fails, show its
-message; do not retry with other flags.
+On success it prints one line, `started <name>`, naming the worktree. If it fails any other
+way, show its message; do not retry with other flags.
 
 In a new worktree the host may first show a first-run prompt, such as whether to trust the
 folder, before the tech-lead does anything. The default start command trusts nothing for the
 person: they answer it in that session, or change that host's start command in the config.
-You never answer it. Until then the overview shows that session stopped, with
-`no RETURN block on screen`.
+You never answer it. Until then the overview shows that session as `working` and nothing
+more, or as stopped with `no RETURN block on screen`.
 
 ### Overview
 
@@ -49,14 +51,12 @@ python3 scripts/fleet.py overview
 
 Show the table as printed; `--json` gives the same rows as data. One row per session:
 
-- `working`: leave it alone. Some hosts also report a session waiting at one of the host's
-  own approval prompts as `working`, so one shown as working for a long time may be waiting
-  at such a prompt.
+- `working`: leave it alone. Some hosts also report `working` for a session waiting at one of
+  the host's own prompts, a first-run prompt or an approval; say that it may be.
 - Any other state means it stopped. `RETURN` and `QUESTIONS` come from its last RETURN block:
   why it stopped, and what it needs.
-- `no RETURN block on screen`: the overview reads only what is visible, so the session may be
-  at one of its host's own prompts, a first-run prompt or an approval, or it stopped without a
-  complete block. Say so.
+- `no RETURN block on screen`: the session may be at one of its host's own prompts, or it
+  stopped without a complete block in view. Say so.
 - `(this session)` marks your own row.
 
 ### What you never do
@@ -98,11 +98,11 @@ You work in the main checkout. The person starts you there; dispatch does not.
 
 1. Groom, brainstorm, research, suggest what to take next, and create or edit issues when the
    person asks.
-2. Write no file in the checkout. Plans go where the contract says plans live, in the
-   project's own management system. A document that belongs in the repository becomes an
-   issue and is written in a worktree. Nothing enforces this; it is trusted to you. It does
-   not touch `ec-init` and `ec-onboard`, which the person invokes and which write at the
-   project root.
+2. Write no file in the checkout, and delegate no work that would. Plans go where the
+   contract says plans live, in the project's own management system. A document that belongs
+   in the repository becomes an issue and is written in a worktree. Nothing enforces this; it
+   is trusted to you. It does not cover `ec-init` and `ec-onboard`, which the person invokes
+   and which write at the project root.
 3. Collect follow-ups: find the `## Follow-ups` heading in open and recently merged change
    requests and their issues, merge duplicates, and propose issues. The person picks.
 4. Before you answer a question about the whole fleet, such as "can we release?", run the
@@ -116,12 +116,11 @@ request. Specialists never post.
 
 ## The contract
 
-Read `AGENTS.md` first if it is not in context. The lines this skill uses are under
-**Parallel work** in the project bindings. Where a line is absent, its default applies, and a
-start never fails for it: the name comes from the reference unless the person gives one;
-plans go to the tracker the contract names, and if it names none, ask; post nothing the
-contract does not already grant; record follow-ups, do not create issues; stop at
-`ready to push`.
+The lines this skill uses are under **Parallel work** in the project bindings of `AGENTS.md`.
+Where a line is absent, its default applies, and a start never fails for it: the name comes
+from the reference unless the person gives one; plans go to the tracker the contract names,
+and if it names none, ask; post nothing the contract does not already grant; record
+follow-ups, do not create issues; stop at `ready to push`.
 
 ## The RETURN block
 
@@ -145,9 +144,8 @@ knowledge: <lens file this run would add or change, or none>
 ## The config
 
 Without a config file the launcher is workmux and each host uses the package's default start
-command; only that setup is tested. workmux must be installed with its status hooks set up
-for every agent CLI it detects (`workmux setup`), or it may stop to ask a question and the
-start fails. An optional TOML file, `~/.config/e-colleagues/fleet.toml` (under
-`XDG_CONFIG_HOME` when that is set) or the path in `EC_FLEET_CONFIG`, can change each host's
-start command, for example to add that host's remote flag, set `default_host`, and replace
-the launcher's commands.
+command; only that setup is tested. workmux must be installed, with its status hooks set up
+(`workmux setup`) for each host you start: the overview's states come from them. An optional
+TOML file, `~/.config/e-colleagues/fleet.toml` (under `XDG_CONFIG_HOME` when that is set) or
+the path in `EC_FLEET_CONFIG`, can change each host's start command, for example to add that
+host's remote flag, set `default_host`, and replace the launcher's commands.
