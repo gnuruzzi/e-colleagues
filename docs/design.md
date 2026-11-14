@@ -591,27 +591,31 @@ error. The default start commands are `agy --agent tech-lead` [AG-03],
 `claude --agent tech-lead` [CC-10]. Only the workmux default is tested.
 
 **Prerequisite:** workmux, with its status hooks set up by `workmux setup` for every agent CLI
-it detects. Without them, `workmux add` stopped at its own question about another agent's hooks
-(E26).
+it detects. Without them, `workmux add` run from agy's terminal stopped at its own question about
+another agent's hooks (E26); run by `fleet.py`, which gives it no input, it asked nothing and the
+start went through (E27).
 
-**Measured on Antigravity** (E26, agy 1.5.3, workmux 0.1.281):
+**Measured on Antigravity** (E26, E27, agy 1.5.3, workmux 0.1.281):
 
 - an agy session can run `workmux add` and create the worktree;
 - `--agent "agy --agent tech-lead"` starts the tech-lead with its prompt, and it can commit in
   the worktree;
+- a tech-lead started by `fleet.py start` loads `ec-fleet` from that prompt, and the overview
+  reads its stop from the screen: `done`, the RETURN `status` and its question (E27);
 - workmux reports only `working` and `done` for it, never `waiting`. A session at one of agy's
   approval prompts reads `working`, so that prompt shows only in the session or the host's own
   remote app;
-- every new worktree raises agy's trust dialog, and a session sitting at it reads `done`, so its
-  row says `no RETURN block on screen`. The default start command trusts nothing on the
+- every new worktree raises agy's trust dialog, and the start prompt runs behind it. With agy
+  set to ask before every command, a tech-lead started by `fleet.py` waits there at the approval
+  for its first command, so it reads `working` and its row shows only that (E27); a start prompt
+  that needs no tool read `done` there (E26). The default start command trusts nothing on the
   person's behalf: the person accepts the dialog in the new window, or sets their own start
   command in the config;
 - a capture is the visible screen only, so a block taller than the pane is not read.
 
-**UNVERIFIED:** that a dispatched tech-lead loads the skill from its start prompt, and that the
-overview reads a real stop end to end; all of this on Codex, opencode and Claude Code; and
-remote use on every host. At agy 1.5.3 a session started with `--remote-control` in a window was
-reported reachable from a phone (E26, reported, not measured).
+**UNVERIFIED:** all of this on Codex, opencode and Claude Code; and remote use on every host.
+At agy 1.5.3 a session started with `--remote-control` in a window was reported reachable from
+a phone (E26, reported, not measured).
 
 **Prose only:** every rule in the skill, among them the assignments, one voice per assignment,
 the RETURN block at every stop, never answering for the person, and "a planning tech-lead writes
