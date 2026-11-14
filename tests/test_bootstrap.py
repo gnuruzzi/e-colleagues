@@ -480,7 +480,7 @@ class TestUserScopeInstall(Base):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         d = home / ".config" / "opencode" / "skills"
         self.assertEqual(sorted(p.name for p in d.iterdir()),
-                         ["ec-init", "ec-onboard", "ec-status", "ec-tech-lead"])
+                         ["ec-fleet", "ec-init", "ec-onboard", "ec-status", "ec-tech-lead"])
         for name in ("ec-init", "ec-onboard", "ec-status", "ec-tech-lead"):
             self.assertEqual((d / name / "SKILL.md").read_text(),
                              (ROOT / "skills" / name / "SKILL.md").read_text())
