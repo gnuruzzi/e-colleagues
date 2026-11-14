@@ -560,20 +560,26 @@ live in the skill, and a tech-lead started without it behaves as before.
 person answers there. The dispatching session never sends text or keys to another session, and
 never answers or approves for the person.
 
-**Start and overview.** `fleet.py start <reference> --host <host>` runs
+**Start and overview.** `fleet.py start <reference> [--host <host>]` runs
 `workmux add <name> --background --agent "<start command>" --prompt "<prompt>"` (E26), the
-prompt naming the skill and the assignment. `fleet.py overview` reads `workmux status --json`
-(E26); for each session that is not `working` it runs `workmux capture <name> --lines 200`
-(E26) and takes `status` and `questions` from the last RETURN block (§4), only when the block is
-complete on screen, from `### RETURN` through `knowledge:`. Otherwise the row says
-`no RETURN block on screen`. A `working` session is never looked inside.
+prompt naming the skill and the assignment. The skill passes `--host` only when the person
+names a host; E27's `start 12 --host antigravity` came from its earlier wording.
+`fleet.py overview` reads `workmux status --json` (E26); for each session that is not
+`working`, other than its own, it runs `workmux capture <name> --lines 200` (E26) and takes
+`status` and `questions` from the last RETURN block (§4), only when the block is complete on
+screen, from `### RETURN` through `knowledge:`, and its `status` is one of the four. Otherwise
+the row says `no RETURN block on screen`, or `could not read its screen` when no capture
+succeeded. A `working` session is never looked inside. A session that stops later without a
+block, with an older block still in view, shows the older status and question. The caller's
+own row, marked `(this session)`, is found by `$TMUX_PANE`, measured under tmux only (E27).
 
 **Two assignments.** *issue*, one per worktree: the issue is the brief and the person's pick
 approves implementing it, T1 still governing anything beyond; every stop ends with the RETURN
 block, `questions` holding the decision needed or `ready to push`; follow-ups are recorded under
 `## Follow-ups` on its change request or issue. *plan*, in the main checkout, started by the
-person: grooms, creates issues, collects follow-ups, and writes no file in the checkout. D6 is
-read per assignment: an issue tech-lead posts only on its own issue and change request.
+person: grooms, creates issues, collects follow-ups, and writes no file in the checkout, nor
+delegates work that would. D6 is read per assignment: an issue tech-lead posts only on its own
+issue and change request.
 
 **The contract lines** sit under `### Parallel work` in the project bindings. `ec-init` writes
 them only after a yes to "several tech-leads at once?": naming, where plans live, what an issue
@@ -584,16 +590,20 @@ contract does not already grant, follow-ups are recorded and not created, and a 
 at `ready to push`.
 
 **The config** is optional: `~/.config/e-colleagues/fleet.toml` (under `$XDG_CONFIG_HOME` when
-set) or the path in `$EC_FLEET_CONFIG`. It sets `default_host`, a `start` command and `prompt`
-per host, and the launcher's `start`, `status`, `capture` and `base_flag`; a mistyped key is an
-error. The default start commands are `agy --agent tech-lead` [AG-03],
+set) or the path in `$EC_FLEET_CONFIG` or `--config`. It sets `default_host`, a `start` command
+and `prompt` per host, and the launcher's `start`, `status`, `capture` and `base_flag`; a
+mistyped key, or a named path that does not exist, is an error. `base_flag` defaults to
+`--base`, passed through as workmux's own `--base`, read from its help at 0.1.281 and
+UNVERIFIED by experiment. The default start commands are `agy --agent tech-lead` [AG-03],
 `codex --profile e-colleagues` (E14), `opencode --agent tech-lead` [OC-03] and
 `claude --agent tech-lead` [CC-10]. Only the workmux default is tested.
 
-**Prerequisite:** workmux, with its status hooks set up by `workmux setup` for every agent CLI
-it detects. Without them, `workmux add` run from agy's terminal stopped at its own question about
-another agent's hooks (E26); run by `fleet.py`, which gives it no input, it asked nothing and the
-start went through (E27).
+**Prerequisite:** workmux, with its status hooks set up for each host it starts; they are what
+report `working` and `done` (E26 read the installed hooks; `workmux setup`, the command
+workmux's documentation gives for installing them, was not run). `workmux add` run from agy's
+terminal stopped at workmux's question about another agent's hooks (E26); run by `fleet.py` it
+asked nothing and the start went through (E27). `fleet.py` gives the launcher no input; that
+this is the reason is an inference (E27).
 
 **Measured on Antigravity** (E26, E27, agy 1.5.3, workmux 0.1.281):
 
@@ -603,8 +613,8 @@ start went through (E27).
 - a tech-lead started by `fleet.py start` loads `ec-fleet` from that prompt, and the overview
   reads its stop from the screen: `done`, the RETURN `status` and its question (E27);
 - workmux reports only `working` and `done` for it, never `waiting`. A session at one of agy's
-  approval prompts reads `working`, so that prompt shows only in the session or the host's own
-  remote app;
+  approval prompts reads `working`, so the overview does not show that prompt; it is on that
+  session's screen (E26);
 - every new worktree raises agy's trust dialog, and the start prompt runs behind it. With agy
   set to ask before every command, a tech-lead started by `fleet.py` waits there at the approval
   for its first command, so it reads `working` and its row shows only that (E27); a start prompt

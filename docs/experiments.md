@@ -32,6 +32,7 @@ Tranches: **A** automated, **B** interactive — needing a TTY or a trust dialog
 | — | C | the 2026-09-27 snapshot: Claude 2.1.283, Codex 0.154.0, agy 1.2.10, desktop 2.17.0 | **settled** (E24); opencode 2.0.18 in the E20 addendum |
 | — | A | can a plugin, a `references` entry or a skill source deliver agents to an opencode project | **settled** (E25): no — agents come only from the two directories and the config key; a plugin can add commands and skills |
 | — | B | a fleet of Antigravity tech-leads through workmux: dispatch from a session, prompt delivery, commit, status values, the captured screen | **settled** (E26): dispatch from a session, prompt delivery and commit hold, with stops that need the person; the states item holds only in part, because workmux reports only `working` and `done` for agy |
+| — | B | the fleet skill end to end on Antigravity: a dispatched tech-lead loads `ec-fleet` from its start prompt, and the overview reads its stop | **settled** (E27): both hold; a session at the first-run trust dialog read `working`, not `done`, because its first command waited for approval behind the dialog |
 
 ---
 

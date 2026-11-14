@@ -22,8 +22,8 @@ the feature was introduced in. Below it, nothing is promised.
 | Python | **3.11** | `tomllib` is standard library from 3.11; the shipped scripts use nothing else |
 
 `tools/gen.py` and `tools/check.py` additionally need PyYAML. Anything that ships to a user —
-`bootstrap.py`, `knowledge.py`, `status.py` — is standard library only, because it runs on
-machines this project does not control.
+`bootstrap.py`, `knowledge.py`, `status.py`, `fleet.py` — is standard library only, because it
+runs on machines this project does not control.
 
 ## What the package guarantees, and what it only asks for
 
@@ -106,10 +106,11 @@ Then, per host, by hand — because no static check can prove a runtime behaviou
   opencode TUI the agent cycle is Shift+Tab, not Tab, and it cycles primaries only; `@` offers
   every specialist and also the built-ins the allowlist denies, and a mention routes through
   the tech-lead. The Antigravity desktop honours an explicit `tools` list the way the CLI does.
-- **`ec-fleet` needs workmux and is measured on Antigravity only** (E26). workmux needs its
-  status hooks set up for every agent CLI it detects (`workmux setup`), although run by
-  `fleet.py`, with no input, it did not stop to ask about another agent's hooks (E27). On Codex,
-  opencode and Claude Code the skill is UNVERIFIED.
+- **`ec-fleet` needs workmux and is measured on Antigravity only** (E26, E27). workmux needs its
+  status hooks set up for each host it starts (`workmux setup`); they report the overview's
+  states. Run by `fleet.py`, which gives it no input, it did not stop to ask about another
+  agent's hooks (E27); that the missing input is why is an inference. On Codex, opencode and
+  Claude Code the skill is UNVERIFIED.
 - **For an Antigravity session workmux reports only `working` and `done`** (E26). A session at
   one of agy's approval prompts reads `working`, and the overview does not look inside a
   `working` session, so it cannot show that approval. A tech-lead started by `fleet.py` runs its
