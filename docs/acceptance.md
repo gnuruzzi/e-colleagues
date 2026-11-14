@@ -84,8 +84,9 @@ Then, per host, by hand — because no static check can prove a runtime behaviou
   `~/.config/opencode/agents/` and the five skills to `~/.config/opencode/skills/`; nothing
   writes them into a project, and there is no bundle or plugin route (E25). The global config is never written, so the tech-lead is chosen per
   session with `--agent`, with Tab in the TUI, or by a `default_agent` the user sets.
-- **An Antigravity re-install merges rather than replaces** (E8), so an update that drops a
-  persona leaves the old agent in place and selectable. Uninstall first when the roster shrinks.
+- **An Antigravity re-install merged at agy 1.1.27** (E8), leaving a dropped persona selectable;
+  at 1.5.3 one install over an existing one replaced it (E27). Uninstall first when the roster
+  shrinks.
 - **`AGENTS.md` never reaches an Antigravity agent** (E19). The managed block is invisible
   there, which is why each rendered body carries the contract itself.
 - **A project `.claude/settings.json` `agent` key is not trust-gated** (E21) and replaces the

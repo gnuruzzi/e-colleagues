@@ -1668,7 +1668,7 @@ $ agy plugin list
 
 The installed `skills/ec-fleet/SKILL.md`, `skills/ec-fleet/scripts/fleet.py` and `agents/tech-lead/agent.md` are byte-identical to the repository's (`cmp` rc 0 for each).
 
-**At 1.5.3 the install replaced the old one; it did not merge.** "replaced existing installation" is literal. Before, the destination held 116 files, 29 of them absent from the source: the earlier install's `.git/` directory and two `__pycache__/*.pyc` files. Afterwards it held exactly the export's 87 files, path for path, and the 29 were gone. E8 measured the opposite at agy 1.1.27, where a file deleted from the source survived a re-install. This entry records the flip and changes no document that rests on E8's merge finding.
+**At 1.5.3 the install replaced the old one; it did not merge.** "replaced existing installation" is literal. Before, the destination held 116 files, 29 of them absent from the source: the earlier install's `.git/` directory and two `__pycache__/*.pyc` files. Afterwards it held exactly the export's 87 files, path for path, and the 29 were gone. E8 measured the opposite at agy 1.1.27, where a file deleted from the source survived a re-install, so on this one run at 1.5.3 the finding contradicts E8. `docs/acceptance.md` is corrected in this change. The other places that state E8's merge finding still say "merges", and are left for a re-verification of the Antigravity claims: the README's Antigravity block, `docs/design.md` §2.2 (`--prune` on Antigravity) and §12 (updates in a consumer's tools), and claim AG-08 in `docs/SUPPORT-MATRIX.md`.
 
 ### 2. The dispatching session starts issue 12
 
