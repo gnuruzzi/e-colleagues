@@ -143,7 +143,9 @@ def last_return(screen: str) -> dict | None:
     for ln in lines[heads[-1] + 1:]:
         bare = NON_ALNUM.sub("", ln)
         m = KEY_LINE.match(bare)
-        if m:
+        # Keys come in a fixed order, so a key that is not later than the field
+        # being read is part of that field's text.
+        if m and (key is None or RETURN_KEYS.index(m.group(1)) > RETURN_KEYS.index(key)):
             key = m.group(1)
             fields[key] = [bare[m.end():].strip()]
         elif key:
@@ -152,7 +154,7 @@ def last_return(screen: str) -> dict | None:
             text = FRAMING.sub("", ln).strip()
             if text:
                 fields[key].append(text)
-    if not " ".join(fields.get("status", [])).strip():
+    if not {"questions", "knowledge"} <= fields.keys() or not " ".join(fields.get("status", [])).strip():
         return None
     return {k: " ".join(p for p in fields.get(k, []) if p) for k in ("status", "questions")}
 

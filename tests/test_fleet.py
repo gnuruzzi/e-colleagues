@@ -209,6 +209,24 @@ class TestLastReturn(unittest.TestCase):
         framed = "\n".join("\u2502  " + ln for ln in BLOCK.splitlines())
         self.assertEqual(self.f.last_return(framed)["status"], "needs-decision")
 
+    def test_a_block_cut_off_before_knowledge_is_unreadable(self):
+        cut = "### RETURN\nstatus: partial\ntask: x\nquestions: Which one?\n>\n? for shortcuts\n"
+        self.assertIsNone(self.f.last_return(cut))
+
+    def test_a_newer_cut_off_block_does_not_fall_back_to_an_older_one(self):
+        cut = "### RETURN\nstatus: partial\ntask: x\nquestions: Which one?\n>\n"
+        self.assertIsNone(self.f.last_return(BLOCK + "\n" + cut))
+
+    def test_a_continuation_that_starts_with_an_earlier_key_stays_in_the_question(self):
+        def block(question):
+            return ("### RETURN\nstatus: partial\ntask: x\nchanged: none\nevidence: none\n"
+                    "findings: none\nrisks: none\nfollow-ups: none\n"
+                    f"questions: {question}\nknowledge: none\n")
+        got = self.f.last_return(block("Is this ok?\n  status: unclear to me"))
+        self.assertEqual(got, {"status": "partial", "questions": "Is this ok? status: unclear to me"})
+        got = self.f.last_return(block("Choose A or B,\n  risks: of A are high"))
+        self.assertEqual(got["questions"], "Choose A or B, risks: of A are high")
+
     def test_a_block_cut_off_before_its_status_is_unreadable(self):
         self.assertIsNone(self.f.last_return("### RETURN\n"))
 
