@@ -125,6 +125,103 @@ def start_argv(cfg: dict, ref: str, name: str | None, host: str | None,
     return argv, name
 
 
+RETURN_KEYS = ("status", "task", "changed", "evidence", "findings", "risks", "follow-ups",
+               "questions", "knowledge")
+KEY_LINE = re.compile(r"^(%s):" % "|".join(RETURN_KEYS))
+NON_ALNUM = re.compile(r"^[^0-9A-Za-z]+")
+FRAMING = re.compile(r"^[\s\u2500-\u257f]+")
+NO_BLOCK = "no RETURN block on screen"
+
+
+def last_return(screen: str) -> dict | None:
+    lines = screen.splitlines()
+    heads = [i for i, ln in enumerate(lines) if "### RETURN" in ln]
+    if not heads:
+        return None
+    fields: dict[str, list[str]] = {}
+    key = None
+    for ln in lines[heads[-1] + 1:]:
+        bare = NON_ALNUM.sub("", ln)
+        m = KEY_LINE.match(bare)
+        if m:
+            key = m.group(1)
+            fields[key] = [bare[m.end():].strip()]
+        elif key:
+            # A continuation loses only whitespace and box-drawing, so a value
+            # that starts with "(" survives.
+            text = FRAMING.sub("", ln).strip()
+            if text:
+                fields[key].append(text)
+    if not " ".join(fields.get("status", [])).strip():
+        return None
+    return {k: " ".join(p for p in fields.get(k, []) if p) for k in ("status", "questions")}
+
+
+def _clip(text: str, width: int = 100) -> str:
+    return text if len(text) <= width else text[:width - 1] + "\u2026"
+
+
+def collect_rows(cfg: dict) -> list[dict]:
+    launcher = cfg["launcher"]
+    r = run_launcher(launcher["status"])
+    try:
+        agents = json.loads(r.stdout)["agents"]
+        if not isinstance(agents, list):
+            raise TypeError
+    except (ValueError, KeyError, TypeError):
+        raise ConfigError((r.stderr + r.stdout).strip() or "status printed nothing")
+    me = os.environ.get("TMUX_PANE")
+    rows = []
+    for a in agents:
+        row = {"name": a.get("worktree"), "branch": a.get("branch"), "host": a.get("agent_kind"),
+               "state": a.get("status"), "updated_ts": a.get("updated_ts"),
+               "self": bool(me) and a.get("pane_id") == me,
+               "return_status": None, "questions": None, "captured": False}
+        if row["state"] != "working" and not row["self"]:
+            c = run_launcher(fill(launcher["capture"], {"name": row["name"]}))
+            if not c.returncode:
+                row["captured"] = True
+                got = last_return(c.stdout)
+                if got:
+                    row["return_status"], row["questions"] = got["status"], got["questions"]
+        rows.append(row)
+    return rows
+
+
+def render_table(rows: list[dict]) -> str:
+    if not rows:
+        return "no sessions"
+    table = [("NAME", "STATE", "HOST", "RETURN", "QUESTIONS")]
+    for r in rows:
+        if r["self"]:
+            q = "(this session)"
+        elif r["questions"] is not None:
+            q = _clip(r["questions"])
+        else:
+            q = NO_BLOCK if r["captured"] else ""
+        table.append((r["name"] or "", r["state"] or "", r["host"] or "",
+                      r["return_status"] or "", q))
+    widths = [max(len(t[i]) for t in table) for i in range(4)]
+    return "\n".join(("  ".join(c.ljust(w) for c, w in zip(t, widths)) + "  " + t[4]).rstrip()
+                     for t in table)
+
+
+def overview(cfg: dict, as_json: bool) -> int:
+    try:
+        rows = collect_rows(cfg)
+    except FileNotFoundError as e:
+        print(f"fleet: launcher not found: {e.filename}", file=sys.stderr)
+        return 127
+    except ConfigError as e:
+        print(e, file=sys.stderr)
+        return 1
+    if as_json:
+        print(json.dumps([{k: v for k, v in r.items() if k != "captured"} for r in rows]))
+    else:
+        print(render_table(rows))
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", type=pathlib.Path)
@@ -136,10 +233,14 @@ def main() -> int:
     st.add_argument("--base")
     st.add_argument("--dry-run", action="store_true",
                     help="print the launcher argv as JSON and run nothing")
+    ov = sub.add_parser("overview", help="one table of every session and why it stopped")
+    ov.add_argument("--json", action="store_true")
     a = ap.parse_args()
 
     try:
         cfg = load_config(a.config)
+        if a.command == "overview":
+            return overview(cfg, a.json)
         argv, name = start_argv(cfg, a.ref, a.name, a.host, a.base)
     except (ConfigError, ValueError) as e:
         print(f"fleet: {e}", file=sys.stderr)
