@@ -12,7 +12,9 @@ this project uses semantic versioning from 0.1.0 onward.
   from its last RETURN block. Questions and approvals stay in each session. The script only
   starts, lists and reads; the dispatching session is told never to send to another session or
   answer for the person, a rule and not a guarantee. Needs workmux; measured on Antigravity
-  only (E26, E27).
+  only (E26, E27). There the script trusts each new worktree for its own session, so agy's
+  trust dialog does not stop the start and nothing is saved (E28); `trust = ""` in the config
+  keeps the dialog.
 - **`ec-init` asks whether several tech-leads will work at once**, and only on a yes asks for
   the `### Parallel work` lines: naming, where plans live, what an issue tech-lead may post,
   follow-up issues, pushing.

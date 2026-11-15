@@ -18,7 +18,9 @@ import tomllib
 DEFAULTS = {
     "default_host": None,
     "hosts": {
-        "antigravity": {"start": "agy --agent tech-lead"},
+        # agy keeps trust per exact path, and --settings is for one session and never saved.
+        "antigravity": {"start": "agy --agent tech-lead",
+                        "trust": "--settings '{\"trustedWorkspaces\":[\"{worktree}\"]}'"},
         "codex": {"start": "codex --profile e-colleagues"},
         "opencode": {"start": "opencode --agent tech-lead"},
         "claude": {"start": "claude --agent tech-lead"},
@@ -29,12 +31,14 @@ DEFAULTS = {
         "base_flag": "--base",
         "status": ["workmux", "status", "--json"],
         "capture": ["workmux", "capture", "{name}", "--lines", "200"],
+        "where": ["workmux", "add", "{name}", "--dry-run"],
     },
 }
 PROMPT = "Use the ec-fleet skill. Your assignment: issue {ref}."
 
-HOST_KEYS = {"start": str, "prompt": str}
-LAUNCHER_KEYS = {"start": list, "status": list, "capture": list, "base_flag": str}
+HOST_KEYS = {"start": str, "prompt": str, "trust": str}
+LAUNCHER_KEYS = {"start": list, "status": list, "capture": list, "where": list, "base_flag": str}
+NO_PATH = "could not learn the worktree's path, so the session may open at its host's trust prompt"
 
 
 class ConfigError(Exception):
@@ -123,8 +127,22 @@ def check_flag(flag: str, value: str) -> None:
                           "and contain no whitespace")
 
 
-def start_argv(cfg: dict, ref: str, name: str | None, host: str | None,
-               base: str | None) -> tuple[list[str], str]:
+def worktree_path(cfg: dict, name: str) -> str | None:
+    try:
+        r = run_launcher(fill(cfg["launcher"]["where"], {"name": name}))
+    except LauncherError:
+        return None
+    lines = [ln.strip() for ln in r.stdout.splitlines() if ln.strip()]
+    labelled = [ln for ln in lines if ln.startswith("Worktree:")]
+    path = labelled[0][len("Worktree:"):].strip() if labelled else "".join(lines[:1])
+    # The path lands inside quotes in the host's command, so one that could end them is refused.
+    if r.returncode or not os.path.isabs(path) or re.search(r"['\"\\\x00-\x1f]", path):
+        return None
+    return path
+
+
+def start_argv(cfg: dict, ref: str, name: str | None, host: str | None, base: str | None,
+               dry_run: bool = False) -> tuple[list[str], str, bool]:
     if not ref.strip():
         raise ConfigError("the reference must not be empty")
     host = host or cfg["default_host"]
@@ -141,11 +159,16 @@ def start_argv(cfg: dict, ref: str, name: str | None, host: str | None,
     if base is not None:
         check_flag("--base", base)
     prompt = hosts[host].get("prompt", PROMPT).replace("{ref}", ref)
-    argv = fill(cfg["launcher"]["start"],
-                {"name": name, "agent": hosts[host]["start"], "prompt": prompt})
+    agent, trust, trusted = hosts[host]["start"], hosts[host].get("trust", ""), True
+    if "{worktree}" in trust and not dry_run:
+        path = worktree_path(cfg, name)
+        trust, trusted = (trust.replace("{worktree}", path), True) if path else ("", False)
+    if trust:
+        agent += " " + trust
+    argv = fill(cfg["launcher"]["start"], {"name": name, "agent": agent, "prompt": prompt})
     if base is not None:
         argv += [cfg["launcher"]["base_flag"], base]
-    return argv, name
+    return argv, name, trusted
 
 
 RETURN_KEYS = ("status", "task", "changed", "evidence", "findings", "risks", "follow-ups",
@@ -265,7 +288,8 @@ def main() -> int:
     st.add_argument("--host")
     st.add_argument("--base")
     st.add_argument("--dry-run", action="store_true",
-                    help="print the launcher argv as JSON and run nothing")
+                    help="print the launcher argv as JSON and run nothing; "
+                         "{worktree} stays unfilled")
     ov = sub.add_parser("overview", help="one table of every session and why it stopped")
     ov.add_argument("--json", action="store_true")
     a = ap.parse_args()
@@ -274,13 +298,15 @@ def main() -> int:
         cfg = load_config(a.config)
         if a.command == "overview":
             return overview(cfg, a.json)
-        argv, name = start_argv(cfg, a.ref, a.name, a.host, a.base)
+        argv, name, trusted = start_argv(cfg, a.ref, a.name, a.host, a.base, a.dry_run)
     except (ConfigError, ValueError) as e:
         print(f"fleet: {e}", file=sys.stderr)
         return 2
     if a.dry_run:
         print(json.dumps(argv))
         return 0
+    if not trusted:
+        print(f"fleet: {NO_PATH}", file=sys.stderr)
     try:
         r = run_launcher(argv)
     except LauncherError as e:

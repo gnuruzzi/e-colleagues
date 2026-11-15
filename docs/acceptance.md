@@ -113,8 +113,11 @@ Then, per host, by hand — because no static check can prove a runtime behaviou
   Claude Code the skill is UNVERIFIED.
 - **For an Antigravity session workmux reports only `working` and `done`** (E26). A session at
   one of agy's approval prompts reads `working`, and the overview does not look inside a
-  `working` session, so it cannot show that approval. A tech-lead started by `fleet.py` runs its
-  start prompt behind the first-run trust dialog and, with agy set to ask before every command,
-  waits there at the approval for its first command, so it too reads `working` (E27).
+  `working` session, so it cannot show that approval.
+- **`fleet.py` trusts a new Antigravity worktree for its own session**, so agy's trust dialog
+  does not show and nothing is saved (E28). It reads the path from workmux's `--dry-run`
+  output, which is not a promised interface. When it cannot learn the path, or with
+  `trust = ""` in the config, the dialog shows, the start prompt runs behind it and, with agy
+  set to ask before every command, the session waits there and reads `working` (E27).
 - **Away from the desk rests on each host's own remote feature.** The package builds none, and
   none is measured reaching a session in a window; E26 records one report for agy 1.5.3.

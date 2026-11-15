@@ -33,6 +33,7 @@ Tranches: **A** automated, **B** interactive — needing a TTY or a trust dialog
 | — | A | can a plugin, a `references` entry or a skill source deliver agents to an opencode project | **settled** (E25): no — agents come only from the two directories and the config key; a plugin can add commands and skills |
 | — | B | a fleet of Antigravity tech-leads through workmux: dispatch from a session, prompt delivery, commit, status values, the captured screen | **settled** (E26): dispatch from a session, prompt delivery and commit hold, with stops that need the person; the states item holds only in part, because workmux reports only `working` and `done` for agy |
 | — | B | the fleet skill end to end on Antigravity: a dispatched tech-lead loads `ec-fleet` from its start prompt, and the overview reads its stop | **settled** (E27): both hold; a session at the first-run trust dialog read `working`, not `done`, because its first command waited for approval behind the dialog |
+| — | B | can `fleet.py` start an Antigravity tech-lead in a new worktree without agy's trust dialog | **settled** (E28): yes — it reads the path from `workmux add <name> --dry-run` and passes it in a session-only `trustedWorkspaces` setting; nothing is saved |
 
 ---
 
@@ -1847,3 +1848,121 @@ Its reply showed the table, then: `issue-12 has stopped (RETURN: blocked) and is
 - Codex, opencode and Claude Code, and remote use on any host.
 
 **Host state.** The plugin install replaced `~/.gemini/config/plugins/e-colleagues/` with this package's tracked files at `c2d6b91` (five skills, six agents), as the owner approved, and that install was left in place. agy wrote `<tmp>/repo__worktrees/issue-12` into `trustedWorkspaces` in `~/.gemini/antigravity-cli/settings.json` when its dialog was accepted. That entry is the file's only change (2,866 bytes before, 3,018 after), and it now points at a path that no longer exists. The dispatching session's session-only setting saved nothing. agy also kept its usual per-session records under `~/.gemini/antigravity-cli/` (conversations, transcripts, logs, prompt history), and workmux appended to its log. workmux kept a state file for each of the two probe panes under `~/.local/state/workmux/agents/`; both were removed, and the list of workmux state files matches the one taken before. No `setup.json` or `sent/` was created. `~/.gemini/config/config.json`, `~/.gemini/settings.json`, `~/.gemini/config/hooks.json` and `~/.copilot/hooks/workmux-status.json` have the same hashes as before, and the workmux config was not modified. `workmux remove -f issue-12` printed `✓ Removed worktree 'issue-12' and branch 'issue-12'`. Afterwards `workmux status --json` in `<tmp>/repo` listed `"agents": []`, `git worktree list` listed only `<tmp>/repo`, the probe's tmux session was killed, and no agy process remained.
+
+---
+
+## E28 — a fleet tech-lead opens in a new worktree with no trust dialog: a session-only trust setting carrying the path workmux reports before it creates anything
+
+**Date** 2026-11-15. **agy 1.5.3**, model Gemini 4 Argon (High), the configured default; **workmux 0.1.281**; **tmux 3.8**. Tranche B.
+
+E26 found that every new worktree raises agy's trust dialog, that trust is kept per exact path, and that `--settings` with `trustedWorkspaces` avoids the dialog for one session in a folder whose path is known. E27 found what the dialog costs: the started session sits behind it and reads `working`. The open question was whether `fleet.py start` can hand a new worktree's session that setting, when workmux and not the script chooses the worktree's path.
+
+Everything ran in a throwaway repository, `<tmp>/repo` (`git init`, one commit, a repository-local identity, no signing), from a tmux session created for the probe, `e28-probe`. Every start was run by `fleet.py` in that session's first pane, with a config file that shortens the start prompt to `Reply with the single word ready, then stop.` so that each run costs one short turn. The hash of `~/.gemini/antigravity-cli/settings.json` was taken before the first step and after each one.
+
+### 1. agy has no trust flag, and the setting needs the absolute path
+
+`agy --help` at 1.5.3 lists no flag for trust. The one route is the setting:
+
+```
+  --settings    Settings for this session only, never saved: a JSON object of settings.json keys, inline or as a file path
+```
+
+A search of the binary's strings for trust settings found only `json:"trustedWorkspaces,omitempty"`. That is a search, not proof that no other key exists.
+
+A relative path is not accepted. In a new worktree:
+
+```console
+$ agy --agent tech-lead --settings '{"trustedWorkspaces":["."]}'
+Accessing workspace:
+<tmp>/repo__worktrees/issue-12
+Do you trust the contents of this project?
+```
+
+### 2. workmux passes the start command's arguments literally
+
+The first attempt let the shell in the new pane supply the path. The host's start command was `agy --agent tech-lead --settings "{\"trustedWorkspaces\":[\"$PWD\"]}"`. workmux typed this into the pane:
+
+```console
+$ agy --agent tech-lead --settings '{"trustedWorkspaces":["$PWD"]}' -i "$(cat .workmux/PROMPT-issue-12.md)"
+```
+
+and the process list showed the argument as `{"trustedWorkspaces":["$PWD"]}`. workmux re-quotes each argument, so nothing in the start command is expanded in the pane, and the dialog showed. The path has to be known before the start.
+
+### 3. workmux reports the path before it creates anything
+
+```console
+$ workmux add issue-13 --dry-run
+Worktree: <tmp>/repo__worktrees/issue-13
+Branch:   issue-13
+Base:     main
+Target:   issue-13 (window)
+
+Files to copy or symlink:
+  (none)
+
+Post-create hooks:
+  (none)
+```
+
+rc 0, and `git worktree list` was the same before and after. For a name whose worktree already exists it prints the same first line, with `Base:     existing branch`. There is no machine-readable form: `workmux add issue-13 --headless --json --dry-run` gave rc 1, `Error: Layout, fork, wait, and dry-run options cannot be used with --headless`. `workmux path <name>` prints the path only once the worktree exists, and `workmux open` takes no `--agent`, so the worktree cannot be made first and the agent started second.
+
+### 4. With the path in the setting, the session opens with no dialog
+
+`fleet.py start 15`, with the package's default Antigravity host and no other change. workmux's log, in order:
+
+```
+args=["workmux", "add", "issue-15", "--dry-run"]
+args=["workmux", "add", "issue-15", "--background", "--agent", "agy --agent tech-lead --settings '{\"trustedWorkspaces\":[\"<tmp>/repo__worktrees/issue-15\"]}'", "--prompt", "Reply with the single word ready, then stop."]
+```
+
+The script printed `started issue-15`, rc 0, and nothing on stderr. The new window, with agy's banner and an account notice removed:
+
+```
+> Reply with the single word ready, then stop.
+▸ Thought for 13s, 676 tokens
+  👨‍💻 Tech-Lead: ready
+```
+
+No dialog. `workmux status --json` gave `"status": "done"`, `"agent_kind": "agy"`. Asked next to run `git branch --show-current`, the session stopped at agy's approval for that command, as this machine's settings ask before every command; approved once, it ran:
+
+```
+● Ran (git branch --show-current) (ctrl+o to expand)
+  👨‍💻 Tech-Lead: git branch --show-current (exit code 0):
+    issue-15
+```
+
+So a session trusted this way works in its worktree. The settings file's hash was identical before and after, and it held no path of this probe: nothing was saved. A run before the script was changed, with the same start command written into the config by hand for `issue-14`, gave the same result.
+
+### 5. Control: without the setting, the dialog shows
+
+`fleet.py start 16` with `trust = ""` under `[hosts.antigravity]`. workmux's log shows one call and no dry run:
+
+```
+args=["workmux", "add", "issue-16", "--background", "--agent", "agy --agent tech-lead", "--prompt", "Reply with the single word ready, then stop."]
+```
+
+and the new window showed:
+
+```
+Accessing workspace:
+<tmp>/repo__worktrees/issue-16
+Do you trust the contents of this project?
+Antigravity CLI requires permission to read, edit, and execute files here.
+> Yes, I trust this folder
+  No, exit
+```
+
+It read `done`, as E26 saw for a start prompt that needs no tool. It was answered "No, exit".
+
+### Verdict
+
+**At agy 1.5.3 with workmux 0.1.281, `fleet.py start` opens an Antigravity tech-lead in a new worktree with no trust dialog and saves nothing.** It asks workmux for the path with `workmux add <name> --dry-run`, reads the `Worktree:` line, and appends `--settings '{"trustedWorkspaces":["<path>"]}'` to the start command. The trust is for that session and that path only. When the script cannot learn the path it says so on stderr and starts without the setting, so the dialog shows as before.
+
+**Not measured:**
+
+- A worktree path holding a space. The script passes one through; a path holding a quote or a backslash is refused, and the start then goes ahead without the setting.
+- Any workmux other than 0.1.281. The `Worktree:` line is its human-readable output, not an interface it promises.
+- What agy loads from a folder trusted this way, such as that folder's own hooks, against one trusted through the dialog.
+- Codex, opencode and Claude Code, whose own first-run prompts were not looked at.
+
+**Host state.** Four worktrees were made and removed (`✓ Removed worktree 'issue-12' and branch 'issue-12'`, and the same for 14, 15 and 16). Afterwards `workmux status --json` in `<tmp>/repo` listed `"agents": []`, `git worktree list` listed only `<tmp>/repo`, the probe's tmux session was killed and no agy process remained. `~/.gemini/antigravity-cli/settings.json` had the same hash at every step. workmux kept a state file for each of three probe panes under `~/.local/state/workmux/agents/`; all three were removed. agy kept its usual per-session records, and workmux appended to its log.

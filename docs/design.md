@@ -563,7 +563,10 @@ never answers or approves for the person.
 **Start and overview.** `fleet.py start <reference> [--host <host>]` runs
 `workmux add <name> --background --agent "<start command>" --prompt "<prompt>"` (E26), the
 prompt naming the skill and the assignment. The skill passes `--host` only when the person
-names a host; E27's `start 12 --host antigravity` came from its earlier wording.
+names a host; E27's `start 12 --host antigravity` came from its earlier wording. For a host
+whose `trust` arguments hold `{worktree}`, it first runs `workmux add <name> --dry-run`, reads
+the path from the `Worktree:` line and appends the arguments to the start command (E28). When
+it cannot learn the path it says so on stderr and starts without them.
 `fleet.py overview` reads `workmux status --json` (E26); for each session that is not
 `working`, other than its own, it runs `workmux capture <name> --lines 200` (E26) and takes
 `status` and `questions` from the last RETURN block (§4), only when the block is complete on
@@ -590,9 +593,11 @@ contract does not already grant, follow-ups are recorded and not created, and a 
 at `ready to push`.
 
 **The config** is optional: `~/.config/e-colleagues/fleet.toml` (under `$XDG_CONFIG_HOME` when
-set) or the path in `$EC_FLEET_CONFIG` or `--config`. It sets `default_host`, a `start` command
-and `prompt` per host, and the launcher's `start`, `status`, `capture` and `base_flag`; a
-mistyped key, or a named path that does not exist, is an error. `base_flag` defaults to
+set) or the path in `$EC_FLEET_CONFIG` or `--config`. It sets `default_host`, a `start` command,
+`trust` arguments and `prompt` per host, and the launcher's `start`, `status`, `capture`, `where`
+and `base_flag`; a mistyped key, or a named path that does not exist, is an error. Only
+Antigravity has default `trust` arguments, `--settings '{"trustedWorkspaces":["{worktree}"]}'`
+(E28); `trust = ""` leaves them out. `base_flag` defaults to
 `--base`, passed through as workmux's own `--base`, read from its help at 0.1.281 and
 UNVERIFIED by experiment. The default start commands are `agy --agent tech-lead` [AG-03],
 `codex --profile e-colleagues` (E14), `opencode --agent tech-lead` [OC-03] and
@@ -605,7 +610,7 @@ terminal stopped at workmux's question about another agent's hooks (E26); run by
 asked nothing and the start went through (E27). `fleet.py` gives the launcher no input; that
 this is the reason is an inference (E27).
 
-**Measured on Antigravity** (E26, E27, agy 1.5.3, workmux 0.1.281):
+**Measured on Antigravity** (E26, E27, E28, agy 1.5.3, workmux 0.1.281):
 
 - an agy session can run `workmux add` and create the worktree;
 - `--agent "agy --agent tech-lead"` starts the tech-lead with its prompt, and it can commit in
@@ -615,12 +620,14 @@ this is the reason is an inference (E27).
 - workmux reports only `working` and `done` for it, never `waiting`. A session at one of agy's
   approval prompts reads `working`, so the overview does not show that prompt; it is on that
   session's screen (E26);
-- every new worktree raises agy's trust dialog, and the start prompt runs behind it. With agy
-  set to ask before every command, a tech-lead started by `fleet.py` waits there at the approval
-  for its first command, so it reads `working` and its row shows only that (E27); a start prompt
-  that needs no tool read `done` there (E26). The default start command trusts nothing on the
-  person's behalf: the person accepts the dialog in the new window, or sets their own start
-  command in the config;
+- agy keeps trust per exact path, so a new worktree raises its trust dialog (E26). `fleet.py`
+  passes the new worktree's path in a `trustedWorkspaces` setting for that session only, and the
+  session opens with no dialog and nothing saved (E28). Starting a tech-lead on an issue is the
+  person's request to work in that worktree, which is why the script trusts it for them;
+- with `trust = ""`, or when the path cannot be learned, the dialog shows and the start prompt
+  runs behind it. With agy set to ask before every command, the tech-lead waits there at the
+  approval for its first command, so it reads `working` and its row shows only that (E27); a
+  start prompt that needs no tool read `done` there (E26, E28);
 - a capture is the visible screen only, so a block taller than the pane is not read.
 
 **UNVERIFIED:** all of this on Codex, opencode and Claude Code; and remote use on every host.

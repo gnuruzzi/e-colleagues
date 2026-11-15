@@ -38,10 +38,10 @@ On success it prints one line, `started <name>`, naming the worktree. If it fail
 way, show its message; do not retry with other flags.
 
 In a new worktree the host may first show a first-run prompt, such as whether to trust the
-folder, before the tech-lead does anything. The default start command trusts nothing for the
-person: they answer it in that session, or change that host's start command in the config.
-You never answer it. Until then the overview shows that session as `working` and nothing
-more, or as stopped with `no RETURN block on screen`.
+folder, before the tech-lead does anything. On Antigravity the script trusts the new worktree
+for that one session; elsewhere the person answers the prompt in that session. You never
+answer it. Until then the overview shows that session as `working` and nothing more, or as
+stopped with `no RETURN block on screen`.
 
 ### Overview
 
@@ -147,5 +147,5 @@ Without a config file the launcher is workmux and each host uses the package's d
 command; only that setup is tested. workmux must be installed, with its status hooks set up
 (`workmux setup`) for each host you start: the overview's states come from them. An optional
 TOML file, `~/.config/e-colleagues/fleet.toml` (under `XDG_CONFIG_HOME` when that is set) or
-the path in `EC_FLEET_CONFIG`, can change each host's start command, for example to add that
-host's remote flag, set `default_host`, and replace the launcher's commands.
+the path in `EC_FLEET_CONFIG`, can change each host's start command and `trust`, for example
+to add that host's remote flag, set `default_host`, and replace the launcher's commands.

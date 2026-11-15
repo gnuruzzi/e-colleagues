@@ -21,6 +21,11 @@ if sys.argv[1] == "status":
     sys.stdout.write(open(os.path.join(d, "status.json")).read())
 elif sys.argv[1] == "capture":
     sys.stdout.write(open(os.path.join(d, sys.argv[2] + ".screen")).read())
+elif sys.argv[1] == "where":
+    if os.path.exists(os.path.join(d, "where.out")):
+        sys.stdout.write(open(os.path.join(d, "where.out")).read())
+    else:
+        sys.stderr.write("no such repository\\n"); sys.exit(3)
 elif sys.argv[1] == "add" and os.path.exists(os.path.join(d, "fail")):
     sys.stderr.write("worktree already exists\\n"); sys.exit(3)
 elif sys.argv[1] == "add" and os.path.exists(os.path.join(d, "exit")):
@@ -57,7 +62,8 @@ class Base(unittest.TestCase):
             top + f'[launcher]\n'
             f'start = [{py}, {fake}, "add", "{{name}}", "--agent", "{{agent}}", "--prompt", "{{prompt}}"]\n'
             f'status = [{py}, {fake}, "status"]\n'
-            f'capture = [{py}, {fake}, "capture", "{{name}}"]\n' + extra)
+            f'capture = [{py}, {fake}, "capture", "{{name}}"]\n'
+            f'where = [{py}, {fake}, "where", "{{name}}"]\n' + extra)
 
     def run_fleet(self, *args, config=True, env=None, stdin=None):
         e = {**os.environ, "FAKE_LOG": str(self.log), "FAKE_DIR": str(self.dir)}
@@ -93,7 +99,8 @@ class TestStart(Base):
         r = self.run_fleet("start", "12", "--host", "antigravity", "--dry-run", config=False)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(json.loads(r.stdout), [
-            "workmux", "add", "issue-12", "--background", "--agent", "agy --agent tech-lead",
+            "workmux", "add", "issue-12", "--background", "--agent",
+            "agy --agent tech-lead --settings '{\"trustedWorkspaces\":[\"{worktree}\"]}'",
             "--prompt", "Use the ec-fleet skill. Your assignment: issue 12."])
 
     def test_base_is_appended_with_the_launchers_flag(self):
@@ -110,11 +117,68 @@ class TestStart(Base):
         self.write_cfg(top='default_host = "antigravity"\n',
                        extra='[hosts.antigravity]\n'
                              'start = "agy --agent tech-lead --remote-control"\n')
+        (self.dir / "where.out").write_text("Worktree: /w/repo__worktrees/eng-123\nBranch:   eng-123\n")
         r = self.run_fleet("start", "ENG-123")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertEqual(self.logged(), [[
-            "add", "eng-123", "--agent", "agy --agent tech-lead --remote-control",
+        self.assertEqual(r.stderr, "")
+        self.assertEqual(self.logged(), [["where", "eng-123"], [
+            "add", "eng-123", "--agent",
+            "agy --agent tech-lead --remote-control "
+            "--settings '{\"trustedWorkspaces\":[\"/w/repo__worktrees/eng-123\"]}'",
             "--prompt", "Use the ec-fleet skill. Your assignment: issue ENG-123."]])
+
+    TRUST = '[hosts.h]\nstart = "h run"\ntrust = "--trust {worktree}"\n'
+
+    def test_a_bare_path_from_where_is_read_too(self):
+        self.write_cfg(extra=self.TRUST)
+        (self.dir / "where.out").write_text("\n/w/a b/issue-12\n")
+        r = self.run_fleet("start", "12", "--host", "h")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.logged()[-1][3], "h run --trust /w/a b/issue-12")
+
+    def test_without_the_worktrees_path_the_start_goes_ahead_untrusted_and_says_so(self):
+        self.write_cfg(extra=self.TRUST)
+        outputs = [None, "", "Worktree: relative/issue-12\n", "Worktree: /w/it's/issue-12\n",
+                   'Worktree: /w/a"b/issue-12\n', "Worktree: /w/a\\b/issue-12\n"]
+        for out in outputs:
+            self.log.unlink(missing_ok=True)
+            (self.dir / "where.out").unlink(missing_ok=True)
+            if out is not None:
+                (self.dir / "where.out").write_text(out)
+            r = self.run_fleet("start", "12", "--host", "h")
+            self.assertEqual(r.returncode, 0, (out, r.stderr))
+            self.assertEqual(r.stdout, "started issue-12\n", out)
+            self.assertIn("fleet: could not learn the worktree's path", r.stderr, out)
+            self.assertEqual(self.logged()[-1][3], "h run", out)
+
+    def test_a_where_command_that_cannot_run_does_not_stop_the_start(self):
+        self.write_cfg(extra=self.TRUST)
+        lines = ['where = ["no-such-launcher-xyz", "{name}"]' if ln.startswith("where = ") else ln
+                 for ln in self.cfg.read_text().splitlines()]
+        self.cfg.write_text("\n".join(lines) + "\n")
+        r = self.run_fleet("start", "12", "--host", "h")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("fleet: could not learn the worktree's path", r.stderr)
+        self.assertEqual(self.logged(), [["add", "issue-12", "--agent", "h run", "--prompt",
+                                          "Use the ec-fleet skill. Your assignment: issue 12."]])
+
+    def test_where_runs_only_for_a_host_whose_trust_needs_the_path(self):
+        self.write_cfg(extra='[hosts.antigravity]\ntrust = ""\n'
+                             '[hosts.fixed]\nstart = "f run"\ntrust = "--yes"\n')
+        for host, agent in (("claude", "claude --agent tech-lead"),
+                            ("antigravity", "agy --agent tech-lead"), ("fixed", "f run --yes")):
+            self.log.unlink(missing_ok=True)
+            r = self.run_fleet("start", "12", "--host", host)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(r.stderr, "", host)
+            self.assertEqual([c[0] for c in self.logged()], ["add"], host)
+            self.assertEqual(self.logged()[0][3], agent, host)
+
+    def test_a_dry_run_runs_nothing_and_leaves_the_path_unfilled(self):
+        self.write_cfg(extra=self.TRUST)
+        r = self.run_fleet("start", "12", "--host", "h", "--dry-run")
+        self.assertEqual(json.loads(r.stdout)[5], "h run --trust {worktree}")
+        self.assertFalse(self.log.exists())
 
     def test_an_unknown_host_is_refused_with_the_known_ones(self):
         r = self.run_fleet("start", "12", "--host", "agy", "--dry-run", config=False)
@@ -164,7 +228,7 @@ class TestStart(Base):
         self.assertIn(str(absent), r.stderr)
 
     def test_an_empty_launcher_command_is_an_error(self):
-        for key in ("start", "status", "capture"):
+        for key in ("start", "status", "capture", "where"):
             self.cfg.write_text(f"[launcher]\n{key} = []\n")
             r = self.run_fleet("start", "12", "--host", "claude", "--dry-run")
             self.assertEqual(r.returncode, 2, key)
