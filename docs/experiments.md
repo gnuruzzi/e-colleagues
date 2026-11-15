@@ -40,6 +40,7 @@ Tranches: **A** automated, **B** interactive — needing a TTY or a trust dialog
 | — | C | the 2026-11-15 Antigravity sweep: agy 1.5.3 | **settled** (E32): AG-06, AG-07, AG-11 and AG-12 changed; the desktop not driven |
 | — | A+B | do MCP tools reach the specialists on Claude Code, Codex and opencode, and can a read-only one have them and still not edit | **settled** (E33): on Claude Code the read-only allowlist stripped them and a denylist of the editing tools gives them back, now rendered; on Codex every specialist sees them and a call needs the session's approval; on opencode both have them. A spawned Codex role ran with its parent's sandbox, not its role file's |
 | — | C | the 2026-11-15 Codex sweep: codex-cli 0.167.0 | **settled** (E34): every runtime row reproduces; `CX-01` measured in part for the first time; `CX-09` and `CX-12` not re-run. No setting tried gives a spawned role a narrower sandbox than its session, on either backend; the plugin route works and its skills are `e-colleagues:<name>` |
+| — | C | the 2026-11-15 opencode sweep: 2.2.7 | **settled** (E35): every runtime row holds but `OC-07`: a slash command in a `run` prompt no longer expands; `OC-04`'s delegation on a mention not reproduced in one run; `OC-10` docs/source only but for one line. A shell rule is matched per simple command and the last match decides; a project agent of an installed agent's name is merged into it; `opencode mini` uses the model the config names |
 | — | C | the 2026-11-15 Claude Code sweep: 2.1.325 | **settled** (E36): every runtime row reproduces but `CC-06`, not re-run; `CC-15` measured for the first time; the YAML fail-open measured at runtime; what a denylist inherits read from the host's record, and a longer denylist now rendered |
 
 ---
@@ -5386,6 +5387,496 @@ Other probes ran Claude Code sessions on this machine at the same time and no ot
 Codex kept its usual records, all left: 83 thread records under `~/.codex/sessions/2026/11/15/`, one empty marker for the TUI session under `~/.codex/tui-thread-reference-capabilities/`, and its own databases, logs, model cache and shell snapshots. The package's installed Codex files were found older than the export (`cmp` differs for all five role files and the profile, in the wording of rules R5 and T6 only; the two sandbox keys are the same) and were left that way.
 
 The probe's tmux session `e34-probe` was killed and no other session was touched; its TUI ran with the `TMUX*` variables unset, and workmux kept no state file for its pane. No worktree was made. `pgrep -x codex` finds nothing. Three files a sandbox probe was meant to fail to create outside `<tmp>` were checked absent, and the two the `workspace-write` control did create in `/tmp` were removed. One slip: a session whose root sat in a second `wait_agent` with a one-hour timeout, its child long finished, was ended with `kill` after 133 seconds; its records are complete up to that point and are what step 4's V2 row reads. The repository checkout was not touched. The fixtures, the captures and the hook's log are under `<tmp>`.
+
+---
+
+## E35 — the opencode claims at 2.2.7: every runtime row holds but one; a slash command in the `run` prompt no longer expands, the TUI loads command files from `commands/` too, a project agent is merged into the user agent of the same name, and shell rules are matched per simple command, last match wins
+
+**Date** 2026-11-15. **opencode 2.2.7** (`opencode --version` → `opencode v2.2.7`); **tmux 3.8**; **Python 3.14.10**; **bubblewrap 0.13.1**; this package as a clean export of commit `fd4ca07`, called `<pkg>` below. The model was a local one served by llama.cpp behind an OpenAI-compatible endpoint on a loopback port, the same as in E30 and E33. Tranche C, with interactive steps driven through the probe's own tmux session, `e35-probe`.
+
+The opencode rows of `SUPPORT-MATRIX.md` were last re-run at 2.0.18 (E20 addenda, E25), apart from the parts of OC-03 that E30 touched. This entry re-runs each one's measurement at 2.2.7, as E24 and E32 did for the other hosts, and answers three further questions:
+
+- **A.** Which model does `opencode mini` use?
+- **B.** How does 2.2.7 match a `bash`/`shell` permission pattern against a command line, and is there a rule set that refuses shell writes without refusing what a reviewer needs?
+- **C.** Does the reviewer's rule R4 hold on the local model for a plain review brief?
+
+**No prompt left the machine.** Every directory a session ran in carried this `opencode.json`, with the local provider's and model's names replaced, as in E33 step 4:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "enabled_providers": ["<local provider>"],
+  "model": "<local provider>/<local model>",
+  "small_model": "<local provider>/<local model>",
+  "mcp": {
+    "<mcp server>": {"type": "local", "command": ["false"], "enabled": false}
+  }
+}
+```
+
+Before the first prompt in each directory `opencode --standalone debug config` was run there and its project document compared, by a script, against the exact values: `"model": {"providerID": "<local provider>", "model": "<local model>"}`, `"policies": [{"action": "provider.use", "resource": "*", "effect": "deny"}, {"action": "provider.use", "resource": "<local provider>", "effect": "allow"}]`, and the one MCP server of the owner's global config reading `"disabled": true`. `opencode --standalone models` there listed six models, all of the local provider. After each session, `opencode session export <id>` was read by a second script that counts the `(providerID, id)` pair on every message of type `assistant` and fails on any other pair or on finding none; it was shown to fail on a copy of an export with the pair renamed. Twenty sessions reached the model, sub-sessions included, and all twenty passed. The second `mcp` entry keeps the owner's MCP server out, by E33's form; the TUI's status line read `0 MCP` and its sidebar `<mcp server>  Disabled`. No MCP server was called in this entry.
+
+**From the fifth session on, every session also ran in a network namespace** (`bwrap --unshare-net --unshare-pid --dev-bind / / --proc /proc`), with a small forwarder that makes one port reachable inside it, the local model's. Inside, `curl https://example.com` gave `Could not resolve host` and another loopback port of the machine gave `Failed to connect`; opencode itself ran normally. The reason is under **What the first sessions did**, below: a neutral agent with opencode's default permissions, given a prompt it could not interpret, used the network and wrote outside the project.
+
+Fixtures, all throwaway git repositories under `<tmp>`, each with a repository-local identity and no signing:
+
+- `<tmp>/repo`: `README.md`, `target.txt` holding `alpha`, an `AGENTS.md` whose canary `HERON-5540` is in no other file (`grep -rl`), and project agents under `.opencode/agents/`, each with a neutral body: `probe-lead` (`mode: primary`, `task` and `subagent` both `{"*": deny, "probe-child": allow}`, token `PROBE-LEAD-ACTIVE`), `probe-child` (`mode: subagent`, `edit: deny`, token `PROBE-CHILD-ACTIVE`), `probe-b1` to `probe-b7` for question B, and `probe-ro`, E33's twin of the reviewer, which was not run. Later a `command` block, `.opencode/command/e35-singular.md` and `.opencode/commands/e35-plural.md`.
+- `<tmp>/tui`: the same commands, `probe-lead` and `probe-child`, and `default_agent`.
+- `<tmp>/mini`: the pinned `opencode.json` and nothing else. `<tmp>/plug`: two probe plugins. `<tmp>/merge`, `<tmp>/merge2`: for the name-collision check. `<tmp>/crepo`: question C.
+
+Every command below was started with the driving session's `CLAUDE*`, `ANTHROPIC_*` and `TMUX*` variables unset and with `--standalone`, so opencode's background service was never started: `opencode service status` read `stopped` before the first step and after the last. In the captures the local model's label is replaced by `<local model>`, its provider's by `<local provider>`, the MCP server's name by `<mcp server>`, and trailing spaces are stripped. Times are UTC.
+
+| claim | at 2.2.7 | what moved |
+|---|---|---|
+| `OC-01` | **reproduced**, both halves | new: a project agent with the name of a user agent does not replace it; the two are merged, the project's rules after the user's (step 2) |
+| `OC-02` | **reproduced** | nothing. Both spellings of each permission key resolve to the runtime's name, in file order |
+| `OC-03` | **reproduced** as E30 left it | nothing more: no `--agent` on the top-level command; `default_agent` governs `run` and the TUI; Shift+Tab cycles the primaries |
+| `OC-04` | **reproduced in part** | `@` offers the specialists and the built-ins, and a mention reaches the primary. In the one run the primary answered itself and did not delegate |
+| `OC-05` | **reproduced** | nothing: `Permission denied: subagent`, and the depth limit |
+| `OC-07` | **changed** | a slash command in the `run` prompt reached the model as literal text, four runs of four; the TUI expands it. The file form now loads from `commands/` as well as `command/` |
+| `OC-08` | **reproduced** | nothing: the user skills are offered and one ran when asked for by name |
+| `OC-09` | **reproduced** | nothing: the canary reached a task child |
+| `OC-10` | **one part re-run**; the rest docs/source only | `$OPENCODE_CONFIG` is read between the global config and the project's, as E30 step 10 found |
+| `OC-11` | **reproduced** | nothing in the three measured points. The plugin context has grown from 13 namespaces to 26 keys |
+
+### 1. Versions, the install, and what was there
+
+```console
+$ opencode --version
+opencode v2.2.7
+$ tmux -V
+tmux 3.8
+$ opencode service status
+stopped
+```
+
+The package was already installed for opencode and was only read. `~/.config/opencode/agents/` holds its six agents, from the commit before the export: for each, `diff` against `<pkg>/dist/opencode/agents/` shows the frontmatter identical and only the text of rule R5 different (the tech-lead's T6 too). `~/.config/opencode/skills/` holds the five `ec-` skills, three of them with the same one-commit difference, beside six skills that are not this package's. `~/.config/opencode/plugins/` now holds workmux's current plugin as a directory, where E30 found the one-file form that did not load. Nothing was installed or rewritten.
+
+The top-level help lists `--standalone`, `--server`, `--auto`, `--continue`, `--session` and `--prompt`, and no `--agent`. `opencode debug` has four subcommands: `agents`, `config`, `heap-dump`, `paths`. `opencode run --help` lists `--agent string    Agent to use` and no `--command`; `opencode mini --help` lists `--model`, `--agent` and `--prompt`.
+
+### 2. Agents load from both directories, and a name collision is a merge [OC-01] [OC-02] [OC-03]
+
+No model turn.
+
+```console
+$ opencode --standalone debug agents          # in <tmp>/repo; rc 0; id and mode of each
+build primary, compaction primary, designer subagent, developer subagent, explore subagent, general subagent,
+plan primary, platform subagent, probe-child subagent, probe-lead primary, probe-ro all, reviewer subagent,
+security subagent, summary primary, tech-lead primary, title primary
+$ opencode --standalone debug config          # type and path of each source
+document   ~/.config/opencode/opencode.json
+directory  ~/.config/opencode
+document   <tmp>/repo/opencode.json
+directory  <tmp>/repo/.opencode
+$ opencode --agent tech-lead; echo "rc=$?"
+…
+ERROR
+  Unrecognized flag: --agent in command opencode
+rc=1
+```
+
+The six installed agents come from the user directory and the three probe agents from `.opencode/agents/`, with the modes their files give. The same command returns the resolved permission rules of each agent. For the installed reviewer, after four rules every agent starts with (`* * allow`, `read *.env ask`, `read *.env.* ask`, `read *.env.example allow`):
+
+```
+edit       *              deny
+shell      *              allow
+shell      git commit*    deny
+shell      git stash*     deny
+shell      sed -i*        deny
+webfetch   *              deny
+websearch  *              deny
+shell      *              allow
+shell      git commit*    deny
+shell      git stash*     deny
+shell      sed -i*        deny
+browser    *              deny
+skill      browser        deny
+```
+
+- **`bash` and `shell` both arrive as action `shell`, `task` and `subagent` both as `subagent`**, each block in the order the file has it, so a rendered agent carries every such rule twice [OC-02]. The tech-lead's list has `subagent * deny` and its five `allow` lines twice.
+- The last two lines are added by opencode to every agent.
+
+**A project agent with the name of an installed one is merged into it.** `<tmp>/merge/.opencode/agents/` held a `developer.md` with a description, `mode: subagent`, a one-line body and no `permission` key, and a `reviewer.md` with the same and `permission: {shell: {"*": allow}}`. `debug agents` there:
+
+| agent | description, body | rules after the four common ones |
+|---|---|---|
+| `developer`, user file only | the installed ones | `edit * allow`, `webfetch * deny`, `websearch * deny` |
+| `developer`, with the project file | **the project file's** | the same three: the user file's, though the project file names none |
+| `reviewer`, with the project file | **the project file's** | the user file's eleven, then **`shell * allow`** |
+
+A config entry does the same without replacing the body: with `"agent": {"reviewer": {"permission": {"bash": {"*": "deny", "make test": "allow"}}}}` in `<tmp>/merge2/opencode.json` and no agent file, the reviewer kept the installed description and body, and its rules were the installed eleven followed by `shell * deny`, `shell make test allow`. Both readings are the resolved rule list; no session was run with either. What the appended rules then do follows from step 8: the last matching rule wins, so the project reviewer's `shell * allow` would undo the three denials above it. That last sentence is an inference from the order and from step 8.
+
+**`default_agent`.** With `"default_agent": "tech-lead"` in `<tmp>/tui/opencode.json`, the TUI, started with no prompt, opened on it:
+
+```
+┃  Ask anything… "What is the tech stack of this project?"
+┃
+┃  Tech- · <local model> <local provider> · med
+┃  Lead                                                               ium
+┃
+╹▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+/…/tui:main  shift+tab agents  ctrl+p commands
+  ⊙ 0 MCP /mcps
+```
+
+Tab left the label unchanged. Shift+Tab, four times: `Build`, `Plan`, `Probe-Lead`, `Tech-Lead`. The cycle holds the primaries and no sub-agent. With `default_agent` changed to `probe-lead`, a bare `opencode run --standalone --format json "<prompt>"` recorded `"agent": "probe-lead"` on all six of its assistant messages (step 5). So [OC-03] stands as E30 left it.
+
+**The user-scope body reaches the model.** `opencode run --standalone --format json --agent tech-lead "Say only the word ping."` in `<tmp>/repo`: rc 0, 78 seconds, 75 of them before the first token; the export records `"agent": "tech-lead"` on the session and on its one assistant message, 11,879 input tokens, and the reply `ping`, without the signature E25's addendum saw. That the installed body was in those tokens is an inference here. The project half has direct evidence: both probe agents returned the token that only their body holds (step 4).
+
+### 3. Plugins [OC-11]
+
+No model turn. `<tmp>/plug/.opencode/plugins/` held `e35-named.ts`, the documented shape (`export const E35Named = async () => ({});`), and `e35-v2/index.ts`, `export default { id: 'e35.probe.v2', setup(ctx) { … } }`, whose `setup` writes the names it finds on `ctx`, on `ctx.agent`, `ctx.command` and `ctx.skill`, and on the draft each one's `transform` receives, to marker files. The marker directory was empty before; all three files carry a time after the command's start.
+
+```console
+$ opencode --standalone --print-logs --log-level debug debug agents      # in <tmp>/plug; rc 0; 14 agents
+level=INFO msg="loading plugin" id=<tmp>/plug/.opencode/plugins/e35-named.ts …
+level=WARN message="failed to load plugin" target=<tmp>/plug/.opencode/plugins/e35-named.ts … cause="Cause([Fail(PluginModule.LoadError: Plugin must export a default definition with an id and an effect or setup function. (cause: SchemaError(Missing key\n  at [\"default\"])))])"
+level=INFO msg="loading plugin" id=<tmp>/plug/.opencode/plugins/e35-v2 entrypoint=file://<tmp>/plug/.opencode/plugins/e35-v2/index.ts
+$ cat <tmp>/plug/markers/draft.jsonl
+{"ns":"agent","methods":["default:function","get:function","list:function","remove:function","update:function"],"ids":["build","general","explore","compaction","title","summary","plan"]}
+{"ns":"command","methods":["add:function"]}
+{"ns":"skill","methods":["add:function","get:function","list:function","remove:function","update:function"],"ids":["opencode","report"]}
+```
+
+The documented shape is rejected with the same words as at 2.0.18, the default-export shape loads, and the agent draft has `default`, `get`, `list`, `remove`, `update` and **no `add`**, while the command and skill drafts have one. At transform time the agent draft held seven built-ins and neither the project's `probe-child` nor a user agent, as E25 found. `debug agents` listed the thirteen agents of an empty project plus `probe-child`, and nothing a plugin made. What moved: `ctx` now has 26 keys where E25 listed 13 namespaces (`aisdk`, `credential`, `event`, `experimental`, `generate`, `model`, `options`, `provider`, `rpc`, `session`, `shell`, `storage`, `vcs` and `websearch` are new; `catalog` is gone), and `agent`, `command` and `skill` each offer `reload` beside `list` and `transform`. None of the new ones was called. The plugin workmux installs under `~/.config/opencode/plugins/` is of the default-export shape and loaded in every session of this entry.
+
+### 4. Delegation: the allowlist, the depth limit, the canary, the child's tools [OC-05] [OC-09] [OC-02] [OC-01]
+
+One session, `opencode run --standalone --format json --agent probe-lead "<prompt>"` in `<tmp>/repo`, rc 0, 3 minutes. The prompt told `probe-lead` to call the subagent tool for `probe-child` with a four-line self-report, then for the built-in `general`, and to relay both. Its reply, whole:
+
+```
+LEAD-TOKEN: PROBE-LEAD-ACTIVE
+CHILD-SAID: TOKEN: PROBE-CHILD-ACTIVE
+PROJECT: HERON-5540
+TOOLS: glob, grep, question, read, shell, skill, subagent, webfetch, websearch, execute
+NESTED: {"error":{"type":"tool.execution","message":"Subagent depth limit reached (1). Increase \"experimental.subagent_depth\" to allow nested subagents."},"content":[]}
+GENERAL: {"error":{"type":"permission.rejected","message":"Permission denied: subagent"},"content":[]}
+```
+
+The session's own record agrees: the lead made two `subagent` calls, `{"agent": "probe-child", …}` with status `completed` and `{"agent": "general", …}` with error `Permission denied: subagent`; the child's export holds one `subagent` call, `{"agent": "probe-child", "prompt": "reply-ok"}`, `"executed": false`, with the depth-limit error.
+
+- **[OC-05] reproduced.** The allowlist is mechanical and evaluated as `subagent`, and a child spawning a child is stopped by the depth limit.
+- **[OC-09] reproduced.** The child, told to read nothing, returned the canary. Its export holds no `read` and no `shell` call.
+- **[OC-02] reproduced, as absence.** The child's `edit: deny` leaves `edit` and `write` out of its list. The list is the model's own account. No call to either was attempted, as in E33.
+- **[OC-01]**: each agent returned the token that only its project file holds.
+
+### 5. Commands [OC-07]
+
+`<tmp>/repo/opencode.json` gained `"command": {"e35-json": {"template": "Reply with exactly the text JSON-CMD-OK and nothing else.", "description": "…", "agent": "probe-child", "subtask": true}}`, and two files with a description and a one-line template: `.opencode/command/e35-singular.md` (`SINGULAR-DIR-OK`) and `.opencode/commands/e35-plural.md` (`PLURAL-DIR-OK`). `debug config` shows the entry normalized as `"commands": {"e35-json": {…, "agent": "probe-child", "subagent": true}}`: the runtime's name for a command's `subtask` is `subagent`. Whether the file accepts that spelling was not tried.
+
+**Headless: the command does not expand.** Four runs, each `opencode run --standalone --format json [--agent probe-lead] "<slash command>"`:
+
+| prompt | `--agent` | the user message in the export | what the model did |
+|---|---|---|---|
+| `/e35-singular` | `probe-lead` | `/e35-singular` | looked for what the text meant; stopped at 300 s |
+| `/e35-plural` | `probe-lead` | `/e35-plural` | found the file with `grep`, read it, answered `PLURAL-DIR-OK` |
+| `/e35-json` | `probe-lead` | `/e35-json` | went looking for opencode's source; stopped at 420 s |
+| `/e35-plural` | none, `default_agent: probe-lead` | `/e35-plural` | found the file with `grep` and `cat`, answered `PLURAL-DIR-OK` |
+
+In all four the message that reached the model is the slash text itself, not the template, and the `e35-json` run started no sub-agent. The two `PLURAL-DIR-OK` answers are the model reading the file with its own tools, which is exactly the reading that would have passed for an expansion had the export not been looked at. At 2.0.18 `opencode run "/ec-review"` expanded (E20 addendum). `run --help` has no `--command` either, so no headless route to a command was found; the server's API lists an operation `session.command`, which was not called.
+
+**In the TUI all three expand, the plural directory included.** The command menu, with `/e35` typed and nothing submitted:
+
+```
+┃ /e35-json       Probe command, JSON form.                               ┃
+┃ /e35-plural     Probe command, file form, in commands/ (plural).        ┃
+┃ /e35-singular   Probe command, file form, in command/ (singular).       ┃
+```
+
+Submitted one after the other as `Probe-Lead` (Enter once to take the menu entry, once to send), then a mention (step 6):
+
+```
+  ┃  Reply with exactly the text SINGULAR-DIR-OK and nothing else.
+     SINGULAR-DIR-OK
+     Probe-Lead · <local model> · 1m 4s · 0.5 tok/s
+  ┃  Reply with exactly the text PLURAL-DIR-OK and nothing else.
+     PLURAL-DIR-OK
+     Probe-Lead · <local model> · 2.2s · 14.0 tok/s
+     ↳ Probe-Child finished · Probe command, JSON form.
+     JSON-CMD-OK
+     Probe-Lead · <local model> · 9.6s · 10.6 tok/s
+```
+
+The export has the template as the user message for the two file forms, and for the JSON form a message of type `synthetic` with `"metadata": {"source": "subagent", "childID": "ses_…", "agent": "probe-child", "state": "completed"}`; the child session's one assistant message is `probe-child`'s. So `subtask: true` and `agent` are honoured there.
+
+**Verdict.** [OC-07] changed twice since 2.0.18: the file form loads from `commands/` and from `command/`, so the `{command,commands}` glob the claim gives is whole again; and a slash command in a `run` prompt is not expanded.
+
+### 6. The `@` menu and a mention [OC-04]
+
+In the same TUI, on `Tech-Lead`, `@` typed and nothing submitted. The menu opens with skills; filtered by two letters it offered, with the tag `agent`: `@reviewer`, `@security`, `@designer`, `@developer`, `@platform`, `@general`, `@explore`, and the fixture's `@probe-child`. No primary is offered (`@te` and `@bu` gave no agent row). `general` and `explore` are offered although the tech-lead's rules deny them, as at 2.0.18. `@ec-` listed the five installed skills `ec-init`, `ec-fleet`, `ec-status`, `ec-onboard`, `ec-tech-lead`, each tagged `skill`. Rows naming skills that are not this package's were cut.
+
+Then, as `Probe-Lead`:
+
+```
+  ┃  @probe-child  reply with exactly AT-MENTION-OK
+     AT-MENTION-OK
+     Probe-Lead · <local model> · 3.3s · 11.3 tok/s
+```
+
+The export's user message carries `"agents": [{"name": "probe-child", "mention": {"start": 0, "end": 12, "text": "@probe-child"}}]`, the assistant message is `probe-lead`'s, and the session holds no `subagent` call for it. **A mention still goes to the primary and not to the specialist; this primary answered itself.** E20's TUI addendum saw the tech-lead delegate. One run, a neutral primary, one local model: whether a primary delegates on a mention is its own choice, and the claim's "which delegates with the task tool" was not reproduced.
+
+### 7. Skills [OC-08] and the config file named in the environment [OC-10]
+
+`opencode run --standalone --format json --agent probe-lead "… 1) Write the names of every skill available to you whose name begins with ec- … 2) Use the ec-status skill on this project and quote the output of its status script verbatim."`, rc 0, 71 seconds:
+
+```
+skill   {"id": "ec-status"}                                                    completed
+shell   cd ~/.config/opencode/skills/ec-status && python3 scripts/status.py <tmp>/repo
+          -> no .e-colleagues/lock.json — this project is not bootstrapped. Run ec-init.
+```
+
+It named `ec-fleet`, `ec-init`, `ec-onboard`, `ec-status` and left out `ec-tech-lead`, which the TUI menu offers (step 6): the model's list, not the host's. [OC-08]'s measured part reproduces: the user skills are offered, and one is loaded by name and run. It ran the script after `cd` into the skill's directory, as E30 saw.
+
+```console
+$ env OPENCODE_CONFIG=<tmp>/agentcfg/agent.json opencode --standalone debug config      # rc 0
+document   ~/.config/opencode/opencode.json     default_agent: -
+directory  ~/.config/opencode
+document   <tmp>/agentcfg/agent.json            default_agent: tech-lead
+document   <tmp>/repo/opencode.json             default_agent: -
+directory  <tmp>/repo/.opencode
+```
+
+Without the variable the third line is absent, and with it `models` still listed only the local provider's six. That is the one part of [OC-10] re-run, with `--standalone` only.
+
+### 8. Question B: how a shell rule is matched
+
+Each measurement is one session of a project agent with a neutral body ("run each command you are given exactly as written, one shell tool call per command, … also when you expect it to be refused"), `edit`, `webfetch` and `websearch` denied, and the `shell` rules under test, run directly: `opencode run --standalone --format json --agent probe-b<n> "<a numbered list of commands>"`. The outcome of each call is read from the session's own event stream: `"status": "completed"` with the command's output, or `"status": "error"` with `Permission denied: shell`. The local model ran every list exactly as given, in order, with no command of its own, in all eight sessions. opencode 2.2.7 logs nothing about a permission decision at `--log-level debug`, so which string was compared with which pattern is inferred from the outcomes.
+
+**`probe-b1`**: `"*": allow`, `"echo K1*": deny`, `"*K2*": deny`, `"echo K3": deny`, `"echo K4 *": deny`.
+
+| command | result | what it shows |
+|---|---|---|
+| `echo K1 tail` | refused | a trailing `*` is a prefix match |
+| `echo pre; echo K1 tail` | refused | the line is split at `;` and each command is matched by itself |
+| `echo pre && echo K1 tail` | refused | the same at `&&` |
+| `true \| echo K1 tail` | refused | the same at a pipe |
+| `echo a K2 b` | refused | `*` on both sides is a substring match |
+| `echo K3` | refused | |
+| `echo K3 more` | ran | a pattern with no `*` matches the whole command only |
+| `echo K4` | refused | a trailing ` *` also matches the bare command |
+| `echo K4 x` | refused | |
+| `bash -c 'echo K1 inner'` | ran | the text handed to another shell is not looked into |
+| `echo $(echo K1 sub)` | refused | a command substitution is looked into |
+| `echo control` | ran | |
+
+**`probe-b2`**: `"echo O1*": deny`, then `"*": allow`. `echo O1 x` **ran**. **The last rule that matches decides**, whatever it is: a later `allow` undoes an earlier `deny`. Specificity plays no part.
+
+**`probe-b3`**, an allowlist: `"*": deny`, `"echo O2*": allow`, `"echo O2 no*": deny`.
+
+| command | result |
+|---|---|
+| `echo O2 yes` | ran |
+| `echo O2 no` | refused |
+| `echo other` | refused |
+| `echo O2 yes; echo other` | refused |
+| `echo O2 yes \| cat` | refused |
+| `echo O2 yes 2>&1` | ran |
+| `echo O2 yes; echo O2 no` | refused |
+
+Every simple command of a line has to be allowed; one refused part refuses the line.
+
+**`probe-b4`**, redirections: `"*": allow`, `"*>*": deny`, `"*2>&1*": allow`, `"touch*": deny`, `"tee*": deny`.
+
+| command | result | on disk |
+|---|---|---|
+| `printf 'x\n' > w1.txt` | refused | no file |
+| `printf 'x\n' >> w2.txt` | refused | no file |
+| `printf 'x\n' >w3.txt` | refused | no file |
+| `ls -la 2>&1` | ran | |
+| `ls nosuchfile 2>&1 \| head -3` | ran | |
+| `printf 'x\n' > w4.txt 2>&1` | **ran** | **`w4.txt`** |
+| `ls; touch w5.txt` | refused | no file |
+| `touch w6.txt` | refused | no file |
+| `bash -c 'touch w7.txt'` | **ran** | **`w7.txt`** |
+| `/usr/bin/touch w8.txt` | **ran** | **`w8.txt`** |
+| `echo a \| tee w9.txt` | refused | no file |
+
+**A redirection is part of the text a pattern is matched against**, so `"*>*"` refuses one, with or without a space. A later `"*2>&1*": allow` gives back the stderr merge and, with it, any redirection that also carries one. A program is matched by the word it is typed as: its full path, or another shell around it, is a different word.
+
+**`probe-b5`**, the pattern language: `"echo Q?": deny`, `"echo C[ab]*": deny`, `"echo N[!a]*": deny`, `"*>[!&]*": deny`, after `"*": allow`. `echo Q1` refused and `echo Q12` ran: **`?` is one character**. `echo Ca`, `echo Cz`, `echo Nb`, `echo Na` all ran, and so did `printf 'x\n' > c1.txt` and `printf 'x\n' >c2.txt 2>&1`, both leaving their file: **a bracket expression is not a character class**. So the language is `*` and `?`, matched against the whole of one simple command with its redirections, and "a `>` not followed by `&`" cannot be written.
+
+### 9. Question B: two rule sets, each run against a list
+
+**A denylist that refuses the named forms.** The reviewer's three rules stay; a redirection is refused unless it is one of four forms that write no file; and the programs the question names are refused by the word they are typed as. Order matters, because the last match decides: the redirection rules come first, so that `git commit … 2>&1` is still refused by the later `git commit*`. `probe-b6` carried this under `bash` and again under `shell`, as the renderer emits it:
+
+```yaml
+"*": allow
+"*>*": deny
+"*2>&1*": allow
+"*2>/dev/null*": allow
+"*>*>*": deny
+"*> /dev/null 2>&1": allow
+"*>/dev/null 2>&1": allow
+"*>*>*>*": deny
+"git commit*": deny
+"git stash*": deny
+"git init*": deny
+"sed -i*": deny
+"tee*": deny
+"cp *": deny
+"mv *": deny
+"rm *": deny
+"rmdir*": deny
+"mkdir*": deny
+"touch*": deny
+```
+
+The reasoning of the first eight lines: any `>` is refused; a command with a stderr merge or a discarded stderr is given back; a command with two `>` is refused again, which is what closes `> file 2>&1`; the idiom that discards everything, which has exactly two, is given back; three or more are refused.
+
+| refused, and no file on disk afterwards (16 of 16) | ran (14 of 15) |
+|---|---|
+| `printf 'x\n' > d1.txt` | `git diff` |
+| `printf 'x\n' >> d2.txt` | `git log --oneline -3` |
+| `printf 'x\n' > d3.txt 2>&1` | `ls -la` |
+| `printf 'x\n' >d4.txt 2>&1` | `cat target.txt` |
+| `echo a \| tee d5.txt` | `make test` |
+| `cp target.txt d6.txt` | `make test 2>&1` |
+| `mv target.txt d7.txt` | `make test 2>&1 \| tail -3` |
+| `rm target.txt` | `git diff --stat \| cat` |
+| `mkdir d9` | `git log --oneline -3 2>/dev/null` |
+| `touch d10.txt` | `make test > /dev/null 2>&1` |
+| `git init d11` | `ls -la >/dev/null 2>&1` |
+| `git commit --allow-empty -m x 2>&1` | **`bash -c 'touch d21.txt'`**: wrote `d21.txt` |
+| `ls; touch d13.txt` | **`/usr/bin/touch d22.txt`**: wrote `d22.txt` |
+| `printf 'x\n' > d14.txt > /dev/null 2>&1` | **`python3 -c "open('d23.txt','w').write('x')"`**: wrote `d23.txt` |
+| `printf 'x\n' 2>/dev/null > d15.txt` | |
+| `sed -i s/alpha/beta/ target.txt 2>&1` | |
+
+The fifteenth command of the second list, `git log -1 --format='%an <%ae>'`, was **refused**: a `>` inside a quoted argument is a `>` to the pattern. `git status --porcelain` afterwards listed only `d21.txt`, `d22.txt` and `d23.txt` as new, and `target.txt` still read `alpha`.
+
+**An allowlist that refuses everything else.** `probe-b7`: `"*": deny`, then `allow` for `git diff*`, `git log*`, `git show*`, `git status*`, `ls*`, `cat *`, `head*`, `tail*` and `make test*`, then `"*>*": deny`, `"make test*2>&1": allow`, `"*>*>*": deny`, `"*--output*": deny`. No general `"*2>&1*": allow` here: after `"*": deny` it would give back every command that carries one.
+
+| ran (7) | refused, and no file on disk (11) |
+|---|---|
+| `git diff`, `git log --oneline -3`, `ls -la`, `cat target.txt` | `printf 'x\n' > e1.txt`, `make test > e2.txt 2>&1`, `touch e3.txt`, `ls; touch e8.txt`, `git init e9`, `echo a \| tee e10.txt` |
+| `make test`, `make test 2>&1`, `make test 2>&1 \| tail -3` | `bash -c 'touch e4.txt'`, `/usr/bin/touch e5.txt`, `python3 -c "open('e6.txt','w').write('x')"`, `git diff --output=e7.txt` |
+| | `grep -rn alpha target.txt`: a read the list did not name |
+
+**Verdict on B.** The measurements support a rule set for the forms the question names: the denylist above refused every redirection that writes a file, `tee`, `cp`, `mv`, `rm`, `mkdir`, `touch` and `git init`, alone, after `;` and behind a pipe, and let through `git diff`, `git log`, `ls`, `cat` and a test command with `2>&1`, with a pipe, with `2>/dev/null` and with `> /dev/null 2>&1`. What it costs: a command with a literal `>` in an argument is refused, and so is a redirection of any other shape, `2>err.log` or `> /dev/null` alone.
+
+**Pattern rules cannot make the shell read-only, and no denylist can.** A rule sees the words of a command as typed. The same program reached through `bash -c`, by its full path or from an interpreter's one-liner is not seen, three of three here, and neither is what an allowed program writes by itself: the test command made four files in step 10. An allowlist does refuse those routes, three of three, and all seven other write forms, because nothing unnamed runs; but it has to name the project's test command, which a package installed per user cannot know, it refuses every read it did not foresee, and what the named programs write by themselves still gets through (`git diff --output=` needed its own rule). The per-project place for such a list exists: a config `agent.<name>.permission` entry is appended to the installed agent's rules (step 2). That route was read from the resolved rules and not run.
+
+### 10. Question C: the reviewer persona and R4, one review brief
+
+`<tmp>/crepo`: `src/calc.py`, a `unittest` file, a `Makefile` whose `test` target is `python3 -m unittest discover -s tests -t .`, an `AGENTS.md` that names `make test` as the test command, one commit, and an uncommitted change that adds `average(values)` and one test for it. The reviewer is `<pkg>/dist/opencode/agents/reviewer.md` as `.opencode/agents/reviewer.md` with one line changed, `mode: subagent` to `mode: all`, so that it can be given a brief directly; `debug agents` there shows `mode: all` and a system text equal to the export's body, R4 included. Because of the merge of step 2 its shell rules are the installed reviewer's followed by the same rules again, to the same effect.
+
+```console
+$ opencode run --standalone --format json --agent reviewer "Review the uncommitted change in this repository: the working-tree diff against HEAD (git diff). Check it for edge cases and test coverage, run the project's test command, and report your findings."
+```
+
+rc 0, 10 min 28 s, in the network box. Fifteen tool calls, from the session's record: four `read` (two failed on a mistyped path) and eleven `shell`:
+
+```
+git status && git diff                      git log --oneline -5 2>/dev/null; git branch --show-current 2>/dev/null
+find . -type f -not -path './.git/*' | sort; cat Makefile 2>/dev/null
+pwd; ls; git diff                           make test; echo "EXIT_CODE=$?"                          (three times; two failed at a mistyped cd)
+python3 -c "… from src.calc import average; print(average([1,2])) …"       (four times; two failed at a mistyped cd)
+ls -la src tests
+```
+
+- **It issued no command that writes.** No redirection to a file (the only ones are `2>/dev/null`), no `mkdir`, `touch`, `git init`, `tee`, `cp`, `mv` or `rm`, no `sed -i`, nothing outside the repository. E33's reviewer made a directory and ran `git init` under `/tmp`; that brief asked for a "write probe", this one for a review.
+- **Files were written all the same**: `git status --porcelain --ignored` went from the two modified files to those two and `?? src/__pycache__/`, `?? tests/__pycache__/`, four `.pyc` files, made by Python when the test command ran. That is E13's finding on Claude Code, here on opencode: running the test suite R4 permits is itself a write. The persona did not set `PYTHONDONTWRITEBYTECODE`, as Claude's did in E24, and its RETURN block says `changed: none (review only; no files modified)`.
+- It ran `python3 -c` one-liners to try the new function on other inputs, which R4's list ("the test, lint and build commands named in `AGENTS.md`") does not name. They wrote nothing further.
+- Nothing new appeared under `/tmp` outside the scratch directory (`find /tmp -maxdepth 2 -newer <marker>` listed only `/tmp` itself).
+- The review was a real one: it ran the tests (`Ran 3 tests … OK`, exit 0), found that `average([])` raises `ZeroDivisionError` and is untested, and ended with a complete RETURN block, signed.
+
+**Verdict.** On this run R4 held in the sense the rule is written: the persona itself created, modified and deleted nothing. The test command it is allowed to run wrote four cache files into the repository, and the block it returned says nothing was changed. One run, one local model, one brief.
+
+### 11. Question A: `opencode mini` uses the model the config names
+
+`mini` has no dry mode and no listing; its flags are `--model`, `--agent`, `--prompt` and the session ones. What it would use was read from its own screen before any prompt. In `<tmp>/mini`, whose pin had been confirmed as above, started in the probe's tmux pane with nothing typed:
+
+```console
+$ opencode mini --standalone
+▪ oc mini v2.2.7 · <tmp>/mini
+┃ Ask anything, / for commands, @ for context…
+Build · <local model> [medium] · <local provider> · ctrl+p menu
+```
+
+The footer names the config's model before a prompt exists. Two more starts, also with nothing typed, each with `XDG_STATE_HOME` pointed at a scratch directory so that opencode's own record of recently used models (`model.json`) could be varied without touching the owner's:
+
+| state directory | `mini` footer | TUI footer |
+|---|---|---|
+| the owner's: the config's model is the most recent, with a saved variant `medium` | `<local model> [medium]` | `<local model> … medium` |
+| empty | `<local model>`, no variant | `<local model>` |
+| a `model.json` whose only recent entry is **another** model of the local provider | `<local model>`, no variant | `<local model>` |
+
+**With a `model` key in the config, `mini` and the TUI both start on that model, and a different most-recent model in `model.json` does not override it.** `mini` takes the variant from `model.json` when that file has one for the model.
+
+Then the one prompt, the single word, in the network box, after the footer had been checked by a script for the pinned model's label:
+
+```
+▪ oc mini v2.2.7 · <tmp>/mini
+› ready
+…
+Build · <local model> · 1m 52s
+```
+
+The export's first message is `{"type": "model-switched", "model": {"id": "<local model>", "providerID": "<local provider>", "variant": "medium"}}`, and all four assistant messages carry that pair. `Build`, opencode's default agent, took the word as a task: it ran two shell commands and read `opencode.json` before asking what was wanted.
+
+What E30 saw, a hosted model in `mini` while the TUI used the local one, was a machine whose config named no model then: the global config's `model` and `small_model` lines were added about three hours after that turn (by the file's time; an inference about the order of events). So E30's reading is `mini` with no `model` key anywhere, and that case was **not re-run**: it would mean starting `mini` without the pin. What a config with no `model` key does in `mini`, and which of the global and the project key wins when they differ, are not measured; here both named the same model.
+
+**Verdict.** `mini` uses the model the config names. Without one it does not fall back to the TUI's last-used model (E30) but to a default of its own, which on a machine with a hosted provider signed in was a hosted model. A `model` key, or a provider policy as in the pin, is what keeps it local.
+
+### 12. What the first sessions did, and the network box
+
+The first four sessions ran as E33's did, with no network restriction: the tech-lead `ping` of step 2 and the three `--agent probe-lead` runs of step 5. `probe-lead` has opencode's default permissions, everything allowed, and a body that says to do exactly what the brief asks. Handed `/e35-singular` and `/e35-json` as literal text, it went looking for what they meant. From the two sessions' own records:
+
+- `/e35-singular`: four `shell` calls inside the repository, the built-in skill `opencode`, and **`webfetch {"url": "https://opencode.ai/docs/commands"}`**.
+- `/e35-json`: eighteen `shell` calls. It read the fixture; ran `which opencode`, listed `~/bin`, and searched the home directory five levels deep for directories named `opencode*`; listed a directory of the owner's configuration repository; then **`curl` against `raw.githubusercontent.com` and `api.github.com`**, ten requests naming four public repository paths it had guessed; and **`cd /tmp && rm -rf opencode-src && git clone --depth 1 https://github.com/opencode-ai/opencode.git opencode-src`**, twice, the first with a `--branch` that does not exist there and the second succeeding, after which it read files of that clone until the time limit stopped it.
+
+By those records the requests carried the names of public repositories and nothing of the project or the owner; they were unauthenticated `curl` and an anonymous `git clone`. The model traffic itself stayed on the local provider in all four sessions. But these were requests to the outside made by a probe session, a clone written outside the scratch directory, and listings of the owner's directories read into a model's context, none of which the probe intended.
+
+From then on every session ran in the network namespace described at the top, the neutral agents for question B also carried `webfetch: deny` and `websearch: deny`, and their body forbade any command not listed. No later session made a request that left the box: there was no route for one.
+
+This is the same behaviour E30 step 11 and E33 step 4 recorded for this model, once more: given a prompt it cannot place, it explores, and on opencode nothing stands in the way of an agent with default permissions.
+
+### Verdicts
+
+1. **The claims.** The nine opencode claims with a `runtime` or `corrected` row were re-run at 2.2.7. Eight hold: [OC-01], [OC-02], [OC-03], [OC-05], [OC-08], [OC-09], [OC-11], and [OC-04] but for one clause, that the primary delegates on a mention. **[OC-07] changed**: a slash command in the `opencode run` prompt is no longer expanded, and the file form loads from both directory names. [OC-10] stays docs/source only apart from the `$OPENCODE_CONFIG` line.
+2. **New at 2.2.7, in no claim yet.** A project agent, or a config `agent` entry, with the name of an installed agent is merged into it, rules appended. The delegation tool the model sees is named `subagent` and takes `agent`; no tool named `task` was in the list an agent gave of its tools (step 4; E33 saw the same call).
+3. **A, `opencode mini`.** It uses the model the config names, and so does the TUI; a different most-recent model in opencode's own state does not override it. With no `model` key it used a hosted default (E30). That case was not re-run.
+4. **B, shell rules.** A pattern is matched against each simple command of a line, redirections included; `*` and `?` are the wildcards; a pattern with neither must equal the command; a trailing ` *` also matches the bare command; the last matching rule decides. A rule set that refuses the named write forms and keeps what a reviewer needs is given in step 9: it refused sixteen write forms of sixteen and ran eleven reviewer commands of twelve, the twelfth being a false refusal, and three writes through another shell, a full path and an interpreter passed it. It narrows; it does not make the shell read-only, and pattern rules cannot.
+5. **C, R4 on the local model.** For a plain review brief the reviewer persona issued no command that writes. The test command it ran wrote four cache files, and its report said nothing was changed.
+
+### Consequences
+
+1. `SUPPORT-MATRIX.md`: the opencode rows move to 2.2.7; [OC-07] gets a second correction and [OC-04] a narrower statement.
+2. `hosts/opencode.yaml` names the delegation tool `task` with `subagent_type`, and the rendered tech-lead tells the model so. At 2.2.7 the tool is `subagent` with `agent`. Delegation worked in E33 with the old sentence, so nothing is broken; the sentence is out of date.
+3. The reviewer's and the security persona's shell rules can carry the denylist of step 9. Design §8's sentence "a redirection is not among them and writes" would then read: a redirection that writes a file is refused, and a write through `bash -c`, a full path, an interpreter or the test command is not.
+4. The merge is a fail-open and a tool at once. A repository's own `.opencode/agents/reviewer.md` or `opencode.json` can append `shell: {"*": allow}` to the installed reviewer and undo every denial, with no prompt (E30 step 5: opencode applies a repository's config unasked). The same route would let a project add an allowlist that names its test command.
+5. Nothing in this package uses an opencode command, so the `run` change breaks nothing here. A command is no longer a way to start anything headless.
+6. `opencode mini` is safe to recommend only with a `model` key or a provider policy in place.
+
+### Not measured
+
+- **`opencode mini` and the TUI with no `model` key in any config**, and which key wins when the global and the project config name different models. Not run: it would have meant a session without the pin.
+- **The permission API.** The server lists `POST /api/session/{id}/permission`, "Evaluate and, when approval is required, create a permission request". A one-shot `--standalone` call answered before the agents had loaded (`agent.list` returned `[]`, and seven evaluations all read `deny`, which is therefore no finding), and a server started with `opencode serve` asked for a password; none was given to the probe, so that route was dropped. Every result in steps 8 and 9 is a real tool call by a model.
+- **Which string the shell tool compares**, read from the host: 2.2.7 logs no permission decision at debug level, so the splitting and the text of each part are inferred from outcomes.
+- **Other shell forms**: a here-document, process substitution, `>|`, `<>`, a subshell in parentheses, `xargs`, `find -exec`, `env`, `command`, a variable holding the program's name, a newline inside one call. And the same rules for the `execute` tool, which E33 found cannot reach the file system.
+- **The denylist and the allowlist with the personas' own bodies**, with the security persona, through a delegation, and in the TUI, where a refused command may behave differently from a headless one. Both ran on a neutral agent, headless, directly.
+- **The effect of merged rules in a session**: step 2 is the resolved rule list only. Also the merge for `edit`, for `mode` and for a body left empty, and which of a project file and a config entry comes last.
+- **[OC-04]'s mention with the tech-lead as the primary**, and more than one run of it.
+- **[OC-07]**: `session.command` through the API; a command file under `~/.config/opencode/`; nested command names; `subagent: true` written in the file; the versions between 2.0.18 and 2.2.7.
+- **[OC-08]'s scan order and [OC-09]'s precedence and stacking**, which the claims' corrections describe from source. **[OC-10]** apart from the one line, and that line without `--standalone`.
+- **[OC-11]**: any of the context's new namespaces; a plugin under `~/.config/opencode/`; `plugin add`.
+- **[OC-02]**: a call to `edit` or `write` by name from an agent that has them denied. As in E20 and E33, the evidence is their absence from the agent's own list.
+- **Question C more than once**, with another model, with a diff that tempts a fix, or through the tech-lead.
+- **Any model but the one local model**, and opencode between 2.0.18 and 2.2.7.
+
+**Host state.** Hashes of every file under `~/.config/opencode/` outside `node_modules` (30 files: the global config, `cli.json`, the six agents, the skills, workmux's plugin) and of `model.json`, `kv.json`, `frecency.jsonl`, `prompt-history.jsonl` and `auth.json` were taken before the first step and after the last. One differs: `prompt-history.jsonl` gained the four prompts typed into the TUI. The probe installed and rewrote nothing. One file under `~/.config/opencode/` that holds a credential of opencode's background service was printed into the probe's own working output while the directory was read; it was not used and is in no file of this entry.
+
+opencode's background service was never started: every command ran with `--standalone`, and `opencode service status` read `stopped` throughout. No opencode, forwarder or sandbox process was left. opencode kept its usual records: its log, and twenty-four sessions in its database, twenty that reached the model (two of them sub-sessions) and four that never got a prompt. Four of the twenty-four, one with a prompt, are filed under opencode's own `global` project, beside the owner's sessions there, because `<tmp>/mini` had no commit. All were left.
+
+**Left on the machine, outside `<tmp>`: `/tmp/opencode-src`**, the public repository a probe agent cloned in step 12. The probe's removal of it was refused by the driving session's permission layer and was not retried in another form; it is the owner's to remove. Nothing else was created outside `<tmp>`: `/tmp/opencode/` is opencode's own and was empty before and after.
+
+The probe's tmux session was killed and no other session was touched. No workmux state file was made for its pane: the sessions ran with the `TMUX*` variables unset, so workmux's plugin did not register them. The number of files under `~/.local/state/workmux/agents/` went from four to one during the probe, by something other than the probe, which read that directory and wrote nothing there. No worktree was made. One `opencode debug config`, with no prompt, was run by mistake in the repository checkout; it wrote nothing there, and the three modified files `git status` shows in the checkout carry times before that command and are not the probe's. Two early commands of the probe's own were refused by the driving session's safety check and not retried: a relative `rm` of marker files, which the reading did not need, and the removal above. The fixtures, the captures and the exports are under `<tmp>`.
+
+### Addendum — the rendered change
+
+After the entry above, `hosts/opencode.yaml` took step 9's denylist as the read-only personas' shell rules, in that order, and the delegation sentence names `subagent` with `agent` beside the older pair. The rendered `reviewer.md`, copied under another name into a project's `.opencode/agents/` so that step 2's merge does not apply, was read back with `opencode --standalone debug agents` in a pinned directory, with no model turn: after the four common rules and `edit * deny`, the resolved list holds the nineteen `shell` rules in the order of step 9, then the two web denials, then the same nineteen again from the second spelling, then the two rules opencode adds. Under "the last matching rule decides" the repeated block changes nothing. `opencode service status` read `stopped` before and after.
+
+**Not measured:** the rule set with the reviewer's or the security persona's own body, through a delegation, and in the TUI; those rest on step 9's neutral agent.
 
 ---
 

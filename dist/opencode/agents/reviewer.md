@@ -5,16 +5,46 @@ permission:
   edit: deny
   bash:
     "*": allow
+    "*>*": deny
+    "*2>&1*": allow
+    "*2>/dev/null*": allow
+    "*>*>*": deny
+    "*> /dev/null 2>&1": allow
+    "*>/dev/null 2>&1": allow
+    "*>*>*>*": deny
     "git commit*": deny
     "git stash*": deny
+    "git init*": deny
     "sed -i*": deny
+    "tee*": deny
+    "cp *": deny
+    "mv *": deny
+    "rm *": deny
+    "rmdir*": deny
+    "mkdir*": deny
+    "touch*": deny
   webfetch: deny
   websearch: deny
   shell:
     "*": allow
+    "*>*": deny
+    "*2>&1*": allow
+    "*2>/dev/null*": allow
+    "*>*>*": deny
+    "*> /dev/null 2>&1": allow
+    "*>/dev/null 2>&1": allow
+    "*>*>*>*": deny
     "git commit*": deny
     "git stash*": deny
+    "git init*": deny
     "sed -i*": deny
+    "tee*": deny
+    "cp *": deny
+    "mv *": deny
+    "rm *": deny
+    "rmdir*": deny
+    "mkdir*": deny
+    "touch*": deny
 ---
 
 # Reviewer

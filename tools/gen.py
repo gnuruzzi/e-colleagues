@@ -97,8 +97,9 @@ def host_appendix(persona, team, host) -> str:
     elif host["host"] == "opencode":
         lines.append(
             f"To delegate, use the `{d['tool']}` tool with `{d['parameter']}` exactly one of: "
-            f"{addressed}. The allowlist is enforced by the runtime, so an attempt to reach "
-            f"anyone else is refused rather than silently permitted.")
+            f"{addressed}. An older opencode names them `{d['old_tool']}` with "
+            f"`{d['old_parameter']}`. The allowlist is enforced by the runtime, so an attempt "
+            f"to reach anyone else is refused rather than silently permitted.")
     elif host["host"] == "antigravity":
         lines.append(
             f"To delegate, use `{d['tool']}` with one of: {addressed}.")

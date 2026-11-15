@@ -45,8 +45,15 @@ this project uses semantic versioning from 0.1.0 onward.
 - **Corrected: on Codex the plugin's skills are `$e-colleagues:ec-init` and so on.** Codex
   expands a plugin skill only under the plugin's name; the short `$ec-init` is for a project
   skill (E34).
-- **The Codex and Claude Code claims are re-run at 0.167.0 and 2.1.325 (E34, E36).** None
-  flipped.
+- **The Codex, opencode and Claude Code claims are re-run at 0.167.0, 2.2.7 and 2.1.325
+  (E34 to E36).** One changed: opencode no longer expands a slash command in a `run` prompt,
+  which this package does not use.
+- **On opencode the reviewer and security refuse more shell writes.** A redirection that
+  writes a file, `tee`, `cp`, `mv`, `rm`, `mkdir`, `touch` and `git init` are now refused
+  beside `git commit`, `git stash` and `sed -i` (E35). It narrows and is not a sandbox, and a
+  command with a literal `>` in an argument is refused too.
+- **The opencode tech-lead is told the delegation tool's current name**, `subagent` with
+  `agent`, beside the older `task` with `subagent_type`.
 - **The Antigravity claims are re-run at agy 1.5.3 (E32), and four changed.** `AGENTS.md` now
   reaches every agent tried. Workspace folders deliver agents, and a workspace agent replaces
   the installed one of the same name, in print mode even in an untrusted folder. Five listed

@@ -346,3 +346,39 @@ class TestClaudeDenylistGate(unittest.TestCase):
                 self.assertEqual(r.returncode, 1, (name, tool))
                 self.assertIn(tool, r.stdout, (name, tool))
             agent.write_text(keep)
+
+
+class TestOpencodeReadOnlyShell(unittest.TestCase):
+    """opencode matches a shell rule against each simple command of a line, redirections
+    included, and the last matching rule decides (E35). So the order below is the rule set:
+    it is the one that refused sixteen write forms of sixteen and kept a reviewer's commands."""
+
+    RULES = [("*", "allow"), ("*>*", "deny"), ("*2>&1*", "allow"), ("*2>/dev/null*", "allow"),
+             ("*>*>*", "deny"), ("*> /dev/null 2>&1", "allow"), ("*>/dev/null 2>&1", "allow"),
+             ("*>*>*>*", "deny"), ("git commit*", "deny"), ("git stash*", "deny"),
+             ("git init*", "deny"), ("sed -i*", "deny"), ("tee*", "deny"), ("cp *", "deny"),
+             ("mv *", "deny"), ("rm *", "deny"), ("rmdir*", "deny"), ("mkdir*", "deny"),
+             ("touch*", "deny")]
+
+    @staticmethod
+    def permission(name):
+        import yaml
+        text = (ROOT / "dist" / "opencode" / "agents" / f"{name}.md").read_text()
+        return yaml.safe_load(text.split("---")[1])["permission"]
+
+    def test_the_read_only_personas_carry_the_measured_rules_in_order(self):
+        for name in ("reviewer", "security"):
+            perm = self.permission(name)
+            for key in ("bash", "shell"):
+                self.assertEqual(list(perm[key].items()), self.RULES, (name, key))
+
+    def test_a_writer_has_no_shell_rules(self):
+        for name in ("developer", "platform", "designer"):
+            perm = self.permission(name)
+            self.assertNotIn("bash", perm, name)
+            self.assertNotIn("shell", perm, name)
+
+    def test_the_tech_lead_is_told_both_names_of_the_delegation_tool(self):
+        text = (ROOT / "dist" / "opencode" / "agents" / "tech-lead.md").read_text()
+        self.assertIn("use the `subagent` tool with `agent` exactly one of:", text)
+        self.assertIn("`task` with `subagent_type`", text)

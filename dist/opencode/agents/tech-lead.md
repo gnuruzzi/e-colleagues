@@ -124,4 +124,4 @@ stated here rather than assumed.
 
 ## Addressing the team
 
-To delegate, use the `task` tool with `subagent_type` exactly one of: developer, reviewer, security, designer, platform. The allowlist is enforced by the runtime, so an attempt to reach anyone else is refused rather than silently permitted.
+To delegate, use the `subagent` tool with `agent` exactly one of: developer, reviewer, security, designer, platform. An older opencode names them `task` with `subagent_type`. The allowlist is enforced by the runtime, so an attempt to reach anyone else is refused rather than silently permitted.

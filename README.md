@@ -192,7 +192,7 @@ A guarantee that is really a request is worth naming.
 |---|---|---|---|---|
 | Codex CLI | 0.153.4 | 0.167.0 (E34) | `developer_instructions` (prose) | **the session's sandbox**: a filesystem guarantee when the session is `read-only`, a request otherwise (E33) |
 | Claude Code | 2.1.263 | 2.1.325 (E36) | `--agent` (mechanical) | the editing tools denied by name; the shell can still write |
-| opencode | 1.18.29 | 2.0.18 | `default_agent` (mechanical) | permissions; the shell narrowed by patterns |
+| opencode | 1.18.29 | 2.2.7 (E35) | `default_agent` (mechanical) | permissions; the shell narrowed by patterns |
 | Antigravity | agy 1.5.3 | agy 1.5.3 (E32); desktop last driven at 2.17.0 | `mainAgent` (mechanical) | the tool list; `run_command` can still write |
 
 - Codex's read-only sandbox blocks **every** write, so a test suite that writes anything needs a session that can write, and there the reviewer can too.
