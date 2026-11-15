@@ -12,11 +12,13 @@ agent_file:
   forbidden_keys: [permissionMode, hooks, mcpServers]
 
 capabilities:
-  # An allowlist is the stronger form, but it strips every tool it does not name — including
-  # all MCP tools, Skill and AskUserQuestion — and MCP cannot be re-admitted generically
-  # [CC-09]. So only read-only personas get one.
+  # No persona carries a `tools` allowlist. It strips every tool it does not name — all MCP
+  # tools, Skill and AskUserQuestion — and it re-admits MCP only per server name, which a
+  # published package cannot know [CC-09] (experiments.md E33). Every sub-agent must reach
+  # MCP (design §0 D6), so a read-only persona names the editing tools in a denylist
+  # instead. The cost: whatever this list does not name is inherited.
   edit_false:
-    tools: [Read, Grep, Glob, Bash]
+    disallowed_tools: [Agent, Write, Edit, NotebookEdit, WebFetch, WebSearch]
     # Never `memory` here: it re-enables Write and Edit [CC-07].
   edit_true:
     # No `tools` key at all — inherit. Built-ins are denied by name instead.

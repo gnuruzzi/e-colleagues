@@ -49,11 +49,12 @@ def shared(name: str) -> str:
 
 CONTRACT = """## The contract
 
-This host does not deliver `AGENTS.md` to you, so the contract is stated here rather than
-assumed. Read the project's `AGENTS.md` yourself if you need its project-specific bindings.
+This host may not deliver `AGENTS.md` to you, so the contract is stated here rather than
+assumed. Read the project's `AGENTS.md` yourself for its project-specific bindings.
 
-- The Tech-Lead is the only voice to the user and the only persona that posts externally.
-- Specialists return findings; they never post, and never contact each other.
+- The Tech-Lead is the only voice to the user. It posts externally; a specialist does so only
+  where `AGENTS.md` grants it to its role.
+- Specialists return findings and never contact each other.
 - Evidence before claims: "passes" and "fixed" carry the command and its output.
 """
 
@@ -233,7 +234,7 @@ def yaml_scalar(v: str) -> str:
 
 
 def render_claude(personas, team, host, roster):
-    """Claude dialect: a tools allowlist for read-only personas, nothing for the primary."""
+    """Claude dialect: tools denied by name for specialists, nothing for the primary."""
     out = {}
     caps = host["capabilities"]
     for name in roster:
@@ -246,7 +247,7 @@ def render_claude(personas, team, host, roster):
         elif p["capabilities"]["edit"]:
             fm.append("disallowedTools: " + ", ".join(caps["edit_true"]["disallowed_tools"]))
         else:
-            fm.append("tools: " + ", ".join(caps["edit_false"]["tools"]))
+            fm.append("disallowedTools: " + ", ".join(caps["edit_false"]["disallowed_tools"]))
         body = render_body(p, team, host)
         out[host["agent_file"]["path"].format(name=name)] = (
             "---\n" + "\n".join(fm) + "\n---\n\n" + body)

@@ -26,8 +26,18 @@ this project uses semantic versioning from 0.1.0 onward.
 
 ### Changed
 
-- **D6 is read per assignment.** Only tech-leads speak and post externally, each within its
-  own assignment; with one tech-lead nothing changes. Specialists still never post.
+- **Every sub-agent reaches the session's MCP tools, and the project's contract says what it
+  may do with them (D6).** A specialist posts externally only where `AGENTS.md` grants it to
+  its role; by default none does and findings return to the tech-lead. `ec-init` asks. Only
+  tech-leads speak to the user, each within its own assignment. No host enforces the posting
+  rule: none tells a write through MCP from a read (E33).
+- **On Claude Code the reviewer and security now have MCP tools.** Their `tools` allowlist
+  stripped every one (E33). They carry a denylist of the editing, web and spawn tools instead,
+  so `Write` and `Edit` stay refused by the harness and everything the list does not name is
+  inherited.
+- **Corrected: on Codex a role file does not sandbox a spawned reviewer.** At 0.167.0 it ran
+  with the session's sandbox and approval policy and wrote wherever the session could (E33).
+  Only a session started `read-only` holds, and it binds the developer too.
 - **The Antigravity claims are re-run at agy 1.5.3 (E32), and four changed.** `AGENTS.md` now
   reaches every agent tried. Workspace folders deliver agents, and a workspace agent replaces
   the installed one of the same name, in print mode even in an untrusted folder. Five listed

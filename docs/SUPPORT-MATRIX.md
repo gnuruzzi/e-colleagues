@@ -2,7 +2,7 @@
 
 One row per fact-checked claim the design rests on, with the version it was last confirmed at and whether it was exercised against a running tool or still rests on documentation and source alone.
 
-Every claim id is stated in full under [The claims themselves](#the-claims-themselves) below, so a citation anywhere in this repository resolves without leaving it. Read alongside [`experiments.md`](experiments.md), which holds the evidence (E1–E32). Where a claim and an experiment disagree, **the experiment wins** — it ran against the installed binary; the claim was read from documentation and source.
+Every claim id is stated in full under [The claims themselves](#the-claims-themselves) below, so a citation anywhere in this repository resolves without leaving it. Read alongside [`experiments.md`](experiments.md), which holds the evidence (E1–E33). Where a claim and an experiment disagree, **the experiment wins** — it ran against the installed binary; the claim was read from documentation and source.
 
 ## Versions this matrix describes
 
@@ -44,6 +44,7 @@ These override the digest wherever they disagree.
 | `AG-02` | the CLI and desktop share one engine | the `agents:` key exists in agy 1.1.27 and **not** in desktop 2.12.2 — and again in desktop 2.17.0, so the divergence has closed | E16, E24 |
 | `AG-07` | `plugin.json` needs a `name`, and the binary errors on a missing or invalid one | at agy 1.5.3 **a missing or non-kebab `name` is a warning**, `validate` still passes, and it checks no tool name | E32 |
 | `CX-04` | `[agents]` defaults and the V1/V2 resolution | correct, and the V2 ceiling **refuses** a spawn past the limit rather than queueing it | E11 |
+| `CX-02` | a role file's `sandbox_mode` and `approval_policy` govern the agent spawned from it | at 0.167.0, on the V2 backend, **a spawned role ran with its parent session's sandbox and approval policy**: a `read-only` + `never` role wrote by shell and `apply_patch` under a `workspace-write` session. The role's `developer_instructions` did arrive | E33 |
 | `CC-14` | Claude Code "reads CLAUDE.md, not AGENTS.md" | at 2.1.283 an `AGENTS.md` with no `CLAUDE.md` beside it **reaches the model**; the `@AGENTS.md` import still works and is kept for older versions | E24 |
 | `OC-07` | command keys are {description, agent, model, subtask} | the schema is **{template, description, agent, model, variant, subtask}** with `template` required | E20 |
 
@@ -85,7 +86,7 @@ All 15 still resolve at 1.5.3: `view_file`, `write_to_file` and `replace_file_co
 | `CC-06` | Claude Code 2.1.284 (E23 addendum; first 2.1.263) | confirmed | runtime | E23, E24, E23 addendum | a `directory`-source project plugin loads on trust with no install step (2.1.263, 2.1.283); a `github` source is registered and fetched on trust but does not load until `claude plugin install`, and nothing says so (2.1.284) |
 | `CC-07` | Claude Code 2.1.283 (E24; first 2.1.263) | confirmed | **corrected** | E13, E15, E24 | tools allowlist holds for editors; validate does NOT catch the fail-open |
 | `CC-08` | Claude Code 2.1.263 | confirmed | docs/source only | — | — |
-| `CC-09` | Claude Code 2.1.283 (E24; first 2.1.263) | confirmed | runtime | E13, E24 | read-only reviewer still writes via Bash |
+| `CC-09` | Claude Code 2.1.283 (E24; first 2.1.263); the allowlist and MCP at 2.1.325 (E33) | confirmed | runtime | E13, E24, E33 | read-only reviewer still writes via Bash; an allowlist strips MCP and re-admits it only per server name, so read-only personas carry a denylist |
 | `CC-10` | Claude Code 2.1.283 (E24; first 2.1.263) | confirmed | **corrected** | E21, E24 | agent key works, is NOT trust-gated, unresolvable value silent |
 | `CC-11` | Claude Code 2.1.263 | confirmed | docs/source only | — | — |
 | `CC-12` | Claude Code 2.1.283 (E24; first 2.1.263) | confirmed | runtime | E10, E24 | plugin agent bodies reach the subagent |
@@ -99,7 +100,7 @@ All 15 still resolve at 1.5.3: `view_file`, `write_to_file` and `replace_file_co
 | claim | last confirmed at | verdict | how | evidence | what was measured |
 |---|---|---|---|---|---|
 | `CX-01` | Codex CLI 0.153.4 | confirmed | docs/source only | — | — |
-| `CX-02` | Codex CLI 0.154.0 (E24; first 0.153.4) | confirmed | runtime | E4, E5, E24 | read-only+never blocks every write; symlinked role TOML fails at spawn |
+| `CX-02` | Codex CLI 0.154.0 (E24; first 0.153.4); a spawned role at 0.167.0 (E33) | confirmed | **corrected** | E4, E5, E24, E33 | read-only+never blocks every write in a session started that way; a spawned role ran with its parent's sandbox instead; symlinked role TOML fails at spawn |
 | `CX-03` | Codex CLI 0.154.0 (E24; first 0.153.4) | refuted | runtime | E12, E24 | project skills load untrusted; project agents do not |
 | `CX-04` | Codex CLI 0.154.0 (E24; first 0.153.4) | refuted | **corrected** | E11, E24 | V2 ceiling is 3 spawned children; a 4th is refused, not queued |
 | `CX-05` | Codex CLI 0.154.0 (E24; first 0.153.4) | refuted | runtime | E5, E9, E24 | explicit spawn ask works; unknown agent_type errors loudly |
@@ -185,7 +186,7 @@ Every claim id cited anywhere in this repository resolves here, so a citation ne
 
 **`CC-08`** — A Claude Code subagent is a Markdown file with YAML frontmatter whose body is the system prompt. Locations by priority: managed settings > `--agents '<json>'` > `.claude/agents/` (project; every `.claude/agents/` from cwd up to the repo root is scanned) > `~/.claude/agents/` > plugin `agents/`. Required `name` …
 
-**`CC-09`** — The delegation tool is `Agent` (renamed from `Task` in v2.1.63; `Task(...)` still aliases). In `tools`, `Agent(worker, researcher)` restricts spawnable types, but 'The Agent(agent_type) allowlist syntax applies only to an agent running as the main thread with claude --agent. In a subagent definition ... any type list …
+**`CC-09`** — The delegation tool is `Agent` (renamed from `Task` in v2.1.63; `Task(...)` still aliases). In `tools`, `Agent(worker, researcher)` restricts spawnable types, but 'The Agent(agent_type) allowlist syntax applies only to an agent running as the main thread with claude --agent. In a subagent definition ... any type list … **E33 (2.1.325)**: in a sub-agent's `tools`, `mcp__<server>`, `mcp__<server>__*` and a full MCP tool name re-admit that server's tools; `mcp__*` and `mcp__*__*` give nothing, so no entry covers every server. With no `tools` key and the editing tools in `disallowedTools`, every MCP tool is reached through `ToolSearch`, and a call to `Write` or `Edit` is refused by the harness.
 
 **`CC-10`** — `claude --agent <name>` runs the whole session as that agent: 'The subagent's system prompt replaces the default Claude Code system prompt entirely ... CLAUDE.md files and project memory still load.' Plugin agents work bare (`claude --agent security-reviewer`) or scoped (`claude --agent my-plugin:security-reviewer`). …
 
@@ -206,7 +207,7 @@ Every claim id cited anywhere in this repository resolves here, so a citation ne
 
 **`CX-01`** — Codex custom agents are standalone TOML files, one per agent, at `~/.codex/agents/*.toml` (personal) or `<repo>/.codex/agents/*.toml` (project). The loader iterates `config_layer_stack.layers_low_to_high()` and calls `collect_agent_role_files(config_folder.join("agents"))`, which recursively collects and sorts …
 
-**`CX-02`** — A Codex agent file is parsed as `RawAgentRoleFileToml` with `#[serde(deny_unknown_fields)]`: `name`, `description`, `nickname_candidates`, plus a flattened `ConfigToml`, so any ordinary config.toml key is allowed (`developer_instructions`, `model`, `model_reasoning_effort`, `sandbox_mode`, `approval_policy` …
+**`CX-02`** — A Codex agent file is parsed as `RawAgentRoleFileToml` with `#[serde(deny_unknown_fields)]`: `name`, `description`, `nickname_candidates`, plus a flattened `ConfigToml`, so any ordinary config.toml key is allowed (`developer_instructions`, `model`, `model_reasoning_effort`, `sandbox_mode`, `approval_policy` … **E33 (0.167.0)**: on the V2 multi-agent backend a spawned role's thread recorded its parent session's sandbox and approval policy, not the role file's `sandbox_mode` and `approval_policy`; its `developer_instructions` did arrive. A role with `read-only` + `never` wrote by shell and `apply_patch` under a `workspace-write` session.
 
 **`CX-03`** **— refuted** — Codex merges roles layer by layer (user → profile → project, closest-to-cwd highest → CLI); a same-named role in a higher layer wins field-by-field via `merge_missing_role_fields`, so project `.codex/agents/X.toml` overrides `~/.codex/agents/X.toml` per field. Duplicate names inside one layer log 'duplicate agent role …
 

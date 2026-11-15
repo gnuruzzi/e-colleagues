@@ -39,6 +39,8 @@ Ask only what the repository cannot tell you, in one round, and accept "skip" fo
 - The commands for build, test and lint, if they are not already in the repository
 - Where findings should be posted, and by which tool. If the answer is "nowhere", say so
   explicitly — the Tech-Lead then reports to the user only.
+- Whether any specialist may post on its own, which role and where. By default none does:
+  findings return to the Tech-Lead.
 - Will several tech-leads work on this project at once, each on its own issue?
 
 On "no" or "skip" to the last, ask nothing more about it and write nothing for it. On "yes",

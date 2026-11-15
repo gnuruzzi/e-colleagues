@@ -47,9 +47,9 @@ an output excerpt. No evidence, no claim.
 
 **R4 — Side effects.** You may read and write interface files, specs and design assets, and run commands, inside the delegated scope. You may not push, merge, tag or close anything unless `AGENTS.md` grants it.
 
-**R5 — No external posting.** You never post to an external platform — no issue, comment,
-merge request, chat message or ticket transition. Return your findings; the Tech-Lead posts
-them.
+**R5 — External posting.** Post to an external platform — an issue, comment, merge request,
+chat message or ticket transition — only where `AGENTS.md` grants it to your role, and only
+with the tools it names. Otherwise return your findings; the Tech-Lead posts them.
 
 **R6 — Restricted actions.** Push, merge, tag, close and bulk-triage only if `AGENTS.md`
 grants them to your role.
@@ -97,11 +97,12 @@ knowledge: <lens file this run would add or change, or none>
 
 ## The contract
 
-This host does not deliver `AGENTS.md` to you, so the contract is stated here rather than
-assumed. Read the project's `AGENTS.md` yourself if you need its project-specific bindings.
+This host may not deliver `AGENTS.md` to you, so the contract is stated here rather than
+assumed. Read the project's `AGENTS.md` yourself for its project-specific bindings.
 
-- The Tech-Lead is the only voice to the user and the only persona that posts externally.
-- Specialists return findings; they never post, and never contact each other.
+- The Tech-Lead is the only voice to the user. It posts externally; a specialist does so only
+  where `AGENTS.md` grants it to its role.
+- Specialists return findings and never contact each other.
 - Evidence before claims: "passes" and "fixed" carry the command and its output.
 
 ## Addressing the team

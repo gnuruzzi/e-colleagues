@@ -34,15 +34,21 @@ exists to remove.
 |---|---|---|---|---|
 | tech-lead is primary | prose (`developer_instructions`) | mechanical (`--agent`) | mechanical (`default_agent`) | mechanical (`mainAgent`) |
 | specialists cannot spawn | V1 depth cap; **V2 prose** | mechanical (tool list) | mechanical (child `task * deny`) | mechanical (`tools` omits `invoke_subagent`, E32) |
-| reviewer cannot edit **files** | mechanical | mechanical | mechanical | mechanical |
-| reviewer cannot edit **via the shell** | **mechanical** (read-only sandbox, E4) | prose — Bash writes (E13) | narrowed by bash patterns | prose — `run_command` writes |
-| specialists never post externally | mechanical side-effect (no network under read-only) | prose | prose | prose |
+| reviewer cannot edit **files** | mechanical only in a `read-only` session (E33) | mechanical, denied by name (E33) | mechanical | mechanical |
+| reviewer cannot edit **via the shell** | **mechanical** in a `read-only` session (E4); prose under `workspace-write` (E33) | prose — Bash writes (E13) | narrowed by bash patterns | prose — `run_command` writes |
+| a specialist posts only where the contract grants it | prose | prose | prose | prose |
 | return contract and signatures | prose | prose | prose | prose |
 
-The one place "cannot edit" is a filesystem guarantee rather than a tool-surface one is Codex
-under `read-only` + `never`. Everywhere else a determined shell command can still write, and
+The one place "cannot edit" is a filesystem guarantee rather than a tool-surface one is a Codex
+session started `read-only`. The role file's `read-only` + `never` did not reach a spawned
+reviewer at 0.167.0: it ran with the session's sandbox and wrote where the session could (E33).
+Everywhere else a determined shell command can still write, and
 E13 measured exactly that on Claude: a read-only reviewer running the project's own test
 suite wrote two build artefacts, doing nothing wrong.
+
+Every sub-agent reaches the session's MCP tools (E32, E33), and no host tells a write through
+MCP from a read. What a specialist may do with a platform is the project's contract and
+nothing else.
 
 ## The cost of that guarantee
 

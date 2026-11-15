@@ -256,3 +256,70 @@ class TestAgyToolsGate(unittest.TestCase):
         for f in sorted((ROOT / "agents").glob("*/agent.md")):
             fm = f.read_text().split("---")[1]
             self.assertFalse(dead & set(re.findall(r"^  - (\S+)$", fm, re.M)), f.parent.name)
+
+
+class TestPostingRule(unittest.TestCase):
+    """D6: a specialist posts externally only where the project's contract grants it. Every
+    rendered body must say so, and none may still say it never posts."""
+
+    def test_every_rendered_body_carries_the_rule(self):
+        files = (sorted((ROOT / "dist").rglob("*.md")) + sorted((ROOT / "dist").rglob("*.toml"))
+                 + sorted((ROOT / "agents").rglob("*.md"))
+                 + [ROOT / "skills" / "ec-tech-lead" / "SKILL.md"])
+        bodies = [f for f in files if "R4 — Side effects" in f.read_text()]
+        self.assertGreaterEqual(len(bodies), 20)
+        for f in bodies:
+            text = f.read_text()
+            self.assertIn("R5 — External posting.", text, f.name)
+            self.assertIn("only where `AGENTS.md` grants it to your role", text, f.name)
+            self.assertNotIn("never post", text.lower(), f.name)
+
+
+class TestClaudeReadOnlyGate(unittest.TestCase):
+    """D6: every sub-agent reaches MCP tools. On Claude Code a `tools` allowlist strips them
+    and no pattern re-admits every server, so a read-only persona carries no `tools` key and
+    names the editing tools in `disallowedTools` instead (E33)."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = pathlib.Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+        (self.root / "tools").mkdir()
+        shutil.copy(ROOT / "tools" / "check.py", self.root / "tools" / "check.py")
+        for d in ("personas", "hosts"):
+            shutil.copytree(ROOT / d, self.root / d)
+        shutil.copytree(ROOT / "dist" / "claude", self.root / "dist" / "claude")
+        self.agent = self.root / "dist" / "claude" / "agents" / "reviewer.md"
+        self.line = "disallowedTools: Agent, Write, Edit, NotebookEdit, WebFetch, WebSearch\n"
+
+    def check(self):
+        return subprocess.run([sys.executable, str(self.root / "tools" / "check.py"),
+                               "--claude"], capture_output=True, text=True)
+
+    def test_the_rendered_agents_pass(self):
+        r = self.check()
+        self.assertEqual(r.returncode, 0, r.stdout)
+
+    def test_both_read_only_personas_carry_the_denylist(self):
+        for name in ("reviewer", "security"):
+            fm = (ROOT / "dist" / "claude" / "agents" / f"{name}.md").read_text().split("---")[1]
+            self.assertIn(self.line, fm, name)
+            self.assertNotRegex(fm, r"(?m)^tools:", name)
+
+    def test_a_tools_allowlist_fails(self):
+        text = self.agent.read_text()
+        self.assertIn(self.line, text)
+        self.agent.write_text(text.replace(self.line, "tools: Read, Grep, Glob, Bash\n", 1))
+        r = self.check()
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("strips every MCP tool", r.stdout)
+
+    def test_a_denylist_missing_one_tool_fails(self):
+        text = self.agent.read_text()
+        for tool in ("Agent", "Write", "Edit", "NotebookEdit", "WebFetch", "WebSearch"):
+            names = [t for t in self.line.split(": ")[1].strip().split(", ") if t != tool]
+            self.agent.write_text(text.replace(self.line,
+                                               "disallowedTools: " + ", ".join(names) + "\n", 1))
+            r = self.check()
+            self.assertEqual(r.returncode, 1, tool)
+            self.assertIn(tool, r.stdout)

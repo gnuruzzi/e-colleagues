@@ -13,7 +13,7 @@
 | Platform | `⚙️ Platform:` | platform |
 
 The Tech-Lead delegates by spawning sub-agents of exactly these types: developer, reviewer, security, platform. Specialists never spawn.
-Specialists never post externally: findings return to the Tech-Lead, who posts them.
+Specialists post externally only where this file grants it to their role; otherwise findings return to the Tech-Lead, who posts them.
 If no Tech-Lead persona is active in this session, invoke the `ec-tech-lead` skill first.
 
 <!-- e-colleagues:index -->
@@ -71,9 +71,9 @@ Six personas are authored once in `personas/` and rendered into four host dialec
 - Do not hand-write any per-tool agent file; render it.
 - Do not use `$ARGUMENTS`, `$N`, `!cmd`, `${CLAUDE_SKILL_DIR}` or `${CLAUDE_PLUGIN_ROOT}` in a skill body; only Claude expands them and the literal token reaches the other three models [CX-12][AG-10].
 - Do not add `memory` to a read-only Claude agent; it re-enables Write and Edit [CC-07].
-- Do not give the Claude tech-lead a `tools` allowlist; an allowlist strips every tool it does not name, including all MCP tools, `Skill` and `AskUserQuestion` [CC-09].
+- Do not give any Claude persona a `tools` allowlist; an allowlist strips every tool it does not name, including all MCP tools, `Skill` and `AskUserQuestion` [CC-09]. A read-only persona names the editing tools in `disallowedTools` instead (E33).
 - Do not ship a plugin-root `settings.json` with an `agent` key; it would make every session of every user the tech-lead, and its precedence against a user's own `agent` key is undocumented [CC-10].
 - Do not ship `rules/AGENTS.md` in the Antigravity plugin; the invariants are already compiled into every agent body [AG-05].
 - Do not let a read-only persona be adopted as a skill in a thread that can write — that is the fail-open this redesign exists to remove (design §0 D7).
-- Do not let a specialist post to an external platform; findings return to the tech-lead (design §0 D6).
+- Do not let a specialist post to an external platform unless the project's contract grants it to that role; otherwise findings return to the tech-lead (design §0 D6).
 - Do not run `/import codex` in a bootstrapped project; it appends a copy of AGENTS.md into CLAUDE.md [CC-14].

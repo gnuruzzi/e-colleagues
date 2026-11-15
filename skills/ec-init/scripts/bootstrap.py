@@ -74,7 +74,8 @@ def package_region(team: dict, profile: str) -> str:
         "",
         "The Tech-Lead delegates by spawning sub-agents of exactly these types: "
         + ", ".join(spawnable) + ". Specialists never spawn.",
-        "Specialists never post externally: findings return to the Tech-Lead, who posts them.",
+        "Specialists post externally only where this file grants it to their role; otherwise "
+        "findings return to the Tech-Lead, who posts them.",
         "If no Tech-Lead persona is active in this session, invoke the `ec-tech-lead` skill first.",
         "",
     ])
