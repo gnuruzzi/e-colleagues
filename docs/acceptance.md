@@ -15,7 +15,7 @@ the feature was introduced in. Below it, nothing is promised.
 | host | minimum | why this floor |
 |---|---|---|
 | OpenAI Codex CLI | **0.153.4** | `read-only` + `approval_policy = "never"` blocks every write (E4); role files parse under `deny_unknown_fields` with a five-key whitelist [CX-02]. Re-verified at 0.154.0 (E24) |
-| Claude Code | **2.1.263** | plugin `agents` takes a file list and replaces the default scan (E10); `subagent_type` needs the qualified name (E10). Re-verified at 2.1.283 (E24) |
+| Claude Code | **2.1.263** | plugin `agents` takes a file list and replaces the default scan (E10); `subagent_type` needs the qualified name (E10). Re-verified at 2.1.325 (E36) |
 | opencode | **1.18.29** | the 15 permission keys and `AgentConfig`'s 15 properties, re-derived from the published schema (E16 C3). Re-verified at 2.0.18 (E20 addendum) |
 | Google Antigravity (`agy`) | **1.5.3** | every Antigravity claim was re-run there (E32): the ten tool names that load and give a tool, which are the only ones the rendered agents list; `AGENTS.md` reaching the default agent, a custom agent and a sub-agent; and a re-install that replaces the installed directory exactly. Versions 1.1.27 to 1.2.10 are no longer supported |
 | Antigravity desktop | 2.17.0 *(observed)* | **not a floor** — inspected at 2.12.2, driven once at 2.17.0 (E19 addendum): the `tools` allowlist holds there too and `AGENTS.md` does not arrive. At 2.12.2 it lacked the `agents:` key the CLI had (E16); at 2.17.0 it carries it (E24). Not driven since: at 2.29.1 only its binary was read (E32). The renderer still never emits the key, so that agents render the same on every version of either binary |
@@ -34,7 +34,7 @@ exists to remove.
 |---|---|---|---|---|
 | tech-lead is primary | prose (`developer_instructions`) | mechanical (`--agent`) | mechanical (`default_agent`) | mechanical (`mainAgent`) |
 | specialists cannot spawn | V1 depth cap; **V2 prose** | mechanical (tool list) | mechanical (child `task * deny`) | mechanical (`tools` omits `invoke_subagent`, E32) |
-| reviewer cannot edit **files** | mechanical only in a `read-only` session (E33) | mechanical, denied by name (E33) | mechanical | mechanical |
+| reviewer cannot edit **files** | mechanical only in a `read-only` session (E33) | mechanical, denied by name (E33, E36) | mechanical | mechanical |
 | reviewer cannot edit **via the shell** | **mechanical** in a `read-only` session (E4); prose under `workspace-write` (E33) | prose — Bash writes (E13) | narrowed by bash patterns | prose — `run_command` writes |
 | a specialist posts only where the contract grants it | prose | prose | prose | prose |
 | return contract and signatures | prose | prose | prose | prose |

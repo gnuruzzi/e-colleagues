@@ -2,7 +2,7 @@
 name: developer
 description: Use to implement a specified change and write its tests. Do not use to review a change, to decide scope, or to post anywhere.
 model: inherit
-disallowedTools: Agent
+disallowedTools: Agent, SendMessage, EnterWorktree, ExitWorktree, CronCreate, CronDelete, RemoteTrigger, PushNotification, ShareOnboardingGuide, DesignSync, WebFetch, WebSearch
 ---
 
 # Developer

@@ -2,7 +2,7 @@
 name: designer
 description: Use for user-interface and user-experience work and for implementation-ready specs. Do not use for backend logic or for projects with no user interface.
 model: inherit
-disallowedTools: Agent
+disallowedTools: Agent, SendMessage, EnterWorktree, ExitWorktree, CronCreate, CronDelete, RemoteTrigger, PushNotification, ShareOnboardingGuide, DesignSync
 ---
 
 # Designer

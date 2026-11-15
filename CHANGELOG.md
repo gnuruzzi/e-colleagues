@@ -32,9 +32,12 @@ this project uses semantic versioning from 0.1.0 onward.
   tech-leads speak to the user, each within its own assignment. No host enforces the posting
   rule: none tells a write through MCP from a read (E33).
 - **On Claude Code the reviewer and security now have MCP tools.** Their `tools` allowlist
-  stripped every one (E33). They carry a denylist of the editing, web and spawn tools instead,
-  so `Write` and `Edit` stay refused by the harness and everything the list does not name is
-  inherited.
+  stripped every one (E33). They carry a denylist instead, so `Write` and `Edit` stay refused
+  by the host and everything the list does not name is inherited.
+- **On Claude Code every specialist is denied what it was measured to inherit and does not
+  need (E36):** a prompt into another conversation, scheduling, worktrees, and the tools that
+  reach your account or devices. The developer and platform no longer inherit the web tools
+  their personas say they lack.
 - **Corrected: on Codex a role file does not sandbox a spawned reviewer.** At 0.167.0 it ran
   with the session's sandbox and approval policy and wrote wherever the session could (E33).
   Only a session started `read-only` holds, and it binds the developer too.

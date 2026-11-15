@@ -2,7 +2,7 @@
 name: reviewer
 description: "Use for adversarial review of an in-review change: edge cases, races, leaks, coverage. Do not use to implement fixes."
 model: inherit
-disallowedTools: Agent, Write, Edit, NotebookEdit, WebFetch, WebSearch
+disallowedTools: Agent, SendMessage, EnterWorktree, ExitWorktree, CronCreate, CronDelete, RemoteTrigger, PushNotification, ShareOnboardingGuide, DesignSync, Write, Edit, NotebookEdit, Monitor, WebFetch, WebSearch
 ---
 
 # Reviewer

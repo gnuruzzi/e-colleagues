@@ -140,8 +140,14 @@ def check_codex():
 CLAUDE_ALLOWED = {"name", "description", "model", "effort", "maxTurns", "tools",
                   "disallowedTools", "skills", "memory", "background", "isolation"}
 CLAUDE_FORBIDDEN = {"permissionMode", "hooks", "mcpServers"}
-# Without a `tools` allowlist a persona inherits every tool this set does not name.
-CLAUDE_READ_ONLY_DENIED = {"Agent", "Write", "Edit", "NotebookEdit", "WebFetch", "WebSearch"}
+# Without a `tools` allowlist a persona inherits every tool these sets do not name (E36).
+CLAUDE_DENIED = {
+    "specialist": {"Agent", "SendMessage", "EnterWorktree", "ExitWorktree", "CronCreate",
+                   "CronDelete", "RemoteTrigger", "PushNotification", "ShareOnboardingGuide",
+                   "DesignSync"},
+    "read-only": {"Write", "Edit", "NotebookEdit", "Monitor"},
+    "no web": {"WebFetch", "WebSearch"},
+}
 
 
 def check_claude_agents():
@@ -176,18 +182,21 @@ def check_claude_agents():
         if not str(fm.get("description", "")).strip():
             fail(f"{f.name}: description is required")
         p = yaml.safe_load((ROOT / "personas" / f"{fm['name']}.yaml").read_text())
-        if p["role"] == "primary" or p["capabilities"]["edit"]:
-            continue
-        if fm.get("memory"):
+        caps = p["capabilities"]
+        if not caps["edit"] and fm.get("memory"):
             fail(f"{f.name}: memory re-enables Write and Edit on a read-only persona [CC-07]")
         if "tools" in fm:
             fail(f"{f.name}: a tools allowlist strips every MCP tool from the persona "
-                 f"[CC-09] (E33); name the editing tools in disallowedTools instead")
+                 f"[CC-09] (E33); name what it must not have in disallowedTools instead")
+        if p["role"] == "primary":
+            continue
         denied = {t.strip() for t in str(fm.get("disallowedTools", "")).split(",")}
-        missing = CLAUDE_READ_ONLY_DENIED - denied
-        if missing:
-            fail(f"{f.name}: a read-only persona must deny {sorted(missing)} in "
-                 f"disallowedTools; nothing else keeps them from it (E33)")
+        for kind, applies in (("specialist", True), ("read-only", not caps["edit"]),
+                              ("no web", not caps["web"])):
+            missing = CLAUDE_DENIED[kind] - denied if applies else None
+            if missing:
+                fail(f"{f.name}: a {kind} persona must deny {sorted(missing)} in "
+                     f"disallowedTools; nothing else keeps them from it (E36)")
     ok(f"claude agents ({len(files)}) frontmatter parsed and whitelisted")
 
 

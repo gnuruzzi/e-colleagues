@@ -1,7 +1,7 @@
 # Claude Code dialect. The only place Claude vocabulary appears.
 host: claude
 display: Claude Code
-min_version: "2.1.263"          # the floor; every runtime claim re-verified at 2.1.283 (experiments.md E24)
+min_version: "2.1.263"          # the floor; every runtime claim but CC-06 re-verified at 2.1.325 (experiments.md E36)
 
 agent_file:
   path: "dist/claude/agents/{name}.md"
@@ -15,14 +15,21 @@ capabilities:
   # No persona carries a `tools` allowlist. It strips every tool it does not name — all MCP
   # tools, Skill and AskUserQuestion — and it re-admits MCP only per server name, which a
   # published package cannot know [CC-09] (experiments.md E33). Every sub-agent must reach
-  # MCP (design §0 D6), so a read-only persona names the editing tools in a denylist
-  # instead. The cost: whatever this list does not name is inherited.
+  # MCP (design §0 D6), so a specialist names what it must not have in a denylist, and
+  # inherits whatever the list does not name. The lists are what a sub-agent was measured to
+  # inherit at 2.1.325 (E36); a name a version does not know is ignored silently (E36).
+  specialist:
+    # Spawning, a prompt into another conversation, scheduling, and the tools that reach
+    # the owner's account or devices. The two worktree tools are refused for a sub-agent
+    # today and are named so that a version that stops refusing changes nothing.
+    disallowed_tools: [Agent, SendMessage, EnterWorktree, ExitWorktree, CronCreate, CronDelete,
+                       RemoteTrigger, PushNotification, ShareOnboardingGuide, DesignSync]
   edit_false:
-    disallowed_tools: [Agent, Write, Edit, NotebookEdit, WebFetch, WebSearch]
-    # Never `memory` here: it re-enables Write and Edit [CC-07].
-  edit_true:
-    # No `tools` key at all — inherit. Built-ins are denied by name instead.
-    disallowed_tools: [Agent]
+    # Monitor runs a shell command in the background; Bash stays, by decision.
+    disallowed_tools: [Write, Edit, NotebookEdit, Monitor]
+    # Never `memory` here: beside a `tools` allowlist it re-enables Write and Edit [CC-07].
+  no_web:
+    disallowed_tools: [WebFetch, WebSearch]
   primary:
     # The tech-lead carries NO tools key and no disallowedTools: an allowlist would remove
     # MCP, Skill, AskUserQuestion and plan mode, and it must be able to delegate [CC-09].

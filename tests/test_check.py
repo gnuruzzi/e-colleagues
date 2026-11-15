@@ -275,10 +275,15 @@ class TestPostingRule(unittest.TestCase):
             self.assertNotIn("never post", text.lower(), f.name)
 
 
-class TestClaudeReadOnlyGate(unittest.TestCase):
+class TestClaudeDenylistGate(unittest.TestCase):
     """D6: every sub-agent reaches MCP tools. On Claude Code a `tools` allowlist strips them
-    and no pattern re-admits every server, so a read-only persona carries no `tools` key and
-    names the editing tools in `disallowedTools` instead (E33)."""
+    and no pattern re-admits every server (E33), so no persona carries one. A specialist names
+    what it must not have in `disallowedTools`, and inherits everything else (E36)."""
+
+    EVERY = ["Agent", "SendMessage", "EnterWorktree", "ExitWorktree", "CronCreate", "CronDelete",
+             "RemoteTrigger", "PushNotification", "ShareOnboardingGuide", "DesignSync"]
+    READ_ONLY = ["Write", "Edit", "NotebookEdit", "Monitor"]
+    NO_WEB = ["WebFetch", "WebSearch"]
 
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -289,37 +294,55 @@ class TestClaudeReadOnlyGate(unittest.TestCase):
         for d in ("personas", "hosts"):
             shutil.copytree(ROOT / d, self.root / d)
         shutil.copytree(ROOT / "dist" / "claude", self.root / "dist" / "claude")
-        self.agent = self.root / "dist" / "claude" / "agents" / "reviewer.md"
-        self.line = "disallowedTools: Agent, Write, Edit, NotebookEdit, WebFetch, WebSearch\n"
 
     def check(self):
         return subprocess.run([sys.executable, str(self.root / "tools" / "check.py"),
                                "--claude"], capture_output=True, text=True)
 
+    @staticmethod
+    def denied(path):
+        fm = path.read_text().split("---")[1]
+        m = re.search(r"(?m)^disallowedTools: (.*)$", fm)
+        return (m.group(1).split(", ") if m else []), fm
+
     def test_the_rendered_agents_pass(self):
         r = self.check()
         self.assertEqual(r.returncode, 0, r.stdout)
 
-    def test_both_read_only_personas_carry_the_denylist(self):
-        for name in ("reviewer", "security"):
-            fm = (ROOT / "dist" / "claude" / "agents" / f"{name}.md").read_text().split("---")[1]
-            self.assertIn(self.line, fm, name)
+    def test_each_rendered_persona_denies_what_its_capabilities_say(self):
+        want = {"reviewer": self.EVERY + self.READ_ONLY + self.NO_WEB,
+                "security": self.EVERY + self.READ_ONLY + self.NO_WEB,
+                "developer": self.EVERY + self.NO_WEB,
+                "platform": self.EVERY + self.NO_WEB,
+                "designer": self.EVERY}
+        for name, names in want.items():
+            got, fm = self.denied(ROOT / "dist" / "claude" / "agents" / f"{name}.md")
+            self.assertEqual(got, names, name)
             self.assertNotRegex(fm, r"(?m)^tools:", name)
+        got, fm = self.denied(ROOT / "dist" / "claude" / "agents" / "tech-lead.md")
+        self.assertEqual(got, [])
+        self.assertNotRegex(fm, r"(?m)^tools:")
 
-    def test_a_tools_allowlist_fails(self):
-        text = self.agent.read_text()
-        self.assertIn(self.line, text)
-        self.agent.write_text(text.replace(self.line, "tools: Read, Grep, Glob, Bash\n", 1))
-        r = self.check()
-        self.assertEqual(r.returncode, 1, r.stdout)
-        self.assertIn("strips every MCP tool", r.stdout)
-
-    def test_a_denylist_missing_one_tool_fails(self):
-        text = self.agent.read_text()
-        for tool in ("Agent", "Write", "Edit", "NotebookEdit", "WebFetch", "WebSearch"):
-            names = [t for t in self.line.split(": ")[1].strip().split(", ") if t != tool]
-            self.agent.write_text(text.replace(self.line,
-                                               "disallowedTools: " + ", ".join(names) + "\n", 1))
+    def test_a_tools_allowlist_fails_on_any_persona(self):
+        for name in ("reviewer", "developer", "tech-lead"):
+            agent = self.root / "dist" / "claude" / "agents" / f"{name}.md"
+            keep = agent.read_text()
+            agent.write_text(keep.replace("model: inherit\n",
+                                          "model: inherit\ntools: Read, Grep, Glob, Bash\n", 1))
             r = self.check()
-            self.assertEqual(r.returncode, 1, tool)
-            self.assertIn(tool, r.stdout)
+            agent.write_text(keep)
+            self.assertEqual(r.returncode, 1, name)
+            self.assertIn("strips every MCP tool", r.stdout, name)
+
+    def test_a_denylist_missing_one_name_fails(self):
+        for name in ("reviewer", "developer", "designer"):
+            agent = self.root / "dist" / "claude" / "agents" / f"{name}.md"
+            keep = agent.read_text()
+            names, _ = self.denied(agent)
+            for tool in names:
+                line = "disallowedTools: " + ", ".join(t for t in names if t != tool) + "\n"
+                agent.write_text(re.sub(r"(?m)^disallowedTools: .*\n", line, keep, count=1))
+                r = self.check()
+                self.assertEqual(r.returncode, 1, (name, tool))
+                self.assertIn(tool, r.stdout, (name, tool))
+            agent.write_text(keep)

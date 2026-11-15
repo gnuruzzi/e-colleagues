@@ -39,6 +39,7 @@ Tranches: **A** automated, **B** interactive — needing a TTY or a trust dialog
 | — | B | the fleet skill on Claude Code: start, first-run prompts, states, the captured screen, end to end | **settled** (E31): all hold once the plugin is installed; without it the host exits and `fleet.py start` still reports success; trust is kept per repository, with no session-only way to pre-answer it; a session at the trust dialog is missing from the overview |
 | — | C | the 2026-11-15 Antigravity sweep: agy 1.5.3 | **settled** (E32): AG-06, AG-07, AG-11 and AG-12 changed; the desktop not driven |
 | — | A+B | do MCP tools reach the specialists on Claude Code, Codex and opencode, and can a read-only one have them and still not edit | **settled** (E33): on Claude Code the read-only allowlist stripped them and a denylist of the editing tools gives them back, now rendered; on Codex every specialist sees them and a call needs the session's approval; on opencode both have them. A spawned Codex role ran with its parent's sandbox, not its role file's |
+| — | C | the 2026-11-15 Claude Code sweep: 2.1.325 | **settled** (E36): every runtime row reproduces but `CC-06`, not re-run; `CC-15` measured for the first time; the YAML fail-open measured at runtime; what a denylist inherits read from the host's record, and a longer denylist now rendered |
 
 ---
 
@@ -4878,3 +4879,393 @@ The debug log has `ToolSearchTool: selected mcp__canary__canary_read` twice and 
 **Verdict**: as now rendered, the reviewer and the security persona each reach an MCP tool on Claude Code and call it. That a call to `Write` or `Edit` is refused under this frontmatter line rests on the twins above; it was not repeated with the personas, whose rule R4 declines the attempt.
 
 **Host state.** The three-line trust record Codex had written into `~/.codex/config.toml` for `<tmp>/cx-repo` was removed by hand after this session; the file parses and nothing else in it was changed. `pluginUsage["e-colleagues@inline"]` in `~/.claude.json` grew by the two delegations, and Claude Code kept one more transcript for `<tmp>/cc-repo`.
+
+---
+
+## E36 — the Claude Code claims at 2.1.325: every runtime row reproduces; a read-only persona's denylist inherits eighteen tools in the foreground and nine in the background, among them a message into the main conversation, a second shell and four that reach the owner's account; a longer denylist removes them and loads with an unknown name in it; `memory` does not bring `Write` back past a denylist; a malformed agent file runs with every tool
+
+**Date** 2026-11-15. **Claude Code 2.1.325**, models Sonnet 5.5 (`--model sonnet`) for the six delegation sessions and Haiku 5.5 (`--model haiku`) for the eleven one-turn ones; **tmux 3.8**; **Python 3.14.10**; **git 2.56.0**; this package as a clean export of commit `fd4ca07`, called `<pkg>` below. Tranche C, with one interactive step.
+
+The Claude Code rows of `SUPPORT-MATRIX.md` were last fully re-run at 2.1.283 (E24) or 2.1.263. This entry re-runs each `runtime` and `corrected` row at 2.1.325, as E24 did, and answers six questions E33 left about the read-only personas' new `disallowedTools` line: what it inherits, what those tools can do, whether a longer line is safe to ship, what `memory` does beside it, a forced `NotebookEdit`, and the writer personas' list.
+
+```console
+$ claude --version
+2.1.325 (Claude Code)
+$ tmux -V
+tmux 3.8
+```
+
+| claim | at 2.1.325 | what moved |
+|---|---|---|
+| `CC-02` | **reproduced** | nothing. The host now says it itself: `Default agents/ folder is ignored because the manifest sets "agents"` |
+| `CC-03` | **reproduced** | nothing |
+| `CC-04` | **reproduced** (validate only) | nothing since `fd4ca07`: two of the four runs exit 1 under `--strict` on three warnings the package's gate already knows. `marketplace add` and `install` not run |
+| `CC-06` | **not re-run** | needs the trust dialog and leaves a marketplace registered that only `claude plugin marketplace remove` takes away |
+| `CC-07` | **reproduced, and the fail-open measured at runtime for the first time** | a file with a YAML error ran with `Agent`, `Write` and `Edit` although it said `tools: Read`; `memory` gives `Write` and `Edit` to an allowlist agent and does **not** give them back past a denylist |
+| `CC-09` | **reproduced, with the inherited list now taken from the host's record** | the list depends on whether the sub-agent runs in the foreground or the background |
+| `CC-10` | **reproduced**; precedence row not re-run | nothing |
+| `CC-12` | **reproduced**, from the host's record | nothing |
+| `CC-14` | **reproduced**, from the host's record | with both files present each is loaded once |
+| `CC-15` | **measured for the first time**; was docs/source only | holds at runtime; the binary's strings no longer score zero for `.agents/` |
+
+### 1. Fixtures, the command, and what was kept out
+
+Everything ran under `<tmp>`:
+
+- `<tmp>/repo`: `git init`, a repository-local identity, no signing, `README.md`, a one-line `target.txt` holding `alpha`, `src/calc.py` with two `unittest` tests and a `Makefile` (`make test`), a one-cell `probe.ipynb`, one commit; then `python3 <pkg>/skills/ec-init/scripts/bootstrap.py <tmp>/repo --write` (`wrote 3 files, 3 changed`), committed; then the line `Canary: BLUEBIRD-7731` appended to `AGENTS.md`, committed.
+- `<tmp>/plug`: a copy of `<pkg>` with nine extra agent files in `dist/claude/agents/`, each added to the manifest's `agents` list, a decoy `agents/decoy-antigravity.md` (E10), and one skill `skills/probe-skill/` whose frontmatter says `allowed-tools: Write, Edit`. `diff -rq <pkg> <tmp>/plug` shows only those. The twins share one neutral body, E33's: "You are a probe agent with no role of your own. Do exactly what the brief asks, attempt every step even when you expect it to fail, and report each result exactly.", plus the line `Body canary: BODY-HERON-2291`.
+
+  | twin | its frontmatter line |
+  |---|---|
+  | `probe-ro` | `disallowedTools: Agent, Write, Edit, NotebookEdit, WebFetch, WebSearch` (the rendered reviewer's) |
+  | `probe-dev` | `disallowedTools: Agent` (the rendered developer's) |
+  | `probe-open` | neither `tools` nor `disallowedTools` |
+  | `probe-a0` | `tools: Read, Grep, Glob, Bash` (the reviewer's line before E33) |
+  | `probe-inv` | `disallowedTools: Agent, Write, NoSuchToolXyzzy, Edit, NotebookEdit, WebFetch, WebSearch` |
+  | `probe-mem` | `probe-ro`'s line, and `memory: project` |
+  | `probe-mem-allow` | `tools: Read, Grep, Glob, Bash`, and `memory: project` |
+  | `probe-long` | `probe-ro`'s line plus `EnterWorktree, ExitWorktree, CronCreate, CronDelete, Monitor, SendMessage, TaskStop, RemoteTrigger, PushNotification, ShareOnboardingGuide, DesignSync` |
+  | `probe-rec` | `probe-long`'s line without `TaskStop` (the line recommended in step 9) |
+
+- `<tmp>/fixture/canary_mcp.py`: a byte-identical copy of E33's fixture server (same `sha256sum`), so that its `calls.log` is this entry's alone.
+- Two control plugins, `<tmp>/ctl` (no `agents` key, three files in `agents/`) and `<tmp>/ctl2` (an `agents` file list), and small directories for steps 4 to 6.
+
+The delegation sessions were E33's command, run in `<tmp>/repo`:
+
+```console
+$ claude -p --plugin-dir <tmp>/plug --agent tech-lead \
+    --setting-sources project,local --mcp-config <tmp>/mcp.json --strict-mcp-config \
+    --permission-mode acceptEdits --allowedTools "Bash,mcp__canary" \
+    --model sonnet --output-format stream-json --verbose --debug-file <tmp>/cap/<label>.debug.log \
+    "<prompt>" < /dev/null
+```
+
+started with the driving session's `CLAUDE*`, `ANTHROPIC_*` and `TMUX*` variables unset; `Skill` was added to `--allowedTools` from the fourth session on (step 8 says why). `--plugin-dir` installs nothing. `--setting-sources project,local` left the owner's user settings out, and with them their plugins, hooks, agents and user-level `CLAUDE.md`: every stream's first record lists this plugin and five `@builtin` ones and no other, agent types from this plugin and the host's built-ins only, and no instruction file from outside the fixture. `--strict-mcp-config` left out every other MCP source: `"mcp_servers": [{"name": "canary", "status": "connected", "source": "dynamic"}]` in the six delegation sessions and `[]` in the one-turn ones. The one exception is step 4's interactive session, where the host started its own in-process browser-integration server; nothing was dispatched to it (no `tool_dispatch` line in that session's debug log). Every delegation session ended `"permission_denials": []` except the one named in step 8.
+
+These were real sessions on the owner's account: six Sonnet sessions with 38 `Agent` calls (three of them refused by design), 1.50 USD by the sessions' own `total_cost_usd`, and eleven Haiku sessions, under 0.03 USD together. Times are UTC.
+
+**Where the tool lists come from.** Not from any model's account of itself. At 2.1.325 the host writes, into each sub-agent's transcript `~/.claude/projects/<folder>/<session>/subagents/agent-<id>.jsonl`, a record of type `api-request-shape` whose `shape.tools` is the tools array of the request it sent for that sub-agent, a `deferred_tools_delta` attachment whose `addedNames` are the deferred tools it announced to it, and a `deferred_tools_record` attachment with the full description and schema of every deferred tool `ToolSearch` loaded. `agent-<id>.meta.json` beside it says `"requestShape": "foreground"` or `"background"`. "Direct" below is `shape.tools` of the first request; "deferred" is `addedNames`. Two entries of `shape.tools` are left out of every row because no agent can call them as tools of its own: `DeferredToolPlaceholder`, and a server-side `advisor` entry that is present even on the allowlist twins.
+
+### 2. The validator [CC-04] [CC-07]
+
+```console
+$ cd <pkg>
+$ claude plugin validate --strict dist/claude/agents;              echo rc=$?    # ✔ Validation passed          rc=0
+$ claude plugin validate --strict .claude-plugin/marketplace.json; echo rc=$?    # ✔ Validation passed          rc=0
+$ claude plugin validate --strict .claude-plugin/plugin.json;      echo rc=$?    # ✘ Validation failed (--strict treats warnings as errors)   rc=1
+$ claude plugin validate --strict .;                               echo rc=$?    # the same                     rc=1
+$ claude plugin validate .;                                        echo rc=$?    # ✔ Validation passed with warnings   rc=0
+```
+
+`validate .` opens with `Validating marketplace manifest: <pkg>/.claude-plugin/marketplace.json`, so it is still marketplace mode, and then validates the plugin too. The two failing runs complain of exactly three things, each one in `tools/check.py`'s `KNOWN_CLAUDE_WARNINGS` at `fd4ca07`: `CLAUDE.md at the plugin root is not loaded as project context`, `No icon (ICON_MISSING)`, and `This folder also holds a marketplace manifest`. **CC-04 holds** for the three modes; adding a marketplace and installing from one were not run.
+
+E15's table, one agent file per throwaway plugin tree (`<case>/.claude-plugin/plugin.json`, `<case>/agents/x.md`), `claude plugin validate --strict <case>/agents`:
+
+| frontmatter | rc | result |
+|---|---|---|
+| clean control | 0 | `✔ Validation passed` |
+| `description: " unterminated quote here` | 1 | `frontmatter: YAML frontmatter failed to parse: YAML Parse error: Unexpected character. At runtime this agent does not load at all — with no frontmatter name it is treated as a co-located reference document and skipped.` |
+| `description: "Adversarial review: unterminated quote.` | 0 | passed |
+| `description: Use for adversarial review: edge cases, races, leaks.` | 0 | passed |
+| `name: rev:iewer` | 0 | passed |
+| `permissionMode: bypassPermissions`, `hooks: {}`, `mcpServers: {}` | 0 | passed |
+| `permision: nonsense` | 0 | passed |
+| `memory: true` beside `tools: Read, Grep, Glob, Bash` | 0 | passed |
+| no `description` | 1 | `description: No description in frontmatter.` (a warning; `--strict` fails on it) |
+| `disallowedTools: Agent, Write, NoSuchToolXyzzy, Edit, NotebookEdit, WebFetch, WebSearch` | 0 | passed, no word about the name |
+| `tools: Read, NoSuchToolXyzzy, Bash` | 0 | passed, no word about the name |
+| `memory: project` beside the reviewer's denylist | 0 | passed |
+
+The first three malformed rows were confirmed malformed with `yaml.safe_load` (`ScannerError`). **E15 reproduces: the same two are caught and the same six pass.** New: the validator checks no tool name. The quoted sentence about runtime is wrong at this version; step 5 measures it. One mechanic differs from E15's note: directory mode recognised a directory named `agents` and reported `No manifest found in directory` for the same file in a directory named `other` under the same plugin, so an ancestor `.claude-plugin/` is not enough (one pair tried; that the name is what decides is an inference).
+
+### 3. The manifest list, bare names, bodies, instruction files [CC-02] [CC-03] [CC-12] [CC-14]
+
+One session (`lists-fg`), twelve delegations in the foreground, each with the brief "Reply with the single word ping. Call no tool." From the stream's first record:
+
+```
+"agents": claude, e-colleagues:designer, e-colleagues:developer, e-colleagues:platform, e-colleagues:probe-a0, … e-colleagues:reviewer, e-colleagues:security, e-colleagues:tech-lead, Explore, general-purpose, Plan, statusline-setup, web-fetch
+"plugin_warnings": [{"plugin": "plug@inline", "type": "folder-shadowed-by-manifest", "message": "Default agents/ folder is ignored because the manifest sets \"agents\""}]
+```
+
+and from the stream, the first three delegations:
+
+```
+main  Agent {"subagent_type": "reviewer", …}
+        -> Agent type 'reviewer' not found. Available agents: claude, e-colleagues:designer, …
+main  Agent {"subagent_type": "decoy-antigravity", …}
+        -> Agent type 'decoy-antigravity' not found. Available agents: …
+main  Agent {"subagent_type": "e-colleagues:decoy-antigravity", …}
+        -> Agent type 'e-colleagues:decoy-antigravity' not found. Available agents: …
+main  Agent {"subagent_type": "e-colleagues:reviewer", …}   ->   ping
+```
+
+The positive control for the decoy: the same file in `<tmp>/ctl`, whose manifest has no `agents` key, is listed as `ctl:decoy-antigravity` and answered `DECOY-ACTIVE`. E33's first session, with the unmodified package, carries the same `folder-shadowed-by-manifest` warning, so the package's own root `agents/` tree raises it; it is a warning in the stream and the debug log and nothing a user sees in `-p`.
+
+- **CC-02 holds.** The manifest's `agents` list replaces the scan, and the decoy is unreachable under either name.
+- **CC-03 holds.** A bare `subagent_type` does not resolve; the qualified one does; `--agent tech-lead`, bare, resolved in all six sessions (the final reply of each carries the tech-lead's signature).
+- **CC-12 holds, by the host's record.** The reviewer's and the developer's transcripts each hold a `prompt_snapshot` attachment whose first system-prompt part is the body of the rendered file, byte for byte (4085 and 3875 characters, `body in part0` true for both), and an `instructions` attachment listing `<tmp>/repo/CLAUDE.md` and `<tmp>/repo/AGENTS.md`, both `"type": "Project"`, the second holding the canary. No model was asked.
+
+For CC-14, four directories and E24's prompt ("Do not read any files and do not use any tool. Answer in exactly this form, one line: `PROJECT: <the value after "Canary:" …, or NONE>`"), `claude -p --setting-sources project,local --strict-mcp-config --model haiku …`, no tool call in any of the four:
+
+| directory holds | answer | `instructions` attachment of the session's transcript |
+|---|---|---|
+| `AGENTS.md` only | `PROJECT: BLUEBIRD-7731` | `Project  <tmp>/cc14/agents-only/AGENTS.md` |
+| neither | `PROJECT: NONE` | none |
+| `CLAUDE.md` = `@AGENTS.md`, and `AGENTS.md` | `PROJECT: BLUEBIRD-7731` | `Project  …/both/CLAUDE.md`, then `Project  …/both/AGENTS.md`, each once |
+| `CLAUDE.md` only, canary `WAXWING-4410` | `PROJECT: WAXWING-4410` | `Project  …/claude-only/CLAUDE.md` |
+
+**CC-14 holds as E24 corrected it**: `AGENTS.md` is read natively, and the import still works. E24 had only the model's word that the token arrives once with both files present; the host's record lists each file once. A built-in plugin named `cc-plugin-agents-md@builtin` is loaded in every session; that it is what reads the file is an inference from its name.
+
+### 4. The project `agent` key [CC-10]
+
+E21's fixture, three fresh git repositories under `<tmp>/cc10/`, each with `.claude/agents/tech-lead.md` (body: begin every reply with `Q3-PROJECT-AGENT-ACTIVE`) and `.claude/settings.json`. None of them, and no ancestor, had a record in `~/.claude.json` beforehand.
+
+```console
+$ cd <tmp>/cc10/q3-untrusted && claude -p "Say only the word ping." --output-format text --setting-sources project,local --strict-mcp-config --model haiku
+Q3-PROJECT-AGENT-ACTIVE
+ping
+exit=0
+$ cd <tmp>/cc10/q3-bad && claude -p "Say only the word ping." …        # {"agent": "no-such-agent-exists"}
+ping
+exit=0
+```
+
+Stderr was empty in both. The second run's debug log, which a user does not see, has `[DEBUG] Warning: agent "no-such-agent-exists" not found. Available agents: claude, Explore, general-purpose, Plan, statusline-setup, tech-lead, web-fetch. Using default behavior.` Neither `-p` run left a record of its folder in `~/.claude.json`, as E24 found.
+
+The trusted row, in this probe's own tmux session: the same command without `-p` in `<tmp>/cc10/q3-trusted`. The trust dialog came up with `No, exit` selected; `Yes, I trust this folder` was chosen; the banner then read `@tech-lead`, and one `hi` got:
+
+```
+❯ hi
+● Q3-PROJECT-AGENT-ACTIVE
+  Hi! What can I help you with? …
+```
+
+`~/.claude.json` then held the folder with `hasTrustDialogAccepted = True`. **CC-10 holds as E21 corrected it**: the key works, it is not trust-gated, and a value that resolves to nothing is silent. The untrusted token came on the first run here; E24's one unexplained miss did not recur in one try. An unrelated prompt of the host's ("Teach auto mode about your environment?") appeared after the reply and was dismissed with Esc.
+
+### 5. A malformed agent file at runtime [CC-07]
+
+Design §8 says a plugin agent with a YAML error "loads under its filename with every field dropped". E15 measured only the validator. Two files, each with `tools: Read` after the broken line:
+
+```
+brokenyaml.md    description: " unterminated quote here
+brokencolon.md   description: "Adversarial review: unterminated quote.
+```
+
+In `<tmp>/ctl` (default scan) both are listed, `ctl:brokenyaml` and `ctl:brokencolon`, and in `<tmp>/ctl2`, whose manifest lists `./a/brokenyaml.md` and a well-formed `./a/fine.md` (`tools: Read`), so is `ctl2:brokenyaml`. One ping each; the host's record:
+
+| agent | reply | direct tools | deferred |
+|---|---|---|---|
+| `ctl2:fine` (control) | `ping` | `Read` | none |
+| `ctl:brokencolon` | `BROKENCOLON-ACTIVE`, then `Ping` | `Read` | none |
+| `ctl2:brokenyaml` (foreground) | `BROKEN-ACTIVE` | `Agent, Bash, Edit, ListAgents, Read, ReportFindings, ShareOnboardingGuide, Skill, ToolSearch, Write` | `CronCreate, CronDelete, CronList, DesignSync, EnterWorktree, ExitWorktree, Monitor, NotebookEdit, PushNotification, RemoteTrigger, SendMessage, TaskStop, WebFetch, WebSearch` |
+| `ctl:brokenyaml` (the model ran it in the background) | `BROKEN-ACTIVE`, then `Ping` | `Agent, Bash, Edit, Read, Skill, ToolSearch, Write` | `EnterWorktree, ExitWorktree, Monitor, NotebookEdit, SendMessage, TaskStop, WebFetch, WebSearch` |
+
+```
+[WARN] Failed to parse YAML frontmatter in <tmp>/ctl2/a/brokenyaml.md: YAML Parse error: Unexpected character
+[DEBUG] Loaded agent from plugin ctl2 custom file: <tmp>/ctl2/a/brokenyaml.md
+```
+
+**Verdict: the fail-open is real at 2.1.325, in the manifest-list shape this package ships.** A file whose frontmatter does not parse loads under its filename, keeps its body, loses its `tools` line and gets every tool a sub-agent can have, `Agent`, `Write` and `Edit` included; only the debug log says so. That is the same list `probe-open` has (step 7), so a rendered persona broken this way would lose its `disallowedTools` line the same way; that last step is an inference, since the broken files here carried `tools`. A broken value that holds a colon is repaired at runtime as it is in the validator, and kept its `tools`. The validator's own sentence, "At runtime this agent does not load at all", did not hold for either location.
+
+### 6. The cross-tool skills directory [CC-15]
+
+A git repository with `.agents/skills/probe-agents-skill/SKILL.md` and `.claude/skills/probe-claude-skill/SKILL.md`, one Haiku turn; the stream's first record:
+
+```
+"skills": ["probe-claude-skill", "deep-research", "design", …]
+```
+
+`probe-agents-skill` is absent, with the `.claude/skills` one as the control. **CC-15 holds at runtime**, its first measurement. Its supporting count does not: `strings -n 6` of the 2.1.325 binary has `.claude/skills` on 60 lines, `.agents/skills` on 4 and a control path on 0, where the claim records zero for `.agents/` at 2.1.261. The lines read as the importer's code, with `sourceLabel:"~/.agents/skills"` beside `~/.cursor/skills`; a reading of minified code, so an inference.
+
+### 7. What a read-only persona inherits (question A), and the writers (question F)
+
+`lists-fg` (foreground) and a second session, `schemas-bg`, with three of the same delegations sent with `run_in_background: true`. Every row is the host's record as step 1 describes; `mcp__canary__canary_post` and `mcp__canary__canary_read` are in every "deferred" cell except the two allowlist rows and are left out.
+
+| sub-agent | shape | direct | deferred |
+|---|---|---|---|
+| `reviewer`, `security`, `probe-ro`, `probe-inv`, `probe-mem` | foreground | `Bash, ListAgents, Read, ReportFindings, ShareOnboardingGuide, Skill, ToolSearch` | `CronCreate, CronDelete, CronList, DesignSync, EnterWorktree, ExitWorktree, Monitor, PushNotification, RemoteTrigger, SendMessage, TaskStop` |
+| `reviewer` | background | `Bash, Read, Skill, ToolSearch` | `EnterWorktree, ExitWorktree, Monitor, SendMessage, TaskStop` |
+| `developer`, `probe-dev` | foreground | `Bash, Edit, ListAgents, Read, ReportFindings, ShareOnboardingGuide, Skill, ToolSearch, Write` | the reviewer's eleven and `NotebookEdit, WebFetch, WebSearch` |
+| `developer` | background | `Bash, Edit, Read, Skill, ToolSearch, Write` | `EnterWorktree, ExitWorktree, Monitor, NotebookEdit, SendMessage, TaskStop, WebFetch, WebSearch` |
+| `probe-open` | foreground | the developer's and `Agent` | the developer's |
+| `probe-open` | background | `Agent, Bash, Edit, Read, Skill, ToolSearch, Write` | the developer's background list |
+| `probe-a0` | foreground | `Read, Bash` | none |
+| `probe-mem-allow` | foreground | `Read, Bash, Write, Edit` | none |
+
+For comparison, the main thread's tools in every stream's first record: `Task, Bash, CronCreate, CronDelete, CronList, DesignSync, Edit, EnterWorktree, ExitWorktree, ListAgents, Monitor, NotebookEdit, PublishPlugin, PushNotification, Read, RemoteTrigger, ReportFindings, ScheduleWakeup, SendMessage, ShareOnboardingGuide, Skill, TaskStop, ToolSearch, WebSearch, Workflow, Write` and the two MCP tools. `PublishPlugin`, `ScheduleWakeup` and `Workflow` reached no sub-agent in either shape.
+
+- **A read-only persona, foreground: 18 tools beside the MCP tools.** Seven direct and eleven deferred. In the background: 9, four direct and five deferred. E33's two lists, which it could not reconcile, were both right: its first sessions delegated in the foreground and its addendum's session in the background (`"requestShape"` in the `meta.json` files those sessions left says so).
+- **Which shape a specialist gets is the tech-lead model's choice per call**, through `run_in_background`; the persona's frontmatter does not set it.
+- `ToolSearch` gives a denied tool nothing: `probe-ro`'s `select:` of seventeen names returned the eleven above and none of `NotebookEdit, Write, Edit, WebFetch, WebSearch, Agent`.
+- **The writers (F).** The developer's list is the reviewer's plus `Edit`, `Write`, `NotebookEdit`, `WebFetch` and `WebSearch`. One thing in it is a surprise: `personas/developer.yaml` and `personas/platform.yaml` say `web: false`, and both render `disallowedTools: Agent`, so both inherit `WebFetch` and `WebSearch`. The other three hosts' renderings withhold the web tools from them. The developer was not asked to call either.
+
+### 8. What the inherited tools can do from a sub-agent (question B)
+
+Descriptions and schemas are the host's own, read in full from the `deferred_tools_record` attachments (`probe-ro` ran one `ToolSearch` `select:` over the eleven deferred names and called none of them) and from `shape.tools` for the direct ones. "Called" rows are one call from `probe-ro`, in the foreground unless it says otherwise, in sessions `forced`, `round2` and `round3`. Nothing in this table was called that reaches outside the machine or outlives the session.
+
+| tool | listed | what it can do | how established |
+|---|---|---|---|
+| `Bash` | both | write and delete files | called: `printf 'x\n' > w-ro-shell.txt; echo rc=$?` → `rc=0`, the file exists. See also E13 below |
+| `Read`, `ToolSearch`, `CronList` | both; `CronList` foreground | nothing | `CronList` called: `No scheduled jobs.` |
+| `Skill` | both | loads a skill's body into the agent's turn. A skill that declares `allowed-tools: Write, Edit` does not give those tools to an agent whose denylist names them | called: `Launching skill: e-colleagues:probe-skill`, canary returned, then `Write` and `Edit` → `No such tool available`. In `-p` the call was refused until `Skill` was in `--allowedTools` (`Execute skill: … The user can add the allow rule Skill(e-colleagues:probe-skill) …`), the one permission denial of this entry. A skill that runs as a sub-agent of its own was not tried |
+| `ListAgents` | foreground | nothing, but it shows more than the session: `Subagents (1)` and `Peer sessions (2)`, two other sessions on the machine, with their names, state and age (names cut) | called |
+| `ReportFindings` | foreground | hands the host a typed list of review findings "so the host UI can render them" | schema only |
+| `SendMessage` | both | **puts a prompt into the main conversation**, and by its schema addresses "any agent from `ListAgents` — subagent, another local Claude session", sessions on other machines and in the cloud, the send going "out under your parent session's address" | called with `to: "main"` only, foreground and background: `{"success":true,"message":"Message queued for the main conversation's next turn."}`. The main transcript then holds a `queued_command` attachment, `"commandMode": "prompt"`, `<agent-message from="…">E36-PROBE-MESSAGE from probe-ro</agent-message>`, and the tech-lead answered it. No other session was messaged |
+| `Monitor` | both | **a second shell**: runs a command in the background; its `ws` parameter opens a WebSocket to a URL | called: `echo monitor-ran > <tmp>/repo/w-ro-monitor.txt; echo monitor-done` → `Monitor started (task …)`, the file exists. `ws` not called |
+| `TaskStop` | both | stops a background task of the agent's own | called three ways: an unknown id → `No task found with ID: …`; a finished sibling → `Task … is not running (status: completed)`; a **running** background sibling (`probe-dev` in a 90-second `python3` sleep) → `Task a2fd… is owned by a2fd…; agent ae7b… cannot stop it.`, and the sibling ran on to `SLEEP-DONE` after 93 s |
+| `EnterWorktree`, `ExitWorktree` | both | by their schema: create a worktree and a branch under `.claude/worktrees/` and move the agent into it; remove them | called, foreground and background: both refused, `EnterWorktree cannot create a worktree from a subagent with a cwd override (isolation: "worktree" or explicit cwd) — it would mutate the parent session's process-wide working directory.` `git worktree list` and `git branch --list` unchanged. The `path` form, which enters an existing worktree, was not tried |
+| `CronCreate`, `CronDelete` | foreground | schedule a prompt "to be enqueued at a future time", recurring for up to seven days, "Jobs live only in this Claude session"; cancel a job by id | schema only |
+| `RemoteTrigger` | foreground | calls the vendor's remote-trigger API with the user's login: list, create, update and run cloud routines, attach a webhook trigger | schema only |
+| `ShareOnboardingGuide` | foreground | uploads `ONBOARDING.md` from the working directory to the user's organisation and returns a share link; modes `create`, `update`, `delete` | schema only |
+| `DesignSync` | foreground | reads and writes the user's design projects at the vendor's site through their login | schema only |
+| `PushNotification` | foreground | a desktop notification, and a push to the user's phone when Remote Control is connected | schema only |
+| the MCP tools | both | whatever the server does (E33) | `canary_read` called five times; the fixture's log has exactly those five |
+
+So, of the eighteen: one writes files (`Bash`, kept by decision), one is a second shell (`Monitor`), one contacts the main conversation and can address other sessions (`SendMessage`), two schedule inside the session (`CronCreate`, `CronDelete`), four reach the owner's account or devices (`RemoteTrigger`, `ShareOnboardingGuide`, `DesignSync`, `PushNotification`), and two that would create a worktree are refused by the host itself for a sub-agent today.
+
+### 9. A longer denylist (question C)
+
+**An unknown name.** `probe-inv`, whose list has `NoSuchToolXyzzy` third of seven: the plugin loads, no line of any debug log mentions the name, `claude plugin validate --strict` passes it (step 2), and its recorded tool list is `probe-ro`'s exactly. Forced calls:
+
+```
+probe-inv  Write {"file_path": "<tmp>/repo/w-inv-forced.txt", "content": "x"}
+             -> <tool_use_error>Error: No such tool available: Write. Write is not among the tools available here. Continue with the tools you have.</tool_use_error>
+probe-inv  Edit {"file_path": "<tmp>/repo/target.txt", "old_string": "alpha", "new_string": "alpha-inv"}
+             -> <tool_use_error>Error: No such tool available: Edit. …</tool_use_error>
+probe-inv  NoSuchToolXyzzy {}
+             -> <tool_use_error>Error: No such tool available: NoSuchToolXyzzy</tool_use_error>
+probe-inv  ToolSearch {"query": "select:mcp__canary__canary_read", "max_results": 1}
+probe-inv  mcp__canary__canary_read {}   ->   QUOKKA-7319-VERMILION
+```
+
+**An unknown name in `disallowedTools` is ignored without a word, and the entries on both sides of it still apply.** Measured at 2.1.325 with an invented name. That 2.1.263 treats a name it does not yet know the same way is an inference: no older binary was run.
+
+**The longer lines.** `probe-long` and `probe-rec`, foreground and background, by the host's record:
+
+| twin | shape | direct | deferred |
+|---|---|---|---|
+| `probe-long` | foreground | `Bash, ListAgents, Read, ReportFindings, Skill, ToolSearch` | `CronList` |
+| `probe-long` | background | `Bash, Read, Skill, ToolSearch` | none |
+| `probe-rec` | foreground | `Bash, ListAgents, Read, ReportFindings, Skill, ToolSearch` | `CronList, TaskStop` |
+| `probe-rec` | background | `Bash, Read, Skill, ToolSearch` | `TaskStop` |
+
+`probe-long`'s `ToolSearch` `select:` of nineteen names returned `CronList` and `mcp__canary__canary_read` and nothing else. Its forced calls to `EnterWorktree`, `SendMessage`, `Monitor`, `TaskStop`, `Write` and `NotebookEdit` each got `No such tool available: <name>`, and no `w-long-*.txt` exists. `probe-rec`, in both shapes, then did what a reviewer must still be able to: `Read` (`alpha`), `Bash` (`bash-ok`), `Skill` (`Launching skill: e-colleagues:probe-skill`) and, after `ToolSearch`, `mcp__canary__canary_read` (`QUOKKA-7319-VERMILION`); the fixture's log has both calls. Both background twins reported back to the tech-lead without `SendMessage`.
+
+**The recommended line**, which is `probe-rec`'s:
+
+```yaml
+disallowedTools: Agent, Write, Edit, NotebookEdit, WebFetch, WebSearch, EnterWorktree, ExitWorktree, CronCreate, CronDelete, Monitor, SendMessage, RemoteTrigger, PushNotification, ShareOnboardingGuide, DesignSync
+```
+
+What each added name would otherwise allow:
+
+| name | otherwise |
+|---|---|
+| `SendMessage` | a prompt queued into the main conversation mid-task (measured), and a message to another Claude session on the machine, on another machine or in the cloud, under the parent session's address (schema). The persona's body already says it never contacts a sibling |
+| `Monitor` | a background shell command (measured) and a WebSocket to any URL (schema). `Bash` stays and does the first; a reviewer loses nothing |
+| `RemoteTrigger` | creating, changing and running the owner's cloud routines with their login (schema): outside the machine, and outliving the session |
+| `ShareOnboardingGuide` | uploading a file from the repository to the owner's organisation, and deleting a shared guide (schema) |
+| `DesignSync` | writing to and deleting from the owner's design projects (schema) |
+| `PushNotification` | a notification on the owner's desktop and phone (schema) |
+| `CronCreate`, `CronDelete` | prompts enqueued into the session on a schedule, and cancelling a scheduled job by id (schema) |
+| `EnterWorktree`, `ExitWorktree` | nothing today: the host refuses both for a sub-agent (measured). Named so that a version that stops refusing changes nothing here |
+
+Left inherited, and why: `TaskStop` stops only the agent's own background tasks (measured against a running sibling), and a reviewer that starts a long test run in the background needs it; `ListAgents`, `CronList` and `ReportFindings` change nothing. `ListAgents` does show the names of other sessions on the machine, and with `SendMessage` gone that is all it does; adding it and `CronList` to the line would cost a reviewer nothing by their descriptions, and that line was not run. `PublishPlugin`, `ScheduleWakeup` and `Workflow` are main-thread tools that no sub-agent was given at 2.1.325; naming them too is free by the unknown-name result and was not run.
+
+### 10. `memory` beside the denylist (question D), and a forced `NotebookEdit` (question E)
+
+`probe-mem` and `probe-mem-allow` both got a memory directory from the host, `<tmp>/repo/.claude/agent-memory/e-colleagues-probe-mem/` and `…-probe-mem-allow/`, and each used four to five thousand more tokens for the same one-word reply than its twin without `memory` (14 541 against 10 426, and 9 303 against 4 601, by the hand-backs' own usage lines). Their tool lists are in step 7's table. Calls:
+
+```
+probe-mem-allow  Write {"file_path": "<tmp>/repo/w-memallow-tool.txt", "content": "x"}
+                   -> File created successfully at: <tmp>/repo/w-memallow-tool.txt
+probe-mem-allow  Edit {"file_path": "<tmp>/repo/w-memallow-tool.txt", "old_string": "x", "new_string": "y"}
+                   -> The file <tmp>/repo/w-memallow-tool.txt has been updated successfully.
+probe-mem        Write {"file_path": "<tmp>/repo/w-mem-forced.txt", "content": "x"}
+                   -> <tool_use_error>Error: No such tool available: Write. …</tool_use_error>
+probe-mem        Edit {"file_path": "<tmp>/repo/target.txt", "old_string": "alpha", "new_string": "alpha-mem"}
+                   -> <tool_use_error>Error: No such tool available: Edit. …</tool_use_error>
+probe-mem        Write {"file_path": "<tmp>/repo/.claude/agent-memory/e-colleagues-probe-mem/MEMORY.md", "content": "probe"}
+                   -> <tool_use_error>Error: No such tool available: Write. …</tool_use_error>
+```
+
+- **CC-07's trap holds for an allowlist**: `tools: Read, Grep, Glob, Bash` with `memory` has `Write` and `Edit`, and they work on any file in the repository, not only in the memory directory.
+- **D: with the denylist line, `memory` does not bring `Write` or `Edit` back.** They are in neither list, and a forced call is refused, even into the agent's own memory directory. The directory is created all the same and stays empty. `check.py`'s rule against `memory` on a read-only persona is therefore not what keeps `Write` away today; the denylist is.
+- **E: a forced `NotebookEdit` from `probe-ro` is refused.** After a `Read` of `<tmp>/repo/probe.ipynb`, `NotebookEdit {"notebook_path": …, "new_source": "y = 2", "cell_type": "code", "edit_mode": "insert"}` → `No such tool available: NotebookEdit. NotebookEdit is not among the tools available here.` The file's `sha256sum` is the one taken before. In the same delegation `Write`, `Edit`, `WebFetch` and `Agent` got the same answer under their own names.
+- `probe-a0`, the old allowlist: `Write` → `No such tool available`; `mcp__canary__canary_read` → `No such tool available: mcp__canary__canary_read. Its MCP server 'canary' is connected but does not offer this tool here.`; `ToolSearch` → `No such tool available`. **CC-09's allowlist half holds.**
+
+On disk after the last session:
+
+```console
+$ git status --porcelain          # in <tmp>/repo
+?? briefs/
+?? w-in-worktree.txt
+?? w-memallow-tool.txt
+?? w-ro-monitor.txt
+?? w-ro-shell.txt
+$ cat target.txt
+alpha
+$ git worktree list
+<tmp>/repo  9b59534 [main]
+```
+
+`briefs/` holds the sub-agents' briefs; `w-in-worktree.txt` is a shell write made in the repository's own directory after `EnterWorktree` was refused. No `w-*-forced.txt` and no `w-ro-skill.txt` exists. The fixture has no `posts.log`: `canary_post` was never called.
+
+### E13 again: the reviewer and the test suite [CC-09]
+
+The rendered `e-colleagues:reviewer`, foreground, brief "Run the project's test suite with `make test` and report the result.", with `find . -name '*.pyc' | wc -l` run by the tech-lead before and after:
+
+```
+main      Bash find . -name '*.pyc' | wc -l      ->  0
+reviewer  Bash make test; echo "exit=$?"         ->  Ran 2 tests in 0.000s  OK  exit=0
+main      Bash find . -name '*.pyc' | wc -l      ->  4
+```
+
+**The capability reproduces, and so does E13's behaviour.** E24 saw the reviewer set `PYTHONDONTWRITEBYTECODE=1` of its own accord and write nothing; at `fd4ca07` on this model it ran the suite plainly and left four `.pyc` files and reported `changed: none`. One run each way, so the persona's care here is not something to count on, which is what §8 already says.
+
+### Consequences
+
+1. **Nothing in the Claude Code rows flipped.** `hosts/claude.yaml`'s `min_version` comment and the matrix's version table can say 2.1.325 for every runtime row but `CC-06`.
+2. **The denylist's cost is now a list, not a guess.** Design §3 says a read-only persona "inherits whatever its denylist does not name"; at 2.1.325 that is step 7's table, and it is two lists, by the shape of the delegation.
+3. **The line in step 9 removes every inherited tool that changes something outside the agent's own shell.** It needs `hosts/claude.yaml` `capabilities.edit_false.disallowed_tools`, a re-render, and `tools/check.py`'s `CLAUDE_READ_ONLY_DENIED` to match. It is still a denylist: a tool a later version adds arrives until it is named, and the measurement has to be repeated per version.
+4. **`SendMessage` is the one that bears on D6 and on "specialists never contact a sibling".** A rendered reviewer can today queue a prompt into the tech-lead's conversation outside its RETURN block, and the schema gives it other sessions. Only the persona's body stands in the way. For the Tech-Lead and Security to weigh; the same holds for the three writers.
+5. **The writers inherit the web tools their personas say they do not have** (`developer`, `platform`: `web: false`). §3's capability table gives Claude `WebFetch, WebSearch` for `web` and renders nothing for its absence on a writer.
+6. **§8's first fail-open bullet is now measured**, and worse than the validator's text suggests: the broken agent is not skipped, it runs with everything.
+7. **`memory` is not what would re-arm a read-only persona any more**; the guard in `check.py` is harmless and no longer load-bearing for `Write` and `Edit`.
+
+### Not measured
+
+- **`CC-06`**: needs the trust dialog and a marketplace registration this probe was not to make or remove. **`CC-04`'s and `CC-05`'s install half**: `claude plugin marketplace add`, `install`, `uninstall`. So "the package installs from its own marketplace at 2.1.325" rests on E31, step 7.
+- **`CC-10`'s precedence row** (project beats user): needs a write to the owner's user settings.
+- **`CC-08`**: the priority order of agent locations. Only this much was seen: a project `.claude/agents/tech-lead.md` loaded untrusted and resolved for the `agent` key. **`CC-11`**: the nesting depth and its two variables; only that a sub-agent with no denylist has `Agent`. **`CC-13`**: the skill frontmatter keys other than `allowed-tools`. **`CC-16`**: `claude import`. **`CC-12`**: that the built-in `Explore` and `Plan` skip the instruction files.
+- **Calls that leave the machine or outlive the session**: `RemoteTrigger`, `ShareOnboardingGuide`, `DesignSync`, `PushNotification`, `CronCreate`, `CronDelete`, `Monitor`'s `ws`, and `SendMessage` to anything but `main`. What they do is the host's description, not a result. `ReportFindings` was not called either.
+- **`EnterWorktree` with `path`**, and a sub-agent started with `isolation: worktree`.
+- **`TaskStop` against a background shell the main thread started.**
+- **A skill that forks into a sub-agent**, called by an agent whose denylist names `Agent`.
+- **The exact line with `ListAgents` and `CronList` added**, and any line naming `PublishPlugin`, `ScheduleWakeup` or `Workflow`.
+- **The unknown-name result on any version but 2.1.325**, 2.1.263 above all.
+- **A rendered persona with a broken frontmatter**: the broken files carried `tools: Read`, not `disallowedTools`.
+- **The inherited list under other conditions**: an interactive session, the owner's own settings and plugins, auto mode, a second MCP server, a plugin on the machine that adds tools, a model other than Sonnet 5.5. Whether the list depends on the account's plan or on a server-side switch was not established; every session here gave the same two lists.
+- **Forced calls from a background twin** other than the worktree pair, `SendMessage` and `ListAgents` (refused there: `No such tool available: ListAgents`).
+- **The `designer` and `platform` personas' lists** (same frontmatter line as the developer's, not run), and a web call by any writer.
+- **Directory-mode validation** beyond the one pair of directory names.
+
+**Host state.** The package was **not** installed as a Claude Code plugin when this began: `installed_plugins.json` has no entry for it, `known_marketplaces.json` lists one marketplace, the vendor's, and `claude plugin list` does not name it. Nothing was installed, uninstalled, added or removed, and `claude plugin list` printed the same text before and after. Hashes of `~/.claude/settings.json`, `~/.claude.json` and, under `~/.claude/plugins/`, `installed_plugins.json`, `known_marketplaces.json`, `config.json` and `blocklist.json` were taken before the first step and after the last. Four are unchanged. Two differ, each written by the host:
+
+- `~/.claude.json`: a `projects` record for `<tmp>/cc10/q3-trusted` with `hasTrustDialogAccepted: true`, from the one trust dialog accepted in step 4; `pluginUsage["e-colleagues@inline"].usageCount` went from 22 to 61, and `ctl@inline` (3) and `ctl2@inline` (2) are new. No `-p` run added a `projects` record. Its other changed keys are counters and caches that the owner's own sessions write at the same time. The record was left: removing it means editing that file by hand.
+- `~/.claude/plugins/known_marketplaces.json`: one line, the `lastUpdated` time of the one marketplace (`diff` against a copy taken before). The new time falls inside this probe's third session; other sessions were running on the machine, so which one refreshed it is not established.
+
+The host kept its usual records, all left: nine transcript directories under `~/.claude/projects/` (one per fixture directory; the one for `<tmp>/repo` holds the six delegation sessions and their sub-agent transcripts, which this entry's tables are read from) and an empty `memory/` directory in seven of them. Its temporary directories for three of the fixtures under its own `/tmp` root were removed. The probe's tmux session was killed; no workmux state file was made for its pane (the listing of `~/.local/state/workmux/agents/` is the same before and after); no worktree was made; no fixture server or probe session was left running. The fixtures, the scratch plugin and the captures are under `<tmp>`; one capture, `forced.stream.jsonl`, holds the names of the two other sessions `ListAgents` printed, which are cut from this entry. The repository checkout was not written to.
+
+### Addendum — the rendered change
+
+After the entry above the rendering was changed to what step 9 and consequence 5 call for: every specialist is denied `Agent, SendMessage, EnterWorktree, ExitWorktree, CronCreate, CronDelete, RemoteTrigger, PushNotification, ShareOnboardingGuide, DesignSync`; a read-only persona also `Write, Edit, NotebookEdit, Monitor`; a persona without `web` also `WebFetch, WebSearch`. For the reviewer and security that is `probe-rec`'s set in another order. The writers' lines were not run with a twin above, so one more session did it with the rendered files: the command of step 1 with `<plugin>` the working tree so changed, in E33's `<tmp>/cc-repo` with E33's fixture, the tech-lead told to delegate in the foreground to `e-colleagues:reviewer` and then `e-colleagues:developer` with the brief "Tool probe. Call the MCP tool canary_read of the server canary and quote its output exactly. …". Claude Code 2.1.325, Sonnet 5.5, `"permission_denials": []`, 0.11 USD. By the host's record, as in step 1:
+
+| sub-agent | shape | direct | deferred |
+|---|---|---|---|
+| `reviewer` | foreground | `Bash, ListAgents, Read, ReportFindings, Skill, ToolSearch` | `CronList, TaskStop` and the two MCP tools |
+| `developer` | foreground | `Bash, Edit, ListAgents, Read, ReportFindings, Skill, ToolSearch, Write` | `CronList, Monitor, NotebookEdit, TaskStop` and the two MCP tools |
+
+Each called `ToolSearch` and then `mcp__canary__canary_read`; the fixture's log has the two calls.
+
+**Verdict**: as now rendered, the reviewer has `probe-rec`'s list, and the developer has its editing tools, `Monitor` and the MCP tools, and neither web tool, nor `SendMessage`, nor any tool that reaches the owner's account. The `platform` and `designer` personas, the background shape for the developer, and a forced call to a denied tool from a writer were not run.

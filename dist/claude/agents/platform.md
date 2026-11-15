@@ -2,7 +2,7 @@
 name: platform
 description: Use for CI/CD, deployment, infrastructure and observability work. Do not use for application logic or user-interface changes.
 model: inherit
-disallowedTools: Agent
+disallowedTools: Agent, SendMessage, EnterWorktree, ExitWorktree, CronCreate, CronDelete, RemoteTrigger, PushNotification, ShareOnboardingGuide, DesignSync, WebFetch, WebSearch
 ---
 
 # Platform

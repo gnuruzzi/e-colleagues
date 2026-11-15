@@ -2,13 +2,13 @@
 
 One row per fact-checked claim the design rests on, with the version it was last confirmed at and whether it was exercised against a running tool or still rests on documentation and source alone.
 
-Every claim id is stated in full under [The claims themselves](#the-claims-themselves) below, so a citation anywhere in this repository resolves without leaving it. Read alongside [`experiments.md`](experiments.md), which holds the evidence (E1–E33). Where a claim and an experiment disagree, **the experiment wins** — it ran against the installed binary; the claim was read from documentation and source.
+Every claim id is stated in full under [The claims themselves](#the-claims-themselves) below, so a citation anywhere in this repository resolves without leaving it. Read alongside [`experiments.md`](experiments.md), which holds the evidence (E1–E36). Where a claim and an experiment disagree, **the experiment wins** — it ran against the installed binary; the claim was read from documentation and source.
 
 ## Versions this matrix describes
 
 | tool | version | how the sweep reached it |
 |---|---|---|
-| Claude Code | 2.1.263 | `claude -p`, `--plugin-dir`, `plugin validate`, `plugin list` — **re-verified at 2.1.283** (E24) |
+| Claude Code | 2.1.263 | `claude -p`, `--plugin-dir`, `plugin validate`, `plugin list` — **re-verified at 2.1.325** (E36): every runtime row but `CC-06`; before that at 2.1.283 (E24) |
 | Codex CLI | 0.153.4 | `codex exec`, `codex sandbox`, `codex plugin …` — **re-verified at 0.154.0** (E24) |
 | opencode | 1.18.29 | `opencode run`, `agent list`, `run --command` — **re-verified at 2.0.18** (E20 addendum): every runtime row holds; `agent list` is now `debug agents` and `run --command` is a slash command in the prompt |
 | agy (Antigravity CLI) | 1.5.3 | `agy --print`, `--agent`, `plugin install/validate` — **every Antigravity claim re-run at 1.5.3** (E32), which is the supported floor. History: first swept at 1.1.27, with the tool registry re-verified unchanged at 1.2.6 and 1.2.10 (E17 addendum, E24); those versions are no longer supported, and the registry, `AGENTS.md` delivery, workspace agents and re-install all differed there |
@@ -79,20 +79,20 @@ All 15 still resolve at 1.5.3: `view_file`, `write_to_file` and `replace_file_co
 
 | claim | last confirmed at | verdict | how | evidence | what was measured |
 |---|---|---|---|---|---|
-| `CC-02` | Claude Code 2.1.283 (E24; first 2.1.263) | confirmed | runtime | E10, E24 | manifest agents list replaces the default scan; decoy never loaded |
-| `CC-03` | Claude Code 2.1.283 (E24; first 2.1.263) | confirmed | **corrected** | E10, E24 | bare subagent_type does NOT resolve; qualified form does |
-| `CC-04` | Claude Code 2.1.263 | confirmed | runtime | E10 | three validate modes; validate . is marketplace mode |
+| `CC-02` | Claude Code 2.1.325 (E36; first 2.1.263) | confirmed | runtime | E10, E24, E36 | manifest agents list replaces the default scan; decoy never loaded |
+| `CC-03` | Claude Code 2.1.325 (E36; first 2.1.263) | confirmed | **corrected** | E10, E24, E36 | bare subagent_type does NOT resolve; qualified form does |
+| `CC-04` | Claude Code 2.1.325 for the three validate modes (E36; first 2.1.263); installing from a marketplace at 2.1.325 in E31 only | confirmed | runtime | E10, E31, E36 | three validate modes; validate . is marketplace mode |
 | `CC-05` | Claude Code 2.1.263 | confirmed | docs/source only | — | — |
 | `CC-06` | Claude Code 2.1.284 (E23 addendum; first 2.1.263) | confirmed | runtime | E23, E24, E23 addendum | a `directory`-source project plugin loads on trust with no install step (2.1.263, 2.1.283); a `github` source is registered and fetched on trust but does not load until `claude plugin install`, and nothing says so (2.1.284) |
-| `CC-07` | Claude Code 2.1.283 (E24; first 2.1.263) | confirmed | **corrected** | E13, E15, E24 | tools allowlist holds for editors; validate does NOT catch the fail-open |
+| `CC-07` | Claude Code 2.1.325 (E36; first 2.1.263) | confirmed | **corrected** | E13, E15, E24, E36 | tools allowlist holds for editors; validate does NOT catch the fail-open; the fail-open measured at runtime (E36) |
 | `CC-08` | Claude Code 2.1.263 | confirmed | docs/source only | — | — |
-| `CC-09` | Claude Code 2.1.283 (E24; first 2.1.263); the allowlist and MCP at 2.1.325 (E33) | confirmed | runtime | E13, E24, E33 | read-only reviewer still writes via Bash; an allowlist strips MCP and re-admits it only per server name, so read-only personas carry a denylist |
-| `CC-10` | Claude Code 2.1.283 (E24; first 2.1.263) | confirmed | **corrected** | E21, E24 | agent key works, is NOT trust-gated, unresolvable value silent |
+| `CC-09` | Claude Code 2.1.325 (E33, E36; first 2.1.263) | confirmed | runtime | E13, E24, E33, E36 | read-only reviewer still writes via Bash; an allowlist strips MCP and re-admits it only per server name, so every specialist carries a denylist of what it was measured to inherit |
+| `CC-10` | Claude Code 2.1.325 (E36; first 2.1.263); the precedence row at 2.1.263 (E21) | confirmed | **corrected** | E21, E24, E36 | agent key works, is NOT trust-gated, unresolvable value silent |
 | `CC-11` | Claude Code 2.1.263 | confirmed | docs/source only | — | — |
-| `CC-12` | Claude Code 2.1.283 (E24; first 2.1.263) | confirmed | runtime | E10, E24 | plugin agent bodies reach the subagent |
+| `CC-12` | Claude Code 2.1.325 (E36; first 2.1.263) | confirmed | runtime | E10, E24, E36 | plugin agent bodies reach the subagent |
 | `CC-13` | Claude Code 2.1.263 | confirmed | docs/source only | — | — |
-| `CC-14` | Claude Code 2.1.283 (E24; first 2.1.263) | confirmed | **corrected** | E24 | the load order holds and the @import works, but "not AGENTS.md" no longer does: AGENTS.md is read natively |
-| `CC-15` | Claude Code 2.1.263 | confirmed | docs/source only | — | — |
+| `CC-14` | Claude Code 2.1.325 (E36; first 2.1.263) | confirmed | **corrected** | E24, E36 | the load order holds and the @import works, but "not AGENTS.md" no longer does: AGENTS.md is read natively |
+| `CC-15` | Claude Code 2.1.325 (E36; first 2.1.263, docs/source only) | confirmed | runtime | E36 | a project `.agents/skills` skill is not loaded |
 | `CC-16` | Claude Code 2.1.263 | confirmed | docs/source only | — | — |
 
 ### Codex CLI
@@ -182,11 +182,11 @@ Every claim id cited anywhere in this repository resolves here, so a citation ne
 
 **`CC-06`** — Project `.claude/settings.json` supports `extraKnownMarketplaces` (name → {source, autoUpdate?}) and `enabledPlugins` (`plugin@marketplace` → bool). Both are honored only after the user accepts the workspace-trust dialog for that folder (a `-p` run or trusting a parent does not count); the marketplace is then added … **E23 addendum (2.1.284)**: measured for the `github` source — trust registers the marketplace and fetches it under `~/.claude/plugins/marketplaces/`, and the plugin does not load until `claude plugin install`; nothing is printed to say so, so the "shown" install command is not shown.
 
-**`CC-07`** — Plugin-shipped agents support `name`, `description`, `model`, `effort`, `maxTurns`, `tools`, `disallowedTools`, `skills`, `memory`, `background`, `isolation`; 'For security reasons, plugin subagents don't support the hooks, mcpServers, or permissionMode frontmatter fields. These fields are ignored when loading agents …
+**`CC-07`** — Plugin-shipped agents support `name`, `description`, `model`, `effort`, `maxTurns`, `tools`, `disallowedTools`, `skills`, `memory`, `background`, `isolation`; 'For security reasons, plugin subagents don't support the hooks, mcpServers, or permissionMode frontmatter fields. These fields are ignored when loading agents … **E36 (2.1.325)**: measured at runtime — a plugin agent file whose frontmatter does not parse, in the default `agents/` folder or in the manifest's `agents` list, loads under its filename with its body kept and its `tools` line dropped, and has every tool a sub-agent can have, `Agent`, `Write` and `Edit` included; only the debug log says so, and the validator's "does not load at all" is wrong. A broken value containing a colon is repaired and keeps its `tools`. `memory` gives `Write` and `Edit` to an agent with a `tools` allowlist; beside a `disallowedTools` line naming them it does not, and a call is refused. `claude plugin validate` checks no tool name in `tools` or `disallowedTools`.
 
 **`CC-08`** — A Claude Code subagent is a Markdown file with YAML frontmatter whose body is the system prompt. Locations by priority: managed settings > `--agents '<json>'` > `.claude/agents/` (project; every `.claude/agents/` from cwd up to the repo root is scanned) > `~/.claude/agents/` > plugin `agents/`. Required `name` …
 
-**`CC-09`** — The delegation tool is `Agent` (renamed from `Task` in v2.1.63; `Task(...)` still aliases). In `tools`, `Agent(worker, researcher)` restricts spawnable types, but 'The Agent(agent_type) allowlist syntax applies only to an agent running as the main thread with claude --agent. In a subagent definition ... any type list … **E33 (2.1.325)**: in a sub-agent's `tools`, `mcp__<server>`, `mcp__<server>__*` and a full MCP tool name re-admit that server's tools; `mcp__*` and `mcp__*__*` give nothing, so no entry covers every server. With no `tools` key and the editing tools in `disallowedTools`, every MCP tool is reached through `ToolSearch`, and a call to `Write` or `Edit` is refused by the harness.
+**`CC-09`** — The delegation tool is `Agent` (renamed from `Task` in v2.1.63; `Task(...)` still aliases). In `tools`, `Agent(worker, researcher)` restricts spawnable types, but 'The Agent(agent_type) allowlist syntax applies only to an agent running as the main thread with claude --agent. In a subagent definition ... any type list … **E33 (2.1.325)**: in a sub-agent's `tools`, `mcp__<server>`, `mcp__<server>__*` and a full MCP tool name re-admit that server's tools; `mcp__*` and `mcp__*__*` give nothing, so no entry covers every server. With no `tools` key and the editing tools in `disallowedTools`, every MCP tool is reached through `ToolSearch`, and a call to `Write` or `Edit` is refused by the harness. **E36 (2.1.325)**: by the host's own record of each sub-agent's request, an agent whose `disallowedTools` names `Agent, Write, Edit, NotebookEdit, WebFetch, WebSearch` has, in the foreground, `Bash, ListAgents, Read, ReportFindings, ShareOnboardingGuide, Skill, ToolSearch` and, deferred, `CronCreate, CronDelete, CronList, DesignSync, EnterWorktree, ExitWorktree, Monitor, PushNotification, RemoteTrigger, SendMessage, TaskStop` and every MCP tool; launched with `run_in_background: true` it has `Bash, Read, Skill, ToolSearch` and, deferred, `EnterWorktree, ExitWorktree, Monitor, SendMessage, TaskStop` and the MCP tools. A call to a denied tool, `NotebookEdit` included, is refused with `No such tool available`. A name in `disallowedTools` that the version does not know is ignored silently and the other entries still apply. From a sub-agent `SendMessage` queues a prompt into the main conversation, `Monitor` runs a shell command, `TaskStop` stops only the agent's own tasks, and `EnterWorktree` and `ExitWorktree` are refused.
 
 **`CC-10`** — `claude --agent <name>` runs the whole session as that agent: 'The subagent's system prompt replaces the default Claude Code system prompt entirely ... CLAUDE.md files and project memory still load.' Plugin agents work bare (`claude --agent security-reviewer`) or scoped (`claude --agent my-plugin:security-reviewer`). …
 
@@ -198,7 +198,7 @@ Every claim id cited anywhere in this repository resolves here, so a citation ne
 
 **`CC-14`** — 'Claude Code reads CLAUDE.md, not AGENTS.md.' Load order: `/etc/claude-code/CLAUDE.md` → `~/.claude/CLAUDE.md` → `./CLAUDE.md` or `./.claude/CLAUDE.md` (and every ancestor, root-first) → `./CLAUDE.local.md`; subdirectory CLAUDE.md files load on demand. `@path` imports (relative to the containing file, or … **E24 (2.1.283)**: `AGENTS.md` is also read natively — its canary reached the model with no `CLAUDE.md` present, and with both files present the model reported it once. The import stays; it is no longer the only route.
 
-**`CC-15`** — Claude Code does not read `.agents/skills`, `~/.agents/skills`, or any other agent's skill directory. skills.md (100 KB) contains zero occurrences of `.agents`; the 2.1.261 binary's strings contain `.claude/skills` 52 times and `.agents/` zero times (the 42 bare `.agents` hits are JS property accesses like …
+**`CC-15`** — Claude Code does not read `.agents/skills`, `~/.agents/skills`, or any other agent's skill directory. skills.md (100 KB) contains zero occurrences of `.agents`; the 2.1.261 binary's strings contain `.claude/skills` 52 times and `.agents/` zero times (the 42 bare `.agents` hits are JS property accesses like … **E36 (2.1.325)**: measured — a project `.agents/skills/<name>/SKILL.md` is not in the session's skill list, with a `.claude/skills/` skill beside it as the control. The binary's strings are no longer free of `.agents/`: four lines carry `.agents/skills`, in what reads as the importer's code.
 
 **`CC-16`** — `claude import [codex|gemini] [--dry-run] [--yes]` is documented to bring 'instruction files, MCP servers, commands, subagents, and skills' (v2.1.213+) and to append a one-time copy of AGENTS.md to CLAUDE.md. MEASURED on this machine with five Codex TOML agents in `~/.codex/agents/` and the skill …
 

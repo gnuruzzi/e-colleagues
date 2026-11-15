@@ -2,7 +2,7 @@
 name: security
 description: Use to audit a change or the codebase for vulnerabilities, secrets handling, dependency and CVE exposure, and attack surface. Do not use to implement fixes.
 model: inherit
-disallowedTools: Agent, Write, Edit, NotebookEdit, WebFetch, WebSearch
+disallowedTools: Agent, SendMessage, EnterWorktree, ExitWorktree, CronCreate, CronDelete, RemoteTrigger, PushNotification, ShareOnboardingGuide, DesignSync, Write, Edit, NotebookEdit, Monitor, WebFetch, WebSearch
 ---
 
 # Security

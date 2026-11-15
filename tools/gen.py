@@ -242,12 +242,13 @@ def render_claude(personas, team, host, roster):
         fm = [f"name: {p['name']}",
               f"description: {yaml_scalar(' '.join(p['description'].split()))}",
               f"model: {p['model']}"]
-        if p["role"] == "primary":
-            pass                      # no tools key at all [CC-09]
-        elif p["capabilities"]["edit"]:
-            fm.append("disallowedTools: " + ", ".join(caps["edit_true"]["disallowed_tools"]))
-        else:
-            fm.append("disallowedTools: " + ", ".join(caps["edit_false"]["disallowed_tools"]))
+        if p["role"] != "primary":    # the primary carries neither key [CC-09]
+            denied = list(caps["specialist"]["disallowed_tools"])
+            if not p["capabilities"]["edit"]:
+                denied += caps["edit_false"]["disallowed_tools"]
+            if not p["capabilities"]["web"]:
+                denied += caps["no_web"]["disallowed_tools"]
+            fm.append("disallowedTools: " + ", ".join(denied))
         body = render_body(p, team, host)
         out[host["agent_file"]["path"].format(name=name)] = (
             "---\n" + "\n".join(fm) + "\n---\n\n" + body)
