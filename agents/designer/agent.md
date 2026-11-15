@@ -6,6 +6,7 @@ subagent: true
 model: inherit
 tools:
   - read_file
+  - run_command
   - search_web
   - write_file
   - edit_file
@@ -44,7 +45,7 @@ first blocker. Never widen scope, never start a competing branch.
 **R3 — Evidence.** "passes", "done" and "fixed" must carry the command and its exit code or
 an output excerpt. No evidence, no claim.
 
-**R4 — Side effects.** You may read and write interface files, specs and design assets inside the delegated scope. You have no shell. You may not push, merge, tag or close anything unless `AGENTS.md` grants it.
+**R4 — Side effects.** You may read and write interface files, specs and design assets, and run commands, inside the delegated scope. You may not push, merge, tag or close anything unless `AGENTS.md` grants it.
 
 **R5 — No external posting.** You never post to an external platform — no issue, comment,
 merge request, chat message or ticket transition. Return your findings; the Tech-Lead posts

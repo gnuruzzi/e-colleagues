@@ -35,8 +35,10 @@ this project uses semantic versioning from 0.1.0 onward.
   replaces the old one.
 - **Antigravity needs agy 1.5.3 or later.** Versions 1.1.27 to 1.2.10 are no longer supported.
   The rendered agents list the 1.5.3 tool names, and the checker refuses a name that loads and
-  gives no tool. agy 1.5.3 has no search tool to list: a persona with a shell searches through
-  it, and the designer, which has none, reads only the paths it is given.
+  gives no tool. agy 1.5.3 has no search tool to list, so a persona searches through its
+  shell.
+- **The designer may run commands**, like the developer and platform. Without a shell it could
+  not list or find a file on Antigravity, which has no search tool.
 
 ### Fixed
 

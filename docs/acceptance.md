@@ -82,9 +82,8 @@ Then, per host, by hand — because no static check can prove a runtime behaviou
   choice, so two projects on one machine share the roster. The host itself delivers workspace
   agents, from `.agents/agents/`, `_agents/agents/`, `.agents/plugins/` and `_agents/plugins/`
   (E32).
-- **An Antigravity persona has no search tool**, because agy has none to list (E32). A persona
-  with a shell searches through `run_command`; the designer, which has no shell, can only read
-  paths it is given.
+- **An Antigravity persona has no search tool**, because agy has none to list (E32). It
+  searches through `run_command`, which every persona has.
 - **opencode's roster is per-machine too.** `bootstrap.py --scope user` writes the agents to
   `~/.config/opencode/agents/` and the five skills to `~/.config/opencode/skills/`; nothing
   writes them into a project, and there is no bundle or plugin route (E25). The global config is never written, so the tech-lead is chosen per

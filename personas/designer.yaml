@@ -7,7 +7,7 @@ description: >-
   Do not use for backend logic or for projects with no user interface.
 capabilities:
   edit: true
-  shell: false
+  shell: true
   web: true
   delegate: []
 external_post: false
