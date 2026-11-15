@@ -159,6 +159,45 @@ class TestStart(Base):
         self.assertIn("_agents/plugins/p/agents/lead.md", r.stderr)
         self.assertNotIn("reviewer", r.stderr)
 
+    def test_the_new_worktree_is_what_gets_scanned_when_it_is_there(self):
+        """The session runs in the worktree, which may hold another revision than the folder
+        the start was run from."""
+        self.write_cfg()
+        clean = self.project({".agents/agents/reviewer/agent.md": "reviewer"})
+        tree = self.dir / "tree"
+        (tree / ".agents/agents/x").mkdir(parents=True)
+        (tree / ".agents/agents/x/agent.md").write_text("---\nname: tech-lead\n---\n")
+        (self.dir / "where.out").write_text(f"Worktree: {tree}\n")
+        r = self.run_fleet("start", "12", "--host", "antigravity", cwd=clean)
+        self.assertIn(".agents/agents/x/agent.md", r.stderr)
+        # and the other way round: the folder has one, the worktree does not
+        (clean / ".agents/agents/tl").mkdir()
+        (clean / ".agents/agents/tl/agent.md").write_text("---\nname: tech-lead\n---\n")
+        bare = self.dir / "bare"
+        bare.mkdir()
+        (self.dir / "where.out").write_text(f"Worktree: {bare}\n")
+        self.assertEqual(self.run_fleet("start", "12", "--host", "antigravity",
+                                        cwd=clean).stderr, "")
+
+    def test_the_agent_is_found_however_the_name_and_the_flag_are_written(self):
+        forms = ["name: tech-lead", 'name: "tech-lead"', "name:   'tech-lead'   # the lead",
+                 '"name": tech-lead', "name: tech-lead\r", "  name: tech-lead"]
+        for n, form in enumerate(forms):
+            root = self.dir / f"p{n}"
+            (root / ".git").mkdir(parents=True)
+            (root / ".agents/agents/a").mkdir(parents=True)
+            (root / ".agents/agents/a/agent.md").write_text(f"---\ndescription: x\n{form}\n---\n")
+            for start in ("agy --agent tech-lead", "agy --agent=tech-lead --remote-control",
+                          "/usr/local/bin/agy --agent 'tech-lead'"):
+                self.write_cfg(extra=f'[hosts.antigravity]\nstart = "{start}"\ntrust = ""\n')
+                r = self.run_fleet("start", "12", "--host", "antigravity", cwd=root)
+                self.assertIn("its own agent named 'tech-lead'", r.stderr, (form, start))
+        other = self.dir / "p0" / ".agents/agents/a/agent.md"
+        other.write_text("---\nname: tech-lead-two\nnickname: tech-lead\n---\n")
+        self.write_cfg(extra='[hosts.antigravity]\ntrust = ""\n')
+        self.assertEqual(self.run_fleet("start", "12", "--host", "antigravity",
+                                        cwd=self.dir / "p0").stderr, "")
+
     def test_no_such_warning_without_such_an_agent_or_on_another_host(self):
         self.write_cfg()
         (self.dir / "where.out").write_text("Worktree: /w/issue-12\n")
@@ -275,16 +314,20 @@ class TestStart(Base):
         self.assertEqual(self.logged(), [["add", "issue-12", "--agent", "h run", "--prompt",
                                           "Use the ec-fleet skill. Your assignment: issue 12."]])
 
-    def test_where_runs_only_for_a_host_whose_trust_needs_the_path(self):
+    def test_where_runs_only_when_the_path_is_needed(self):
+        """For trust arguments that hold it, before the start; for an agy start with trust
+        switched off, after it, to look in the new worktree for an agent of the same name."""
         self.write_cfg(extra='[hosts.antigravity]\ntrust = ""\n'
                              '[hosts.fixed]\nstart = "f run"\ntrust = "--yes"\n')
-        for host, agent in (("claude", "claude --agent tech-lead"),
-                            ("antigravity", "agy --agent tech-lead"), ("fixed", "f run --yes")):
+        for host, agent, calls in (
+                ("claude", "claude --agent tech-lead", ["add"]),
+                ("antigravity", "agy --agent tech-lead", ["add", "where"]),
+                ("fixed", "f run --yes", ["add"])):
             self.log.unlink(missing_ok=True)
             r = self.run_fleet("start", "12", "--host", host)
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertEqual(r.stderr, "", host)
-            self.assertEqual([c[0] for c in self.logged()], ["add"], host)
+            self.assertEqual([c[0] for c in self.logged()], calls, host)
             self.assertEqual(self.logged()[0][3], agent, host)
 
     def test_a_dry_run_runs_nothing_and_leaves_the_path_unfilled(self):

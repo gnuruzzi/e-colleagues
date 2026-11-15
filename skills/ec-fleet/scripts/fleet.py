@@ -157,19 +157,34 @@ AGY_AGENT_GLOBS = (".agents/agents/**/*.md", "_agents/agents/**/*.md",
                    ".agents/plugins/*/agents/**/*.md", "_agents/plugins/*/agents/**/*.md")
 
 
-def shadowing_agents(start: str) -> tuple[str, list[str]]:
-    """Agent files in this project that agy would run in place of the installed agent the
-    start command names: at 1.5.3 a workspace agent wins, by its frontmatter name (E32)."""
+def agy_agent(start: str) -> str:
+    """The agent an agy start command names, or nothing for any other command."""
     try:
         words = shlex.split(start)
     except ValueError:
-        return "", []
-    if not words or pathlib.Path(words[0]).name != "agy" or "--agent" not in words[:-1]:
-        return "", []
-    agent = words[words.index("--agent") + 1]
-    root = pathlib.Path.cwd()
-    root = next((d for d in (root, *root.parents) if (d / ".git").exists()), root)
-    named = re.compile(rf"^name:\s*[\"']?{re.escape(agent)}[\"']?\s*$", re.M)
+        return ""
+    if not words or pathlib.Path(words[0]).name != "agy":
+        return ""
+    agent = ""
+    for i, word in enumerate(words):
+        if word.startswith("--agent="):
+            agent = word[len("--agent="):]
+        elif word == "--agent" and i + 1 < len(words):
+            agent = words[i + 1]
+    return agent
+
+
+def shadowing_agents(agent: str, worktree: str | None) -> list[str]:
+    """Agent files that agy would run in place of the installed agent of that name: at 1.5.3
+    a workspace agent wins, by its frontmatter name (E32). A warning, not a guard: the name
+    is matched by pattern, since the standard library reads no YAML."""
+    # The session runs in the new worktree, which may hold another revision than here.
+    root = pathlib.Path(worktree) if worktree and os.path.isdir(worktree) else None
+    if root is None:
+        root = pathlib.Path.cwd()
+        root = next((d for d in (root, *root.parents) if (d / ".git").exists()), root)
+    named = re.compile(rf"^[ \t]*[\"']?name[\"']?[ \t]*:[ \t]*[\"']?{re.escape(agent)}[\"']?"
+                       rf"[ \t]*(#.*)?\r?$", re.M)
     found = []
     for pattern in AGY_AGENT_GLOBS:
         for f in sorted(root.glob(pattern)):
@@ -179,11 +194,11 @@ def shadowing_agents(start: str) -> tuple[str, list[str]]:
                 continue
             if named.search(head):
                 found.append(str(f.relative_to(root)))
-    return agent, found
+    return found
 
 
 def start_argv(cfg: dict, ref: str, name: str | None, host: str | None, base: str | None,
-               dry_run: bool = False) -> tuple[list[str], str, bool]:
+               dry_run: bool = False) -> tuple[list[str], str, bool, str | None]:
     if not ref.strip():
         raise ConfigError("the reference must not be empty")
     host = host or cfg["default_host"]
@@ -200,7 +215,7 @@ def start_argv(cfg: dict, ref: str, name: str | None, host: str | None, base: st
     if base is not None:
         check_flag("--base", base)
     prompt = hosts[host].get("prompt", PROMPT).replace("{ref}", ref)
-    agent, trust, trusted = hosts[host]["start"], hosts[host].get("trust", ""), True
+    agent, trust, trusted, where = hosts[host]["start"], hosts[host].get("trust", ""), True, None
     if "{skill}" in agent:
         here = str(pathlib.Path(__file__).resolve().parent)
         # The launcher passes this unquoted, so a space or a quote in it would split it.
@@ -209,7 +224,7 @@ def start_argv(cfg: dict, ref: str, name: str | None, host: str | None, base: st
                               f"launcher; set [hosts.{host}] start in the config")
         agent = agent.replace("{skill}", here)
     if "{worktree}" in trust and not dry_run:
-        path = worktree_path(cfg, name)
+        path = where = worktree_path(cfg, name)
         before = trust[:trust.index("{worktree}")]
         quoted = before.count("'") % 2 or (not before.count("'") and before.count('"') % 2)
         if path and re.search(r"\s", path) and not quoted:
@@ -220,7 +235,7 @@ def start_argv(cfg: dict, ref: str, name: str | None, host: str | None, base: st
     argv = fill(cfg["launcher"]["start"], {"name": name, "agent": agent, "prompt": prompt})
     if base is not None:
         argv += [cfg["launcher"]["base_flag"], base]
-    return argv, name, trusted
+    return argv, name, trusted, where
 
 
 RETURN_KEYS = ("status", "task", "changed", "evidence", "findings", "risks", "follow-ups",
@@ -356,7 +371,7 @@ def main() -> int:
         cfg = load_config(a.config)
         if a.command == "overview":
             return overview(cfg, a.json)
-        argv, name, trusted = start_argv(cfg, a.ref, a.name, a.host, a.base, a.dry_run)
+        argv, name, trusted, where = start_argv(cfg, a.ref, a.name, a.host, a.base, a.dry_run)
     except (ConfigError, ValueError) as e:
         print(f"fleet: {e}", file=sys.stderr)
         return 2
@@ -365,10 +380,6 @@ def main() -> int:
         return 0
     if not trusted:
         print(f"fleet: {NO_PATH}", file=sys.stderr)
-    agent, shadows = shadowing_agents(cfg["hosts"][a.host or cfg["default_host"]]["start"])
-    if shadows:
-        print(f"fleet: this repository has its own agent named {agent!r} ({', '.join(shadows)}); "
-              "the session runs that one, not the installed one", file=sys.stderr)
     try:
         r = run_launcher(argv)
     except LauncherError as e:
@@ -377,6 +388,11 @@ def main() -> int:
     if r.returncode:
         sys.stderr.write(r.stderr or r.stdout or f"fleet: launcher exited with {r.returncode}\n")
         return r.returncode if r.returncode > 0 else 1
+    agent = agy_agent(cfg["hosts"][a.host or cfg["default_host"]]["start"])
+    shadows = shadowing_agents(agent, where or worktree_path(cfg, name)) if agent else []
+    if shadows:
+        print(f"fleet: this repository has its own agent named {agent!r} ({', '.join(shadows)}); "
+              "the session runs that one, not the installed one", file=sys.stderr)
     print(f"started {name}")
     return 0
 

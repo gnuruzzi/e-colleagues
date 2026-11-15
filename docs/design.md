@@ -568,9 +568,11 @@ names a host; E27's `start 12 --host antigravity` came from its earlier wording.
 whose `trust` arguments hold `{worktree}`, it first runs `workmux add <name> --dry-run`, reads
 the path from the `Worktree:` line and appends the arguments to the start command (E28). When
 it cannot learn the path it says so on stderr and starts without them. For an `agy` start it
-also names, on stderr, any agent file in the project whose frontmatter `name` is the agent the
-start command asks for, since at agy 1.5.3 that file runs in place of the installed one (E32);
-the start goes ahead. That is also what
+also names, on stderr, any agent file in the new worktree whose frontmatter `name` is the agent
+the start command asks for, since at agy 1.5.3 that file runs in place of the installed one
+(E32); the start goes ahead. That is a warning and not a guard: the name is matched by pattern,
+because the script reads no YAML, and when the worktree's path is not known it looks in the
+folder the start was run from. That is also what
 happens with a launcher `start` of one's own and no `where` beside it, since the default `where`
 asks workmux; and with a path holding a space when `{worktree}` is not inside quotes, where
 the launcher would split it. A host's own `start` keeps that host's default `trust` unless the
