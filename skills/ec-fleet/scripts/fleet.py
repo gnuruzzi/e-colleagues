@@ -18,10 +18,12 @@ import tomllib
 DEFAULTS = {
     "default_host": None,
     "hosts": {
-        # agy keeps trust per exact path, and --settings is for one session and never saved.
+        # Each trust string is for one session and saves nothing. agy keeps trust per exact
+        # path; Codex keeps it per repository and asks only in one it has never trusted.
         "antigravity": {"start": "agy --agent tech-lead",
                         "trust": "--settings '{\"trustedWorkspaces\":[\"{worktree}\"]}'"},
-        "codex": {"start": "codex --profile e-colleagues"},
+        "codex": {"start": "codex --profile e-colleagues",
+                  "trust": "-c 'projects={\"{worktree}\"={trust_level=\"trusted\"}}'"},
         "opencode": {"start": "opencode --agent tech-lead"},
         "claude": {"start": "claude --agent tech-lead"},
     },
@@ -180,6 +182,8 @@ FRAMING = re.compile(r"^[\s\u2500-\u257f]+")
 HEADING = re.compile(r"[^0-9A-Za-z]*### RETURN[^0-9A-Za-z]*")
 STATUSES = ("done", "partial", "blocked", "needs-decision")
 NO_BLOCK = "no RETURN block on screen"
+# Not stopped: at work, or at one of its host's approvals. A block on screen would be an old one.
+BUSY = ("working", "waiting")
 NO_SCREEN = "could not read its screen"
 
 
@@ -232,7 +236,7 @@ def collect_rows(cfg: dict) -> list[dict]:
                "return_status": None, "questions": None, "captured": False}
         name = row["name"]
         usable = isinstance(name, str) and name and not name.startswith("-")
-        if row["state"] != "working" and not row["self"] and usable:
+        if row["state"] not in BUSY and not row["self"] and usable:
             c = run_launcher(fill(launcher["capture"], {"name": name}))
             if not c.returncode:
                 row["captured"] = True
@@ -252,7 +256,7 @@ def render_table(rows: list[dict]) -> str:
             q = "(this session)"
         elif r["questions"] is not None:
             q = _clip(r["questions"])
-        elif r["state"] == "working":
+        elif r["state"] in BUSY:
             q = ""
         else:
             q = NO_BLOCK if r["captured"] else NO_SCREEN

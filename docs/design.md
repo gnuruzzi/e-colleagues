@@ -568,12 +568,14 @@ names a host; E27's `start 12 --host antigravity` came from its earlier wording.
 whose `trust` arguments hold `{worktree}`, it first runs `workmux add <name> --dry-run`, reads
 the path from the `Worktree:` line and appends the arguments to the start command (E28). When
 it cannot learn the path it says so on stderr and starts without them.
-`fleet.py overview` reads `workmux status --json` (E26); for each session that is not
-`working`, other than its own, it runs `workmux capture <name> --lines 200` (E26) and takes
+`fleet.py overview` reads `workmux status --json` (E26); for each session that is neither
+`working` nor `waiting`, other than its own, it runs `workmux capture <name> --lines 200` (E26) and takes
 `status` and `questions` from the last RETURN block (§4), only when the block is complete on
 screen, from `### RETURN` through `knowledge:`, and its `status` is one of the four. Otherwise
 the row says `no RETURN block on screen`, or `could not read its screen` when no capture
-succeeded. A `working` session is never looked inside. A session that stops later without a
+succeeded. A `working` or `waiting` session is never looked inside: `waiting` means it is at
+one of its host's approvals, so a block on its screen is an old one (E29, E31). A session that
+stops later without a
 block, with an older block still in view, shows the older status and question. The caller's
 own row, marked `(this session)`, is found by `$TMUX_PANE`, measured under tmux only (E27).
 
@@ -596,9 +598,11 @@ at `ready to push`.
 **The config** is optional: `~/.config/e-colleagues/fleet.toml` (under `$XDG_CONFIG_HOME` when
 set) or the path in `$EC_FLEET_CONFIG` or `--config`. It sets `default_host`, a `start` command,
 `trust` arguments and `prompt` per host, and the launcher's `start`, `status`, `capture`, `where`
-and `base_flag`; a mistyped key, or a named path that does not exist, is an error. Only
-Antigravity has default `trust` arguments, `--settings '{"trustedWorkspaces":["{worktree}"]}'`
-(E28); `trust = ""` leaves them out. `base_flag` defaults to
+and `base_flag`; a mistyped key, or a named path that does not exist, is an error. The
+default `trust` arguments are `--settings '{"trustedWorkspaces":["{worktree}"]}'` for
+Antigravity (E28) and `-c 'projects={"{worktree}"={trust_level="trusted"}}'` for Codex (E29);
+Claude Code has none, because no session-only way to pre-answer its trust dialog was found
+(E31). `trust = ""` leaves them out. `base_flag` defaults to
 `--base`, passed through as workmux's own `--base` (E28). The default start commands are `agy --agent tech-lead` [AG-03],
 `codex --profile e-colleagues` (E14), `opencode --agent tech-lead` [OC-03] and
 `claude --agent tech-lead` [CC-10]. Only the workmux default is tested.
@@ -630,9 +634,40 @@ this is the reason is an inference (E27).
   start prompt that needs no tool read `done` there (E26, E28);
 - a capture is the visible screen only, so a block taller than the pane is not read.
 
-**UNVERIFIED:** all of this on Codex, opencode and Claude Code; and remote use on every host.
-At agy 1.5.3 a session started with `--remote-control` in a window was reported reachable from
-a phone (E26, reported, not measured).
+**Measured on Codex** (E29, codex-cli 0.167.0, workmux 0.1.281):
+
+- the default start command starts the tech-lead with its prompt: workmux types
+  `codex --no-daemon --profile e-colleagues -- "<prompt>"` and registers the session as `codex`;
+- workmux reports `working`, `waiting` and `done`. A session at one of Codex's approvals reads
+  `waiting`, and goes on reading it after a decline until its next prompt;
+- Codex keeps trust per repository, and that covers every worktree, so its trust prompt shows
+  only in a repository it has never trusted. A session at that prompt is missing from
+  `workmux status --json`, so the overview has no row for it. The default `trust` arguments
+  trust the new worktree for that session and save nothing; in a repository Codex already
+  trusts they change nothing;
+- the overview reads a RETURN block from a Codex screen, a wrapped question included;
+- a dispatched tech-lead loads `ec-fleet` from its start prompt and stops with a block, measured
+  with the skill as a project skill. The plugin route is UNVERIFIED;
+- a Codex session can run `fleet.py`, with one approval per call: inside Codex's sandbox
+  workmux cannot write its log.
+
+**Measured on Claude Code** (E31, 2.1.325, workmux 0.1.281):
+
+- with this package's plugin installed, `claude --agent tech-lead` resolves to the plugin's
+  tech-lead, the prompt arrives, and the tech-lead's first call loads `ec-fleet`;
+- without the plugin the host exits at once, `--agent 'tech-lead' not found`, and
+  `fleet.py start` still prints `started <name>`: the launcher has already returned. That
+  session has no row;
+- workmux reports `working`, `waiting` and `done`, and a session at an approval reads `waiting`;
+- Claude Code keeps trust per repository, recorded for the main checkout, so its dialog shows
+  once per repository and not per worktree. A session at the dialog has no row;
+- the overview reads a RETURN block from a Claude Code screen in both renderers;
+- a Claude Code session can run `fleet.py`: with no approval in auto mode, with one in manual
+  mode.
+
+**UNVERIFIED:** all of this on opencode; and remote use on every host. At agy 1.5.3 a session
+started with `--remote-control` in a window was reported reachable from a phone (E26, reported,
+not measured).
 
 **Prose only:** every rule in the skill, among them the assignments, one voice per assignment,
 the RETURN block at every stop, never answering for the person, and "a planning tech-lead writes

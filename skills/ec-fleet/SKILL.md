@@ -38,9 +38,10 @@ On success it prints one line, `started <name>`, naming the worktree. If it fail
 way, show its message; do not retry with other flags.
 
 In a new worktree the host may first show a first-run prompt, such as whether to trust the
-folder, before the tech-lead starts. On Antigravity the script trusts the new worktree for
-that one session; elsewhere the person answers it there. You never answer it. Until then the
-overview shows that session as `working`, or as stopped with `no RETURN block on screen`.
+folder. Where it can, the script trusts the new worktree for that one session; otherwise the
+person answers there. You never answer it. Until then that session reads `working` or
+`no RETURN block on screen`, or has no row. A started session with no row may also have
+exited. Say so.
 
 ### Overview
 
@@ -48,22 +49,23 @@ overview shows that session as `working`, or as stopped with `no RETURN block on
 python3 scripts/fleet.py overview
 ```
 
-Show the table as printed; `--json` gives the same rows as data. One row per session:
+Show the table as printed; `--json` gives the rows as data. One row per session:
 
-- `working`: leave it alone. Some hosts also report `working` for a session waiting at one of
-  the host's own prompts, a first-run prompt or an approval; say that it may be.
+- `working`: leave it alone. On some hosts a session at a first-run prompt or an approval
+  also reads `working`; say that it may be.
+- `waiting`: it is at one of its host's approvals, or just past one. The person answers there.
 - Any other state means it stopped. `RETURN` and `QUESTIONS` come from its last RETURN block:
   why it stopped, and what it needs.
 - `no RETURN block on screen`: the session may be at one of its host's own prompts, or it
   stopped without a complete block in view. Say so.
 - `could not read its screen`: the capture failed. Say so.
-- `(this session)` marks your own row.
+- `(this session)` is your own row.
 
 ### What you never do
 
 Never send text or keys to another session. Never answer a tech-lead's question or approve
-anything for the person, a host's own prompt included. To answer, the person goes to that
-session, in its window or through that host's remote feature.
+anything for the person, a host's own prompt included. The person answers in that session,
+in its window or through that host's remote feature.
 
 ## Your assignment
 
@@ -100,9 +102,9 @@ You work in the main checkout. The person starts you there; dispatch does not.
    person asks.
 2. Write no file in the checkout, and delegate no work that would. Plans go where the
    contract says plans live, in the project's own management system. A document that belongs
-   in the repository becomes an issue and is written in a worktree. Nothing enforces this; it
-   is trusted to you. It does not cover `ec-init` and `ec-onboard`, which the person invokes
-   and which write at the project root.
+   in the repository becomes an issue and is written in a worktree. This is trusted to you.
+   It does not cover `ec-init` and `ec-onboard`, which the person invokes and which write at
+   the project root.
 3. Collect follow-ups: find the `## Follow-ups` heading in open and recently merged change
    requests and their issues, merge duplicates, and propose issues. The person picks.
 4. Before you answer a question about the whole fleet, such as "can we release?", run the
@@ -143,9 +145,9 @@ knowledge: <lens file this run would add or change, or none>
 
 ## The config
 
-Without a config file the launcher is workmux and each host uses the package's default start
-command; only that setup is tested. workmux must be installed, with its status hooks set up
+With no config file the launcher is workmux and each host uses its default start command;
+only that setup is tested. workmux must be installed, with its status hooks set up
 (`workmux setup`) for each host you start: the overview's states come from them. An optional
-TOML file, `~/.config/e-colleagues/fleet.toml` (under `XDG_CONFIG_HOME` when that is set) or
+TOML file, `~/.config/e-colleagues/fleet.toml` (or under `XDG_CONFIG_HOME`) or
 the path in `EC_FLEET_CONFIG`, can change each host's start command and `trust`, for example
 to add that host's remote flag, set `default_host`, and replace the launcher's commands.

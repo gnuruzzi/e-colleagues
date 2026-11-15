@@ -114,14 +114,23 @@ Then, per host, by hand — because no static check can prove a runtime behaviou
   opencode TUI the agent cycle is Shift+Tab, not Tab, and it cycles primaries only; `@` offers
   every specialist and also the built-ins the allowlist denies, and a mention routes through
   the tech-lead. The Antigravity desktop honours an explicit `tools` list the way the CLI does.
-- **`ec-fleet` needs workmux and is measured on Antigravity only** (E26, E27). workmux needs its
-  status hooks set up for each host it starts (`workmux setup`); they report the overview's
-  states. Run by `fleet.py`, which gives it no input, it did not stop to ask about another
-  agent's hooks (E27); that the missing input is why is an inference. On Codex, opencode and
-  Claude Code the skill is UNVERIFIED.
+- **`ec-fleet` needs workmux and is measured on Antigravity, Codex and Claude Code** (E26 to
+  E29, E31). workmux needs its status hooks set up for each host it starts (`workmux setup`);
+  they report the overview's states. Run by `fleet.py`, which gives it no input, it did not
+  stop to ask about another agent's hooks (E27); that the missing input is why is an inference.
+  On opencode the skill is UNVERIFIED, and so is the Codex plugin route.
+- **`fleet.py start` reports success once the launcher returns.** If the host then exits, the
+  session has no row in the overview: on Claude Code without this package's plugin,
+  `claude --agent tech-lead` ends with `--agent 'tech-lead' not found` (E31).
+- **A session at its host's trust prompt can be missing from the overview.** On Codex and Claude
+  Code workmux does not list it until the prompt is answered (E29, E31). Codex asks only in a
+  repository it has never trusted, and the default start trusts the worktree for that session,
+  so the prompt does not show (E29). Claude Code asks once per repository, and no way to
+  pre-answer it for one session was found (E31).
 - **For an Antigravity session workmux reports only `working` and `done`** (E26). A session at
   one of agy's approval prompts reads `working`, and the overview does not look inside a
-  `working` session, so it cannot show that approval.
+  `working` session, so it cannot show that approval. Codex and Claude Code sessions read
+  `waiting` there (E29, E31).
 - **`fleet.py` trusts a new Antigravity worktree for its own session**, so agy's trust dialog
   does not show and nothing is saved (E28). It reads the path from workmux's `--dry-run`
   output, which is not a promised interface. When it cannot learn the path, or with

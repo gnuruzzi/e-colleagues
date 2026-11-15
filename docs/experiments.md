@@ -34,6 +34,8 @@ Tranches: **A** automated, **B** interactive — needing a TTY or a trust dialog
 | — | B | a fleet of Antigravity tech-leads through workmux: dispatch from a session, prompt delivery, commit, status values, the captured screen | **settled** (E26): dispatch from a session, prompt delivery and commit hold, with stops that need the person; the states item holds only in part, because workmux reports only `working` and `done` for agy |
 | — | B | the fleet skill end to end on Antigravity: a dispatched tech-lead loads `ec-fleet` from its start prompt, and the overview reads its stop | **settled** (E27): both hold; a session at the first-run trust dialog read `working`, not `done`, because its first command waited for approval behind the dialog |
 | — | B | can `fleet.py` start an Antigravity tech-lead in a new worktree without agy's trust dialog | **settled** (E28): yes — it reads the path from `workmux add <name> --dry-run` and passes it in a session-only `trustedWorkspaces` setting; nothing is saved |
+| — | B | the fleet skill on Codex: start, first-run prompts, states, the captured screen, end to end | **settled** (E29): all hold with the default start command; workmux reports `working`, `waiting` and `done`; a session at Codex's trust prompt is missing from the overview, and a session-only `-c 'projects={…}'` override removes that prompt; the plugin route was not measured |
+| — | B | the fleet skill on Claude Code: start, first-run prompts, states, the captured screen, end to end | **settled** (E31): all hold once the plugin is installed; without it the host exits and `fleet.py start` still reports success; trust is kept per repository, with no session-only way to pre-answer it; a session at the trust dialog is missing from the overview |
 | — | C | the 2026-11-15 Antigravity sweep: agy 1.5.3 | **settled** (E32): AG-06, AG-07, AG-11 and AG-12 changed; the desktop not driven |
 
 ---
@@ -1993,6 +1995,1225 @@ $ git log --oneline --all
 
 **Host state.** Six worktrees were made and removed (`✓ Removed worktree 'issue-12' and branch 'issue-12'`, and the same for 14, 15, 16, 20 and 21). Afterwards `workmux status --json` in `<tmp>/repo` listed `"agents": []`, `git worktree list` listed only `<tmp>/repo`, both probe tmux sessions were killed and no agy process remained. `~/.gemini/antigravity-cli/settings.json` had the same hash at every step. workmux kept a state file for each of five probe panes under `~/.local/state/workmux/agents/`; all five were removed. agy kept its usual per-session records, and workmux appended to its log.
 
+---
+
+## E29 — the fleet skill on Codex: the default start works end to end and workmux reports `working`, `waiting` and `done`; a session at Codex's trust prompt is missing from the overview, and a session-only `-c 'projects={…}'` override removes that prompt
+
+**Date** 2026-11-15. **codex-cli 0.167.0**, model gpt-6.1-sol at reasoning effort high, both set in the profile file on the probe machine; **workmux 0.1.281**; **tmux 3.8**; this package as of commit `754fce5`. Tranche B.
+
+E26 to E28 measured `ec-fleet` on Antigravity only, and design §17 lists Codex as UNVERIFIED. This entry answers the same questions for Codex:
+
+1. **Start.** Does `fleet.py start` with the package's default command open the window, start the tech-lead and deliver the prompt, and does workmux report the session?
+2. **First-run prompts.** Does a new worktree stop at one, what does workmux report meanwhile, and can it be pre-answered for one session, saving nothing?
+3. **States.** Which of `working`, `done` and `waiting` does workmux report, and what does a session at an approval read?
+4. **The captured screen.** Does the overview read a RETURN block from Codex's screen?
+5. **End to end.** Does a started tech-lead load `ec-fleet` from its start prompt, read `AGENTS.md` and stop with a RETURN block that the overview shows?
+6. **Dispatch from inside a Codex session.** Can a Codex tech-lead run `fleet.py start` itself, and what does it need?
+
+Everything ran in three throwaway repositories, `<tmp>/repo` and, for one control each, `<tmp>/repo.two` and `<tmp>/my repo` (each `git init`, one commit, a repository-local identity, no signing, then `python3 <pkg>/skills/ec-init/scripts/bootstrap.py <repo> --write`, `wrote 3 files, 3 changed`, committed; no interview, so the project bindings are empty). `<pkg>` is a clean export of this package's tracked files at `754fce5`; every `fleet.py` run used that copy or a byte-identical one. The probe used its own tmux session, `e29-probe`, and ran `fleet.py` from that session's shell pane. Other probes ran on the same tmux server in their own sessions at the same time; `workmux status --json` is scoped to the repository it runs in (E27), so they never appeared in this probe's readings. No config file existed (`~/.config/e-colleagues/` absent, `XDG_CONFIG_HOME` and `EC_FLEET_CONFIG` unset); where a step used one, it says so.
+
+These were real sessions on the owner's account. Ten reached the model, seven in steps 2 to 7 and three in step 8. The seven: four with the start prompt shortened to `Reply with the single word ready, then stop.`, one of which then took three more prompts (steps 4 and 5); the end-to-end tech-lead (its start prompt only); the dispatching tech-lead (two messages); and the session it started (the short prompt). The three in step 8 took the short prompt and one more each. The hand checks of the trust prompt in steps 3 and 8 sent no prompt.
+
+Tool-call timings come from Codex's own record of each session (`~/.codex/sessions/2026/11/15/rollout-*.jsonl`), hook timings from workmux's log, both in UTC.
+
+### 1. Versions, the Codex hooks, and what was installed
+
+```console
+$ codex --version
+codex-cli 0.167.0
+$ workmux --version
+workmux 0.1.281
+$ tmux -V
+tmux 3.8
+```
+
+`~/.codex/hooks.json` holds one command per event, and nothing else:
+
+| event | command |
+|---|---|
+| `SessionStart` (matcher `startup\|resume\|clear`) | `workmux register-agent` |
+| `UserPromptSubmit`, `PostToolUse`, `SubagentStart`, `SubagentStop` | `workmux set-window-status working` |
+| `PermissionRequest` | `workmux set-window-status waiting` |
+| `Stop` | `workmux set-window-status done` |
+
+`workmux docs` lists Codex as `✅ Supported` in its status table with no limiting note, and does not say where its Codex hooks go. The hooks were already installed; `workmux setup` was not run. Codex keeps a trusted hash for each of the seven hooks under `[hooks.state]`, and those were already present, in `~/.codex/config.toml` and in the profile file alike.
+
+What this package had installed for Codex, as found:
+
+```console
+$ ls ~/.codex/agents
+designer.toml  developer.toml  platform.toml  reviewer.toml  security.toml
+$ python3 <pkg>/skills/ec-init/scripts/bootstrap.py --scope user --check; echo "rc=$?"
+  e-colleagues.config.toml is out of date
+  opencode/skills/ec-fleet is missing or out of date
+  opencode/skills/ec-init is missing or out of date
+3 file(s) need --write
+rc=1
+$ codex plugin list
+…
+PLUGIN                     STATUS         VERSION  SOURCE
+e-colleagues@e-colleagues  not installed           <the repository checkout>
+…
+```
+
+The two opencode lines are another host's and outside this entry. The five role files are byte-identical to the export's (`cmp` rc 0 for each). The profile file `~/.codex/e-colleagues.config.toml` exists: its first 111 lines are the export's whole profile (`diff` rc 0), and 33 further lines follow that this package does not render: `model = "gpt-6.1-sol"`, `model_reasoning_effort = "high"`, `[tui]`, `[tui.model_availability_nux]` and `[hooks.state]` with the seven hashes. That is why `--check` calls it out of date. Who wrote the two model lines was not established.
+
+**The plugin was not installed, so Codex had no `ec-fleet` skill on this machine.** The documented install, `codex plugin add e-colleagues@e-colleagues`, was attempted with the export as its source and was refused, before it ran, by the permission system of the session that ran this probe. Nothing was installed. From step 6 on the skill was therefore supplied the other way design §7 names for Codex, as a project skill: `<pkg>/skills/ec-fleet` copied to `<tmp>/repo/.agents/skills/ec-fleet/` (`cmp` rc 0 for `SKILL.md` and `scripts/fleet.py`) and committed on `main`, so every new worktree carries it. The plugin route is not measured.
+
+### 2. Start: the window, the command, the prompt
+
+```console
+$ python3 <pkg>/skills/ec-fleet/scripts/fleet.py start 12 --host codex; echo "rc=$?"     # in <tmp>/repo, 08:13:59
+started issue-12
+rc=0
+$ git worktree list
+<tmp>/repo                     05d8110 [main]
+<tmp>/repo__worktrees/issue-12 05d8110 [issue-12]
+$ tmux list-windows -t e29-probe -F '#{session_name}:#{window_index} #{window_name} #{pane_id} #{pane_width}x#{pane_height} #{pane_current_command}'
+e29-probe:0  repo %38 200x50 bash
+e29-probe:1  issue-12 %39 238x63 codex
+```
+
+(The window names carry a glyph that the probe machine's shell prompt adds; it is removed here.) Nothing on stderr. workmux's log for the call, and what it typed into the new pane, read with `tmux capture-pane -p -a` from the normal screen behind Codex's alternate screen:
+
+```
+08:13:59.343  workmux add issue-12 --background --agent "codex --profile e-colleagues" --prompt "Use the ec-fleet skill. Your assignment: issue 12."   cwd=<tmp>/repo
+08:13:59.393  create:creating worktree branch="issue-12" path=<tmp>/repo__worktrees/issue-12 base=Some("main")
+08:13:59.425  window created, pane %39
+08:13:59.505  create:completed
+```
+
+```console
+$ codex --no-daemon --profile e-colleagues -- "$(cat .workmux/PROMPT-issue-12.md)"
+$ tr '\0' '|' < /proc/<codex in %39>/cmdline
+codex|--no-daemon|--profile|e-colleagues|--|Use the ec-fleet skill. Your assignment: issue 12.|
+```
+
+**workmux adds `--no-daemon` and `--` itself.** The start command took arguments, and workmux recognised it as Codex: it put the prompt after `--` as Codex's positional prompt, and wrote it to `.workmux/PROMPT-issue-12.md`, with `.workmux/` added to `.git/info/exclude`, as on Antigravity (E26). `workmux add` asked nothing, as in E27.
+
+This first start went no further: it stopped at Codex's trust prompt (step 3), was never answered, and was removed. The same command at 08:24:32, in the repository once trusted, is the end-to-end run of step 6. There the prompt was submitted on its own and the session registered. `workmux status --json` for a session that has run its turn, here the first one that did (step 3), trimmed:
+
+```json
+{
+  "worktree": "issue-13",
+  "branch": "issue-13",
+  "project": "repo",
+  "status": "done",
+  "elapsed_secs": 24,
+  "title": "Reply ready | issue-13",
+  "pane_id": "%45",
+  "workdir": "<tmp>/repo__worktrees/issue-13",
+  "agent_kind": "codex",
+  "session": "e29-probe",
+  …
+}
+```
+
+**The session is the tech-lead.** `--profile e-colleagues` layers the profile file, and the session record's developer messages include one of 20,429 characters beginning `# Tech-Lead`, before the user message that holds the start prompt. Every reply but three carried the signature `👨‍💻 Tech-Lead:`; the three were replies to "the single word ready", as in E26, and two more such replies were signed. The status line read `GPT-6.1-Sol high`, the profile file's model, where `~/.codex/config.toml` names another.
+
+A side observation: started by hand with `--profile` and without `--no-daemon`, Codex shows a startup warning, `Running without the shared background server: --profile requires embedded mode.` workmux's own start never showed it.
+
+### 3. First-run prompts
+
+#### The trust prompt, and what workmux reports at it
+
+The new window of step 2 showed this and nothing else, trailing spaces stripped:
+
+```
+  Folder access
+  <tmp>/repo__worktrees/issue-12
+
+  Note: You’re in a subdirectory of a Git project. Trusting will apply to the repository root:
+  <tmp>/repo
+
+  Trust this folder? Codex can read, edit, and run files here, subject to your permission settings. Folder settings can run code automatically, even without a model request. Continue only if you trust these files. Your trust decision
+  will be saved.
+
+› 1. Trust and continue
+  2. Back to Agent Command Center
+
+  enter continue · esc back
+```
+
+```console
+$ workmux status --json          # in <tmp>/repo, the session at the prompt
+{
+  …
+  "agents": [],
+  "target_errors": []
+}
+$ python3 <pkg>/skills/ec-fleet/scripts/fleet.py overview; echo "rc=$?"
+no sessions
+rc=0
+```
+
+**A Codex session at the trust prompt is not in `workmux status --json` at all, so the overview has no row for it.** The `SessionStart` hook is what registers the pane, and it had not run: workmux's log holds the `window created` line for pane `%39` and no call from that pane. The same held for two more sessions left at the prompt (`%46`, `%62`: one `window created` line each, no call), against 5 log lines from a pane whose prompt was accepted. Later, with three sessions at the prompt and one finished, the overview printed one row:
+
+```
+NAME      STATE  HOST   RETURN  QUESTIONS
+issue-13  done   codex          no RETURN block on screen
+```
+
+and in `<tmp>/repo.two`, `workmux list`, run with no terminal on stdin, showed the waiting one with no agent:
+
+```
+BRANCH    AGE  AGENT  MUX  UNMERGED  PATH
+main      -    -      -    -         (here)
+issue-21  <1m  done   ✓    -         ../repo.two__worktrees/issue-21
+issue-22  <1m  -      ✓    -         ../repo.two__worktrees/issue-22
+```
+
+The start prompt does not run behind this prompt, unlike on Antigravity (E27): no turn starts until it is answered.
+
+#### Trust is saved per repository root, and it covers every worktree
+
+`fleet.py start 15` with a config file that sets only `[hosts.codex] prompt = "Reply with the single word ready, then stop."` showed the same prompt. `1. Trust and continue` was chosen there at 08:20:04, acting as the person. The hooks then ran (`register-agent` 08:20:06.800, `working` 08:20:06.844, `done` 08:20:08.569), and the screen showed the prompt and its answer:
+
+```
+› Reply with the single word ready, then stop.
+
+• ready
+
+  Worked for 3s • 9:20 AM
+```
+
+Codex saved the decision in the **profile file**, not in `~/.codex/config.toml`, whose hash did not change. `~/.codex/e-colleagues.config.toml` grew from 7,071 to 7,242 bytes by exactly:
+
+```toml
+[projects."<tmp>/repo"]
+trust_level = "trusted"
+```
+
+The key is the repository root, as the prompt said, not the worktree. The next start, `fleet.py start 16` with the same config and so the package's default start command, opened with no prompt:
+
+```console
+$ codex --no-daemon --profile e-colleagues -- "$(cat .workmux/PROMPT-issue-16.md)"
+```
+
+```
+08:20:40 [('issue-16', 'working', 1)]
+08:20:42 [('issue-16', 'done', 0)]
+```
+
+So on Codex a new worktree raises the trust prompt only when the repository itself has never been trusted. Whether a decision saved in the profile file also holds for a session started without the profile was not measured.
+
+#### A session-only pre-answer
+
+`codex --help` at 0.167.0 lists no flag for trust. It lists `--dangerously-bypass-approvals-and-sandbox`, which was not tried, because it also removes the sandbox. `-c <key=value>` overrides a configuration value for one invocation. Each form below was tried by hand in the untrusted worktree `<tmp>/repo__worktrees/issue-12`, added to `codex --no-daemon --profile e-colleagues`, with no prompt, so no model call. All but the first two also carried `-c check_for_update_on_startup=false` (see the next heading). `<root>` is `<tmp>/repo`.
+
+| added arguments | trust prompt |
+|---|---|
+| none (control) | shown |
+| `-c 'projects."<worktree>".trust_level="trusted"'` | shown |
+| `-c 'projects."<root>".trust_level="trusted"'` | shown |
+| `-c 'projects={"<worktree>"={trust_level="trusted"}}'` | **not shown** |
+| `-c 'projects={"<root>"={trust_level="trusted"}}'` | **not shown** |
+| `-c 'projects={"."={trust_level="trusted"}}'` | shown |
+| `-s workspace-write -a on-request` | shown |
+
+The override works as an inline table, with the absolute path of the worktree or of the root as its key. The dotted form with a quoted key does not work, and neither does a relative path. Why the dotted form fails was not looked into. The two sessions that showed no prompt opened straight at the input box. `~/.codex/config.toml`, the profile file and `~/.codex/version.json` had the same hashes after every one of these runs.
+
+Then through `fleet.py`, in `<tmp>/repo.two`, a repository Codex had never seen, with a dot in its path. The config file:
+
+```toml
+[hosts.codex]
+prompt = "Reply with the single word ready, then stop."
+trust = "-c 'projects={\"{worktree}\"={trust_level=\"trusted\"}}'"
+```
+
+`fleet.py --config <that file> start 21 --host codex` printed `started issue-21`, rc 0, nothing on stderr. workmux's log, in order, and what it typed:
+
+```
+args=["workmux", "add", "issue-21", "--dry-run"]
+args=["workmux", "add", "issue-21", "--background", "--agent", "codex --profile e-colleagues -c 'projects={\"<tmp>/repo.two__worktrees/issue-21\"={trust_level=\"trusted\"}}'", "--prompt", "Reply with the single word ready, then stop."]
+```
+
+```console
+$ codex --no-daemon --profile e-colleagues -c 'projects={"<tmp>/repo.two__worktrees/issue-21"={trust_level="trusted"}}' -- "$(cat .workmux/PROMPT-issue-21.md)"
+```
+
+The new window, with Codex's update banner removed:
+
+```
+  >_ OpenAI Codex (v0.167.0)
+     <tmp>/repo.two__worktrees/issue-21
+
+› Reply with the single word ready, then stop.
+
+• 👨‍💻 Tech-Lead: ready
+
+  Worked for 4s • 9:29 AM
+```
+
+No prompt. `workmux status --json` gave `('issue-21', 'done', 6, 'codex', '%61')`. The control, `fleet.py start 22` with a config that sets only the short prompt, typed `codex --no-daemon --profile e-colleagues -- "$(cat .workmux/PROMPT-issue-22.md)"` and showed the trust prompt for `<tmp>/repo.two__worktrees/issue-22`, and no agent was registered. It was not answered. After both, `~/.codex/config.toml` and the profile file had the hashes they had before: nothing was saved, and the profile file held no path under `<tmp>/repo.two`.
+
+An earlier pair in `<tmp>/repo`, before it was trusted, gave the same result: `start 13` with the same `trust` string preceded by `-c check_for_update_on_startup=false` opened with no prompt and answered `ready` (`working` 08:17:55.5, `done` 08:17:57.7), and `start 14` and `start 15` without the override showed the prompt.
+
+#### The update notice
+
+At 08:15:07, during the probe, Codex's own update check rewrote `~/.codex/version.json`: `{"latest_version":"0.169.0","last_checked_at":"2026-11-15T08:15:07…Z","dismissed_version":null}`. From then on, a session started by hand **with no prompt** stopped first at a second first-run prompt, before the trust prompt:
+
+```
+  Update available · 0.167.0 → 0.169.0
+  Release notes: https://github.com/openai/codex/releases/latest
+
+› 1. Update now (runs `sh -c 's=$(curl -fsSL https://chatgpt.com/codex/install.sh) && CODEX_NON_INTERACTIVE=1 eval "$s"'`)
+  2. Skip
+  3. Skip until next version
+
+  enter continue · esc skip
+```
+
+It was seen twice and skipped with `esc` both times; `version.json` did not change. With `-c check_for_update_on_startup=false` it did not show, in five hand runs.
+
+**No start made by `fleet.py` showed it.** Six starts after 08:15:07 carried a start prompt and not that setting. None stopped at this prompt: one went straight to the trust prompt and stayed there, and the five that ran a turn showed a banner instead, above the conversation, and went on:
+
+```
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ ✨ Update available! 0.167.0 -> 0.169.0                                                                          │
+│ Run sh -c 's=$(curl -fsSL https://chatgpt.com/codex/install.sh) && CODEX_NON_INTERACTIVE=1 eval "$s"' to update. │
+…
+```
+
+That a start prompt is what turns the blocking prompt into a banner is an inference from those runs. It matters because `enter` at the blocking prompt updates Codex.
+
+### 4. States
+
+The session `issue-16` (pane `%51`) was sent prompts by typing into its own pane, and `workmux status --json` was polled.
+
+| moment, in the `issue-16` session | `status` | `elapsed_secs` read |
+|---|---|---|
+| the start turn, model at work | `working` | 1 |
+| that turn finished | `done` | 0, 2, 4, 6, then 43 |
+| asked to run `touch ~/e29-probe-approval.txt` with escalated permissions; at Codex's approval for it | `waiting` | 2, 5, 8, 11, 14, 17 |
+| after `esc` there: the screen showed `✗ You canceled the request to run touch ~/e29-probe-approval.txt` and `■ Conversation interrupted`, input box idle | `waiting` | 30, 33, 36, 39, 42, 45, then 56 |
+| asked the same for `touch /dev/shm/e29-probe-approval.txt`; model at work, then at the approval | `working`, then `waiting` | 3, 6; then 3, 6, 15 |
+| `y` there, command run, turn finished | `working`, then `done` | 2; then 2, 4, 6 |
+
+The hook calls from that pane, from workmux's log:
+
+```
+08:20:39.832  register-agent
+08:20:39.877  set-window-status working
+08:20:42.070  set-window-status done
+08:21:25.434  set-window-status working      <- prompt submitted
+08:21:29.779  set-window-status waiting      <- approval shown
+                                             <- esc at 08:21:59: no hook call
+08:22:27.039  set-window-status working      <- next prompt submitted
+08:22:33.717  set-window-status waiting
+08:22:48.102  set-window-status working      <- approved; the command had run
+08:22:50.397  set-window-status done
+```
+
+**All three states appear, and a session at an approval reads `waiting`.** Two limits. A declined approval fires no hook, so the session read `waiting` until its next prompt was submitted, 28 seconds after the decline, though it was idle at its input box. And nothing marks the approval itself: `working` returns only when the approved command has finished, so a session running a long command it was approved for reads `waiting` meanwhile. Step 7 shows that case in the overview's own row.
+
+The overview with the session at the first approval, and the screen there (`workmux capture issue-16 --lines 200`, tail):
+
+```
+NAME      STATE    HOST   RETURN  QUESTIONS
+issue-16  waiting  codex          no RETURN block on screen
+```
+
+```
+• Running touch ~/e29-probe-approval.txt
+
+  Would you like to run the following command?
+
+  Environment: local
+
+  Reason: Do you approve running touch ~/e29-probe-approval.txt to create the file outside the sandbox?
+
+  $ touch ~/e29-probe-approval.txt
+
+› 1. Yes, proceed (y)
+  2. Yes, and don't ask again for commands that start with `touch ~/e29-probe-approval.txt` (p)
+  3. No, and tell Codex what to do differently (esc)
+
+  Press enter to confirm or esc to cancel
+```
+
+Codex asked here because the command wrote outside its sandbox. The session ran under `approval_policy` `on-request` and the `workspace-write` sandbox, by its own record; commands inside the sandbox ran without a question throughout the probe.
+
+### 5. The captured screen around a RETURN block
+
+The same session was sent E26's prompt, with the task and the declined command changed:
+
+```
+Say in one line that the first touch command was declined, then end your reply with this block in a code fence, one field per line: ### RETURN, status: needs-decision, task: issue 16, changed: none, evidence: touch was declined, findings: none, risks: none, follow-ups: none, questions: <one question of at least 400 characters asking whether to retry the declined touch command or skip it, with the reasons for each>, knowledge: none
+```
+
+`workmux capture issue-16 --lines 200` returned 63 lines on the 238 × 63 pane (`#{alternate_on}` 1, `#{history_size}` 0). Lines 42–63, trailing spaces stripped, nothing else changed:
+
+```
+• 👨‍💻 Tech-Lead: The first touch command was declined.
+
+  ### RETURN
+  status: needs-decision
+  task: issue 16
+  changed: none
+  evidence: touch was declined
+  findings: none
+  risks: none
+  follow-ups: none
+  questions: Would you like me to retry the declined command, touch ~/e29-probe-approval.txt, with a fresh request for escalated permissions so that we can verify creation at the originally requested home-directory path, or skip it
+  because the replacement command targeting /dev/shm/e29-probe-approval.txt already exited successfully, while recognizing that skipping avoids another approval prompt and an additional file but leaves the original home-directory
+  operation unverified?
+  knowledge: none
+
+  Worked for 11s • 9:23 AM
+
+
+› Ask Codex to do anything
+
+  GPT-6.1-Sol high · <tmp>/repo__worktrees/issue-16 · Reply ready
+  ← for agents · ? for shortcuts
+```
+
+```console
+$ python3 <pkg>/skills/ec-fleet/scripts/fleet.py overview; echo "rc=$?"
+NAME      STATE  HOST   RETURN          QUESTIONS
+issue-16  done   codex  needs-decision  Would you like me to retry the declined command, touch ~/e29-probe-approval.txt, with a fresh reque…
+rc=0
+```
+
+`overview --json` gave the whole question, its three screen lines joined with single spaces. The script's `last_return`, run on the saved capture, returns the same, and `None` for the capture taken at the approval.
+
+How Codex's screen differs from Antigravity's (E26 step 6), for a reader of the capture:
+
+- **No fence and no frame, as there.** Every line of the block is indented two spaces, not four. A wrapped value continues with the same two-space indent.
+- **The block is not the last thing on screen.** Codex adds a line of its own after every reply, `Worked for 11s • 9:23 AM`, then the input box and a status line. The script reads them into the `knowledge` value, which it does not use.
+- **The capture is the visible screen only, as there.** Codex drew on the alternate screen and `--lines 200` returned the pane's 63 rows. `codex --help` lists `--no-alt-screen`; it was not tried.
+
+### 6. End to end
+
+With the skill committed as a project skill (step 1) and `<tmp>/repo` trusted (step 3), the package's default start, no config file:
+
+```console
+$ python3 <pkg>/skills/ec-fleet/scripts/fleet.py start 12 --host codex; echo "rc=$?"     # 08:24:32
+started issue-12
+rc=0
+$ codex --no-daemon --profile e-colleagues -- "$(cat .workmux/PROMPT-issue-12.md)"         # typed by workmux
+```
+
+No prompt of any kind showed, and no approval was asked: its three commands ran inside the sandbox. The session's own record:
+
+| time | what |
+|---|---|
+| 08:24:34.8 | session starts in `<tmp>/repo__worktrees/issue-12` |
+| 08:24:36.1 | developer message beginning `# Tech-Lead`; the instructions from `AGENTS.md` |
+| 08:24:36.2 | user: `Use the ec-fleet skill. Your assignment: issue 12.` |
+| 08:24:39.2 | assistant: `👨‍💻 Tech-Lead: I’m using the ec-fleet skill to load issue 12’s assignment and workflow, …` |
+| 08:24:39.8 | first command: `cat .agents/skills/ec-fleet/SKILL.md`, exit 0 |
+| 08:24:44.8 | together: `cat AGENTS.md`, and `pwd; git status --short; git remote -v; rg --files -g '*.md' …` |
+| 08:24:51.9 | `cat README.md CLAUDE.md; rg --files --hidden …; git log -5 --oneline; git config --get remote.origin.url`, exit 1 from the last of them |
+| 08:25:06.6 | final message; the `Stop` hook marks the pane `done` |
+
+`workmux status --json` read `working` from 08:24:36 to 08:25:05 and `done` from 08:25:09. `workmux capture issue-12 --lines 200` returned 63 lines; lines 14–50, trailing spaces stripped:
+
+```
+› Use the ec-fleet skill. Your assignment: issue 12.
+
+
+• 👨‍💻 Tech-Lead: I’m using the ec-fleet skill to load issue 12’s assignment and workflow, then I’ll inspect the repository contract and scope the work.
+
+• Explored
+  └ Read SKILL.md (ec-fleet skill), AGENTS.md
+    + Show details
+
+• Ran pwd; git status --short; git remote -v; rg --files -g '*.md' -g '!AGENTS.md' -g '!node_modules' -g '!vendor'
+  └ origin
+    CLAUDE.md
+    README.md
+    + 1 line (^t to expand)
+
+• Exited (status 1) cat README.md CLAUDE.md; rg --files --hidden -g '!.git' -g '!node_modules' -g '!.agents/skills/**' -g '!.claude/skills/**'; git log -5 --oneline; git config --get remote.origin.url
+  └ a4e5159 chore: carry the ec-fleet skill as a project skill
+    05d8110 chore: bootstrap the contract
+    4c135ad chore: initial commit
+    + 8 lines (^t to expand)
+
+• 👨‍💻 Tech-Lead: Please provide issue 12’s text, or its URL and the tool I should use to read it. AGENTS.md has empty tracker/tool bindings, and origin has no URL.
+
+  The ec-fleet skill (.agents/skills/ec-fleet/SKILL.md) requires: “The issue is your brief. Read it yourself, with the tools the contract names.” I need that brief before implementing.
+
+  ### RETURN
+  status: blocked
+  task: issue 12
+  changed: none
+  evidence: cat AGENTS.md exit 0; git config --get remote.origin.url exit 1
+  findings: []
+  risks: Issue scope unavailable
+  follow-ups: none
+  questions: Provide issue 12's text, or URL and reading tool
+  knowledge: none
+
+  Worked for 31s • 9:25 AM
+```
+
+It loaded the skill as its first act, read the contract, found no tracker, and asked and waited instead of guessing, with the skill's RETURN block at the end of its message, keys complete and in order. `findings: []` is its own wording for none. The overview, with step 5's session still open:
+
+```console
+$ python3 <pkg>/skills/ec-fleet/scripts/fleet.py overview; echo "rc=$?"
+NAME      STATE  HOST   RETURN          QUESTIONS
+issue-12  done   codex  blocked         Provide issue 12's text, or URL and reading tool
+issue-16  done   codex  needs-decision  Would you like me to retry the declined command, touch ~/e29-probe-approval.txt, with a fresh reque…
+rc=0
+```
+
+### 7. A Codex session runs `fleet.py start`
+
+The dispatching tech-lead was started by hand in the probe's shell pane, in `<tmp>/repo`:
+
+```console
+$ EC_FLEET_CONFIG=<tmp>/fleet-short.toml codex --profile e-colleagues 'use the ec-fleet skill; start 17'
+```
+
+The variable points at the config that only shortens the start prompt, so that the session it starts costs one short turn; it changes nothing else. The session ran under `approval_policy` `on-request` and the `workspace-write` sandbox with no network, by its own record: the whole file system readable; `<tmp>/repo`, `/tmp` and `$TMPDIR` writable; `.git`, `.agents`, `.codex` and `.aws` under `<tmp>/repo` read-only. Its commands, from that record:
+
+| time | command | result |
+|---|---|---|
+| 08:26:02.8 | `cat .agents/skills/ec-fleet/SKILL.md` | exit 0 |
+| 08:26:06.7 | `python3 .agents/skills/ec-fleet/scripts/fleet.py start 17` | exit 2, `fleet: no host chosen: pass --host (antigravity, claude, codex, opencode) or set default_host in the config` |
+| 08:26:09.9 | `python3 .agents/skills/ec-fleet/scripts/fleet.py start 17 --host codex`, in the sandbox | exit 101, below |
+| 08:26:13.4 | the same command, asking to run outside the sandbox | approval shown; approved at 08:26:36; exit 0, `started issue-17` |
+
+The sandboxed run failed inside workmux, before it did anything:
+
+```
+thread 'main' (3) panicked at ~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-appender-0.2.5/src/rolling.rs:156:14:
+initializing rolling file appender failed: InitError { context: "failed to create log file", source: Os { code: 30, kind: ReadOnlyFilesystem, message: "Read-only file system" } }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+```
+
+**workmux cannot start inside Codex's sandbox, because it cannot open its log under `~/.local/state/workmux/`.** The tech-lead then asked, and Codex showed:
+
+```
+• Running python3 .agents/skills/ec-fleet/scripts/fleet.py start 17 --host codex
+
+  Would you like to run the following command?
+
+  Environment: local
+
+  Reason: May I run the fleet launcher outside the sandbox so workmux can write its log and start issue 17?
+
+  $ python3 .agents/skills/ec-fleet/scripts/fleet.py start 17 --host codex
+
+› 1. Yes, proceed (y)
+  2. Yes, and don't ask again for commands that start with `python3 .agents/skills/ec-fleet/scripts/fleet.py start 17 --host codex` (p)
+  3. No, and tell Codex what to do differently (esc)
+```
+
+Option 1 was chosen, acting as the person. workmux's log shows the start within the same second, from the dispatching pane, and the new session ran its turn:
+
+```
+08:26:36.177  workmux add issue-17 --background --agent "codex --profile e-colleagues" --prompt "Reply with the single word ready, then stop."   cwd=<tmp>/repo  tmux_pane=%38
+```
+
+```
+  👨‍💻 Tech-Lead: Started issue 17 with Codex in worktree issue-17. Fleet launcher exited 0: started issue-17.
+```
+
+It passed no `--host` at first, as the skill says, and added its own after `no host chosen`. It retried the failed command with the same flags, only outside the sandbox. `$TMUX_PANE` reached the command, so the window opened in the probe's session.
+
+Sent `overview`, it asked at once to run `python3 .agents/skills/ec-fleet/scripts/fleet.py overview` outside the sandbox (`Reason: May I run the fleet overview outside the sandbox so workmux can initialize its log and read session status?`), was approved once, and showed:
+
+```
+  NAME      STATE    HOST   RETURN          QUESTIONS
+  repo      waiting  codex                  (this session)
+  issue-12  done     codex  blocked         Provide issue 12's text, or URL and reading tool
+  issue-16  done     codex  needs-decision  Would you like me to retry the declined command, touch ~/e29-probe-approval.txt, with a fresh reque…
+  issue-17  done     codex                  no RETURN block on screen
+
+  Issue 17 may be at a host prompt or have stopped without a complete RETURN block visible. done indicates the session stopped, not that the issue is complete.
+```
+
+Its own row is found and marked `(this session)`. It reads `waiting`, not `working`, because the overview ran as an approved command (step 4).
+
+The probe's repository is under `/tmp`, which this sandbox leaves writable. The failure above does not depend on that, since workmux's log is under the home directory. What else a sandboxed start would be refused in a repository elsewhere was not reached, and does not matter once the command runs outside the sandbox.
+
+### 8. The `trust` string in a trusted repository, and in a path holding a space
+
+Two cases the string had not met, measured before it could become a default. Both ran through `fleet.py` with this config, and each control with the same file but `trust = ""`:
+
+```toml
+[hosts.codex]
+prompt = "Reply with the single word ready, then stop."
+trust = "-c 'projects={\"{worktree}\"={trust_level=\"trusted\"}}'"
+```
+
+To see whether a session loads the project's own Codex config, which Codex reads only in a trusted project, each repository first got a committed `.codex/config.toml` holding one line, `model_reasoning_effort = "low"`. The profile file sets `high`, and Codex's status line shows the effort in use, so `low` there means the project's file was loaded.
+
+#### An already-trusted repository
+
+`<tmp>/repo`, whose root Codex had saved as trusted in step 3. `start 41` is the control, `start 42` carries the string. Both printed `started issue-4N`, rc 0, nothing on stderr. What workmux typed, and the process arguments:
+
+```console
+$ codex --no-daemon --profile e-colleagues -- "$(cat .workmux/PROMPT-issue-41.md)"
+codex|--no-daemon|--profile|e-colleagues|--|Reply with the single word ready, then stop.|
+$ codex --no-daemon --profile e-colleagues -c 'projects={"<tmp>/repo__worktrees/issue-42"={trust_level="trusted"}}' -- "$(cat .workmux/PROMPT-issue-42.md)"
+codex|--no-daemon|--profile|e-colleagues|-c|projects={"<tmp>/repo__worktrees/issue-42"={trust_level="trusted"}}|--|Reply with the single word ready, then stop.|
+```
+
+Neither showed a prompt. Both answered `ready` and read `done` (`[('issue-41', 'done', 3), ('issue-42', 'done', 5)]`), and both status lines read `GPT-6.1-Sol low`. Each was then asked `Run the shell command git branch --show-current and show its output in one line.`; neither asked for approval, and the screens differ only in the name:
+
+```
+• Ran git branch --show-current
+  └ issue-42
+
+• 👨‍💻 Tech-Lead: issue-42
+```
+
+The two sessions' own records agree on everything trust could change:
+
+| | `issue-41`, no string | `issue-42`, with the string |
+|---|---|---|
+| `approval_policy` | `on-request` | `on-request` |
+| sandbox | `workspace-write` | `workspace-write` |
+| effort | `low` | `low` |
+| writable | the worktree, `/tmp`, `$TMPDIR` | the worktree, `/tmp`, `$TMPDIR` |
+| read-only inside the worktree | `.git`, `.agents`, `.codex`, `.aws` | `.git`, `.agents`, `.codex`, `.aws` |
+| developer messages, characters | 21,524, 20,429, 2,400, 271 | 21,524, 20,429, 2,400, 271 |
+| hook calls | `register-agent`, `working`, `done`; then `working`, `working`, `done` | the same |
+
+**The override is merged into the saved `projects` table; it does not replace it.** Five hand runs in the trusted worktree `<tmp>/repo__worktrees/issue-41`, the arguments of each added to `codex --no-daemon --profile e-colleagues -c check_for_update_on_startup=false`, with no prompt and so no model call:
+
+| added arguments | trust prompt | status line |
+|---|---|---|
+| none (control) | not shown | `GPT-6.1-Sol low` |
+| `-c 'projects={"/nonexistent-e29"={trust_level="trusted"}}'` | not shown | `GPT-6.1-Sol low` |
+| `-c 'projects={"<worktree>"={trust_level="untrusted"}}'` | **shown** | |
+| `-c 'projects={"<root>"={trust_level="untrusted"}}'` | **shown** | |
+| `-c 'projects={"<root>"={trust_level="untrusted"},"<worktree>"={trust_level="trusted"}}'` | not shown | `GPT-6.1-Sol low` |
+
+An override that names only some other path leaves the root's saved trust in force, so the session's `projects` table still held the saved entry. The two `untrusted` rows show the override is read at all in this repository, and the last row that an entry for the worktree itself outranks one for the root. That last row sets both in one override; a root *saved* as `untrusted` was not measured.
+
+#### A worktree path holding a space
+
+`<tmp>/my repo`, a new repository Codex had never seen. `workmux add issue-31 --dry-run` printed `Worktree: <tmp>/my repo__worktrees/issue-31`. `fleet.py --config <the file> start 31 --host codex` printed `started issue-31`, rc 0, nothing on stderr. workmux's log, what it typed, and the process arguments:
+
+```
+args=["workmux", "add", "issue-31", "--dry-run"]
+args=["workmux", "add", "issue-31", "--background", "--agent", "codex --profile e-colleagues -c 'projects={\"<tmp>/my repo__worktrees/issue-31\"={trust_level=\"trusted\"}}'", "--prompt", "Reply with the single word ready, then stop."]
+```
+
+```console
+$ codex --no-daemon --profile e-colleagues -c 'projects={"<tmp>/my repo__worktrees/issue-31"={trust_level="trusted"}}' -- "$(cat .workmux/PROMPT-issue-31.md)"
+codex|--no-daemon|--profile|e-colleagues|-c|projects={"<tmp>/my repo__worktrees/issue-31"={trust_level="trusted"}}|--|Reply with the single word ready, then stop.|
+```
+
+The override reached Codex as one argument, space included. The new window, with the update banner removed:
+
+```
+  >_ OpenAI Codex (v0.167.0)
+     <tmp>/my repo__worktrees/issue-31
+
+› Reply with the single word ready, then stop.
+
+• 👨‍💻 Tech-Lead: ready
+
+  Worked for 5s • 9:38 AM
+
+› Ask Codex to do anything
+
+  GPT-6.1-Sol low · <tmp>/my repo__worktrees/issue-31 · Confirm readiness
+```
+
+No prompt, `('issue-31', 'done', 4, 'codex', '%73')`, and asked for `git branch --show-current` it ran it with no approval and answered `👨‍💻 Tech-Lead: issue-31`. The status line reads `low`: **a worktree trusted only by the override loads the project's `.codex/config.toml`**, as one trusted through the prompt does. The control, `start 32` with `trust = ""`, typed `codex --no-daemon --profile e-colleagues -- "$(cat .workmux/PROMPT-issue-32.md)"` and showed the trust prompt for `<tmp>/my repo__worktrees/issue-32`, naming the root `<tmp>/my repo`; no agent was registered, and it was not answered.
+
+`~/.codex/config.toml`, the profile file, `~/.codex/version.json` and `~/.codex/hooks.json` had the same hashes before this step and after it, and the profile file still holds one `projects` entry, the one from step 3.
+
+### Verdicts
+
+1. **Start: holds** at codex-cli 0.167.0 with workmux 0.1.281. `fleet.py start <ref> --host codex` with the package's default command and no config file opens the window, and workmux types `codex --no-daemon --profile e-colleagues -- "$(cat .workmux/PROMPT-<name>.md)"`. In a trusted repository the prompt is submitted on its own, the session is the tech-lead, and `workmux status --json` reports it with `"agent_kind": "codex"`. The profile file was present on the probe machine; a machine without it was not measured.
+2. **First-run prompts: one, the trust prompt, and only in a repository Codex has never trusted.** Trust is saved per repository root and covers every worktree, so `fleet.py`'s default start raised no prompt once the root was trusted. In an untrusted repository the session waits at the prompt with its start prompt unsent, and it is **absent** from `workmux status --json` and from the overview. The skill says such a session shows as `working`, or as stopped with `no RETURN block on screen`; on Codex it does not show at all. A `trust` string removes the prompt for one session and saves nothing: `-c 'projects={"{worktree}"={trust_level="trusted"}}'`, measured through `fleet.py` with a control, also for a path holding a dot and one holding a space. In a repository already trusted the string changes nothing that was looked at: the override is merged into the saved `projects` table, and the session matched its control in prompts, approvals, sandbox, the project config it loaded and its hook calls (step 8). Accepted by hand under `--profile`, the decision is saved in the profile file, not in `~/.codex/config.toml`. `fleet.py` was not changed.
+3. **States: `working`, `waiting` and `done` are all reported.** A session at one of Codex's approvals reads `waiting`. It still reads `waiting` after the approval is declined, until its next prompt, and while a command it was approved for is running.
+4. **The captured screen: holds.** The overview read `needs-decision` and a question wrapped over three screen lines, and `blocked` and its question from the end-to-end stop. No parser fault was found. Codex adds a `Worked for …` line after the block; the script tolerates it.
+5. **End to end: holds, with the skill delivered as a project skill.** A tech-lead started with the default prompt read `.agents/skills/ec-fleet/SKILL.md` as its first command, read `AGENTS.md`, and stopped with a complete RETURN block that the overview showed. The plugin route was not measured.
+6. **Dispatch from inside a Codex session: holds, with one approval per call that reaches workmux.** In the sandbox workmux aborts on its log file, so `fleet.py start` and `fleet.py overview` each run only outside it, and Codex asks first. Nothing else blocked. `fleet.py start` with no host needed no approval, as it fails before reaching workmux.
+
+### Not measured
+
+- The plugin route for the skill on Codex: the install was refused by the probe session's permission system. So also how a Codex session reaches `scripts/fleet.py` under `~/.codex/plugins/cache/`, and the approvals that needs.
+- The default start on the machine as found, with no `ec-fleet` skill available to Codex.
+- A machine with no `~/.codex/e-colleagues.config.toml`; design §9 records that an unknown profile name is silently ignored (E14).
+- The `trust` string in a repository whose root is *saved* as `untrusted`. In one override, an entry for the worktree outranked an `untrusted` one for the root (step 8).
+- Project role files (`.codex/agents/*.toml`) in a worktree trusted by the override. The project `.codex/config.toml` loads there (step 8); role files were not tried.
+- Whether trust saved in the profile file applies to a session without `--profile`, and whether trust saved in `~/.codex/config.toml` applies under it.
+- A machine where Codex has not yet recorded the hooks' hashes: whether a hook review is then a further first-run prompt.
+- Option 2 at an approval, "don't ask again": where it is saved, and whether it would cover the next `fleet.py start`, whose command line differs by the reference.
+- The states while a specialist runs (`SubagentStart` and `SubagentStop` are hooked; no specialist was spawned).
+- A block taller than the pane, the nested `findings:` list, any stop after the first, a commit or a push from the worktree, `--base`, the plan assignment, a contract with `### Parallel work` lines, several real issues at once.
+- `--no-alt-screen`, the shared background server (workmux passes `--no-daemon`), and remote use.
+- Why the update notice blocks only a session started with no prompt: see the inference in step 3.
+- Any Codex other than 0.167.0. 0.169.0 was offered during the probe and not installed.
+
+**Host state.** Nothing of this package was installed, removed or updated for Codex: `codex plugin list` still shows it as not installed, `~/.codex/plugins/cache/` has no directory for it, and the five role files have the hashes they had. The probe wrote no Codex file. `~/.codex/config.toml`, `~/.codex/hooks.json`, `~/.codex/.codex-global-state.json` and the file behind `~/.codex/AGENTS.md` have the same hashes as before. Codex itself changed two files, both before step 8, and both changes were left; step 8 changed neither, by hash. It wrote `[projects."<tmp>/repo"]` with `trust_level = "trusted"` into `~/.codex/e-colleagues.config.toml` when its prompt was accepted, that file's only change (7,071 bytes before, 7,242 after; without its last three lines the file has its earlier hash); the entry points at a throwaway repository, and this probe does not edit the owner's Codex files. And its update check rewrote `~/.codex/version.json` at 08:15:07; only the earlier hash was kept, not the earlier content. Codex also kept its usual per-session records under `~/.codex/` (ten session files, prompt history, its state databases and logs), and workmux appended to its log.
+
+Nine worktrees were made and removed in `<tmp>/repo`, two in `<tmp>/repo.two` and two in `<tmp>/my repo`, each with `✓ Removed worktree '<name>' and branch '<name>'`. Afterwards `workmux status --json` listed `"agents": []` in all three, `git worktree list` listed only the main checkout in all three, the probe's tmux session was killed, and `pgrep -x codex` found no process. workmux kept a state file for seven of the probe's panes under `~/.local/state/workmux/agents/`; all seven were removed, and no file there names a path of this probe. The approved command created `/dev/shm/e29-probe-approval.txt`, which was removed; the declined one created nothing.
+
+Two slips, both in the probe's own panes. `workmux list`, run once from the shell pane, stopped at workmux's offer to update another agent CLI's status hooks (E26); it was ended with ctrl-c, unanswered. No `~/.local/state/workmux/setup.json` or `sent/` exists, and that agent's hooks file was last modified a month before the probe. And one command line meant for the shell was typed into Codex's own session list, which is where ctrl-c at the update prompt leads, not to the shell. Checked right after, no session file had been created since the previous probe session, and Codex's session index and state database had not been written since then either.
+
+---
+
+## E31 — the fleet skill on Claude Code: it runs end to end once the plugin is installed, trust is kept per repository and not per worktree, and workmux reports `waiting` at an approval
+
+**Date** 2026-11-15. **Claude Code 2.1.325**, model Opus 5.5 with xhigh effort, the owner's configured default; **workmux 0.1.281**; **tmux 3.8**; this package as a clean export of commit `754fce5`, called `<pkg>` below. Tranche B.
+
+E26 to E28 measured the fleet skill on Antigravity only, and design §17 lists Claude Code as UNVERIFIED. This entry answers the same questions for Claude Code: the start, the first-run prompt, the states, the captured screen, the skill end to end, and a dispatch from inside a session.
+
+Everything ran in a throwaway repository, `<tmp>/repo` (`git init`, one commit, a repository-local identity, no signing), with its contract from `python3 <pkg>/skills/ec-init/scripts/bootstrap.py <tmp>/repo --write` (`wrote 3 files, 3 changed`), committed. No interview was run, so the project bindings are empty. A second repository, `<tmp>/repo2` (`git init`, one commit), served as the control for trust. The probe used its own tmux session, `e31-probe`, and touched no other. `fleet.py` was run from a shell pane of that session, from the export, with `~/.config/e-colleagues/fleet.toml` absent and `XDG_CONFIG_HOME` and `EC_FLEET_CONFIG` unset unless a step names a config file. workmux puts worktrees in `<tmp>/repo__worktrees/`.
+
+These were real sessions on the owner's account. Nine reached the model: seven worktree tech-leads with a one-line start prompt (three of them with one to five further prompts), one with the skill's real start prompt, and one dispatching tech-lead (two messages). Hook timings come from workmux's log, tool calls from Claude Code's own transcript of each session (`~/.claude/projects/<folder>/<session>.jsonl`), both in UTC. In every capture below the line of the owner's status bar that carries an account and a machine name is cut, the banner's plan label is cut, and trailing spaces are stripped.
+
+### 1. Versions, the hooks, and the machine as found
+
+```console
+$ claude --version
+2.1.325 (Claude Code)
+$ workmux --version
+workmux 0.1.281
+$ tmux -V
+tmux 3.8
+```
+
+The hooks in `~/.claude/settings.json`, re-wrapped, nothing else changed. They were already there; `workmux setup` was not run, and the file was read, not edited:
+
+```json
+"hooks": {
+  "Notification":     [{"matcher": "permission_prompt|elicitation_dialog",
+                        "hooks": [{"type": "command", "command": "workmux set-window-status waiting"}]}],
+  "PostToolUse":      [{"hooks": [{"type": "command", "command": "workmux set-window-status working"}]}],
+  "SessionStart":     [{"matcher": "startup|resume|clear|fork",
+                        "hooks": [{"type": "command", "command": "workmux register-agent"}]}],
+  "Stop":             [{"hooks": [{"type": "command", "command": "workmux set-window-status done"}]}],
+  "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "workmux set-window-status working"}]}]
+}
+```
+
+Unlike the Antigravity hooks (E26), these can report a waiting state. The same file sets `"model": "opus"`, `"tui": "fullscreen"` and `"permissions": {"allow": ["Read", "Glob", "Grep", "WebFetch", "WebSearch"]}`, and no `defaultMode`.
+
+This package was not installed for Claude Code: `claude plugin list` ran and listed the owner's plugins, none of them `e-colleagues` (a `grep` of its output for the name matched nothing, exit code 1), and `~/.claude/agents/` held no `tech-lead`. workmux runs with the owner's global config: one pane per window holding the agent, and `base_branch: auto`.
+
+### 2. The default start command with the plugin not installed
+
+```console
+$ python3 <pkg>/skills/ec-fleet/scripts/fleet.py start 12 --host claude; echo "rc=$?"
+started issue-12
+rc=0
+```
+
+workmux's log, trimmed:
+
+```
+08:13:10.509  workmux add issue-12 --background --agent "claude --agent tech-lead" --prompt "Use the ec-fleet skill. Your assignment: issue 12."   cwd=<tmp>/repo
+08:13:10.548  create:start branch="issue-12" base=Some("main")
+08:13:10.591  window created, pane %37
+08:13:10.684  create:completed path=<tmp>/repo__worktrees/issue-12
+```
+
+The window opened and the worktree was made. What workmux typed into the pane, and what came back (the list of the machine's own agents is cut):
+
+```console
+$ claude --agent tech-lead -- "$(cat .workmux/PROMPT-issue-12.md)"
+--agent 'tech-lead' not found. Available agents: claude, claude-code-guide, …, statusline-setup, web-fetch
+```
+
+Claude Code exited at once and the pane was back at its shell (`#{pane_current_command}` `bash`). The same command typed by hand in the first pane gave the same message and `rc=1`. No model was reached and no trust dialog was shown: the name is checked first.
+
+```console
+$ workmux status --json          # in <tmp>/repo
+  …
+  "agents": [],
+$ python3 <pkg>/skills/ec-fleet/scripts/fleet.py overview; echo "rc=$?"
+no sessions
+rc=0
+```
+
+**`fleet.py start` printed `started issue-12` with exit code 0 for a host that had already exited, and the overview has no row for it.** The script reports what workmux did, and workmux made the window. The failure is on that window's screen and nowhere else. A wrong `--agent` name is loud at 2.1.325 on the command line; design §8 records that the same mistake in a settings file's `agent` key is silent (E21).
+
+### 3. With the package loaded for one session: the trust dialog, and what the overview shows there
+
+`claude --plugin-dir <dir>` loads a plugin "for this session only" (`claude --help`) and installs nothing. With it, the agents are listed under qualified names only. A name that does not exist prints the list:
+
+```console
+$ claude --plugin-dir <pkg> --agent no-such-agent-e31; echo "rc=$?"
+--agent 'no-such-agent-e31' not found. Available agents: …, e-colleagues:designer, e-colleagues:developer, e-colleagues:platform, e-colleagues:reviewer, e-colleagues:security, e-colleagues:tech-lead, …
+rc=1
+```
+
+The bare name still resolves. A probe config, `<tmp>/cfg/a-bare.toml`:
+
+```toml
+[hosts.claude]
+start = "claude --plugin-dir <pkg> --agent tech-lead"
+prompt = "Reply with the single word ready, then stop."
+```
+
+```console
+$ python3 <pkg>/skills/ec-fleet/scripts/fleet.py --config <tmp>/cfg/a-bare.toml start 13 --host claude; echo "rc=$?"
+started issue-13
+rc=0
+```
+
+workmux typed `claude --plugin-dir <pkg> --agent tech-lead -- "$(cat .workmux/PROMPT-issue-13.md)"`, and the new window showed, in a 238 × 63 pane:
+
+```
+ Accessing workspace:
+
+ <tmp>/repo__worktrees/issue-13
+
+ Quick safety check: Is this a project you created or one you trust? (Like your own code, a well-known open source project, or work from your team). If not, take a moment to review what's in this folder first.
+
+ Claude Code'll be able to read, edit, and execute files here.
+
+ Security guide
+
+ ❯ No, exit
+   Yes, I trust this folder
+
+ Enter to confirm · Esc to cancel
+```
+
+The selection starts on "No, exit". The session sat there from 08:14:18 to about 08:19:21. Throughout:
+
+```console
+$ workmux status --json          # in <tmp>/repo
+  …
+  "agents": [],
+$ python3 <pkg>/skills/ec-fleet/scripts/fleet.py overview; echo "rc=$?"
+no sessions
+rc=0
+```
+
+**A Claude Code session at its trust dialog is not in `workmux status` at all, so the overview has no row for it.** No hook had run: workmux's log has no call from that pane before the dialog was accepted. On Antigravity the same moment read `working` or `done` (E26, E27), because agy's hooks and its start turn run behind the dialog.
+
+The dialog was then accepted in that window, acting as the person (Down, Enter). The hook calls for the pane, and the status polled every 3 s:
+
+```
+08:19:22.915  "workmux", "register-agent"
+08:19:36.038  "workmux", "set-window-status", "working"
+08:19:39.814  "workmux", "set-window-status", "done"
+```
+
+```
+08:19:25 … 08:19:34   "status": "-"          (no elapsed_secs)
+08:19:37              "status": "working"    elapsed_secs 1
+08:19:40 … 08:19:46   "status": "done"       elapsed_secs 1, 4, 7
+```
+
+Between registering and the start prompt being submitted, 13 s here, the session is listed with `"status": "-"`. The screen afterwards (`#{alternate_on}` 1, `#{history_size}` 0):
+
+```
+ ▐▛███▛█   Claude Code v2.1.325
+▝▜██████▀  Opus 5.5 with xhigh effort
+ ▝▝   ▝▝   @e-colleagues:tech-lead · <tmp>/repo__worktrees/issue-13
+
+❯ Reply with the single word ready, then stop.
+
+● 👨‍💻 Tech-Lead: ready
+
+✻ Cogitated for 16s · done 9:19
+
+──────────────────────────────────────────────────────────── e-colleagues:tech-lead ─
+❯
+────────────────────────────────────────────────────────────
+  ⏵⏵ auto mode on (shift+tab to cycle) · ← 1 agent
+```
+
+The bare `--agent tech-lead` became `@e-colleagues:tech-lead`, the prompt arrived, and the reply carried the signature. The start turn began after the dialog was accepted, not behind it: the first hook call came within 2 s of the acceptance. That the model was not called earlier is an inference from that and from the turn's own timer.
+
+One reading of `workmux status --json issue-14` from step 4, trimmed:
+
+```json
+{
+  "worktree": "issue-14",
+  "branch": "issue-14",
+  "project": "repo",
+  "project_path": "<tmp>/repo",
+  "status": "done",
+  "elapsed_secs": 20,
+  "title": "✳ e-colleagues:tech-lead",
+  "pane_id": "%50",
+  "workdir": "<tmp>/repo__worktrees/issue-14",
+  "agent_kind": "claude",
+  "session": "e31-probe",
+  …
+}
+```
+
+**Typing `workmux list` at a shell prompt asked workmux's own question again.** With the terminal as its input, `workmux list` in the first pane stopped at `Install or update status tracking hooks? [Y/n]` for another agent CLI it detected, as `workmux add` did from agy's pseudo-terminal in E26. It was ended with Ctrl-C: no `~/.local/state/workmux/setup.json` was written and that CLI's hooks file has the same hash as before. Every later `workmux list`, `status`, `capture` and `remove` was run with `< /dev/null` and asked nothing, which is how `fleet.py` runs its launcher. This supports E27's inference and does not prove it.
+
+### 4. Trust is kept per repository: after one acceptance, a new worktree opens with no dialog
+
+Accepting the dialog made Claude Code write one record into `~/.claude.json`, and its key is the main checkout, not the worktree the dialog named:
+
+```
+projects["<tmp>/repo"] = {"allowedTools": [], …, "hasTrustDialogAccepted": true, …}
+```
+
+There is no key for `<tmp>/repo__worktrees/issue-13`. The next start used the same config and the same command:
+
+```console
+$ python3 <pkg>/skills/ec-fleet/scripts/fleet.py --config <tmp>/cfg/a-bare.toml start 14 --host claude; echo "rc=$?"
+started issue-14
+rc=0
+```
+
+```
+08:20:13.398  window created, pane %50
+08:20:16.174  "workmux", "register-agent"
+08:20:30.384  "workmux", "set-window-status", "working"
+08:20:33.861  "workmux", "set-window-status", "done"
+```
+
+No dialog, and no key was sent to that window. It registered 2.8 s after the window was created and answered `👨‍💻 Tech-Lead: ready`.
+
+**Control, in a repository Claude Code had never opened.** From `<tmp>/repo2`, the same config and `start 21`: the dialog showed for `<tmp>/repo2__worktrees/issue-21`, and `workmux status --json` read `"agents": []` twice, about 50 s apart. It was answered "No, exit": Claude Code exited, the window stayed open at its shell, and the `projects` records in `~/.claude.json` were the same before and after. Then `claude` was started by hand in the main checkout `<tmp>/repo2`, its dialog accepted, and the session left with `/exit` and no prompt. That wrote `projects["<tmp>/repo2"]` with `"hasTrustDialogAccepted": true`. After it, `start 22` in that repository opened with no dialog:
+
+```
+08:38:04 … 08:38:13   "status": "-"
+08:38:16              "status": "working"
+08:38:19              "status": "done"
+```
+
+So the dialog depends on whether the repository is trusted, whichever folder of it the acceptance happened in. A person who already runs Claude Code in a repository, as a dispatching tech-lead in the main checkout does, has answered it.
+
+**No way was found to pre-answer the dialog for one session.** `claude --help` at 2.1.325 lists no trust option for an interactive session. Its only words on the dialog are under `-p`: "The workspace trust dialog is skipped when Claude is run in non-interactive mode (via -p, or when stdout is not a TTY…)". One candidate was tried:
+
+```console
+$ claude --plugin-dir <pkg> --agent tech-lead --trust-workspace; echo "rc=$?"      # in <tmp>/repo2, before it was trusted
+error: unknown option '--trust-workspace'
+rc=1
+```
+
+A search of the binary's strings found `--trust-workspace` as an option of `claude ultrareview` only ("Trust the current folder for this run only, without asking (for scripts and CI)"), and an environment variable, `CLAUDE_CODE_SANDBOXED`, read by the code that decides whether to show the dialog. The variable was not tried: it is not an argument, so it cannot go in a `trust` string, it is not in the help, and it states something that is not true of this machine. That is a search, not proof that no other route exists.
+
+### 5. States
+
+A third session was started in manual permission mode, so that it would ask (`<tmp>/cfg/c-manual.toml`: the config of step 3 with `--permission-mode manual` added to `start`). `workmux status --json issue-15` was polled every 2 or 3 s. Prompts were typed into its window, acting as the person.
+
+| moment, in the issue-15 session | `status` | `elapsed_secs` read |
+|---|---|---|
+| registered, start prompt not yet submitted | `-` | none |
+| the start turn | `working` | 3 |
+| that turn finished | `done` | 2, 5, 8 |
+| "Run the shell command date and show its output.": it ran with no approval | `working`, then `done` | 2; 3 … 24 |
+| at the approval for `ls -la probe.txt; echo "exit=$?"`, the first step of "Create a file named probe.txt … then commit it …" | `working`, then `waiting` | 3, 6, 9, 12; then 1, 4, 7, 10, 13 |
+| after choosing `4. No` there: the screen showed `⎿  Interrupted · What should Claude do instead?`, input box idle | `waiting` | 25, 28, … 47, 59 |
+| the next prompt, model at work | `working` | 2, 6, 9 |
+| at the approval for creating `probe.txt` | `waiting` | 3, 6, 9, 16 |
+| approved; the approval for `git add probe.txt && git commit …` already on screen | `working`, then `waiting` | 2, 4, 6; then 6, 8, … 24 |
+| approved; the turn finished | `working`, then `done` | 2, 4; then 2, 4, 6, 8 |
+
+The hook calls behind the last four rows:
+
+```
+08:23:43.959  "workmux", "set-window-status", "working"     <- the prompt
+08:23:53.093  "workmux", "set-window-status", "waiting"     <- the approval for the file
+08:24:09.775  "workmux", "set-window-status", "working"     <- approved
+08:24:16.225  "workmux", "set-window-status", "waiting"     <- the approval for the commit
+```
+
+**All three states appear for Claude Code.** A session at an approval reads `waiting`, a few seconds after the prompt is drawn: the commit's approval was on screen at about 08:24:15 with the status still `working`, and `waiting` came at 08:24:16. A declined tool call fires no `Stop`, so the declined session read `waiting`, not `done`, until its next turn. `workmux list` at the first approval showed `issue-15  1m   waiting  ✓    -         ../repo__worktrees/issue-15`.
+
+`fleet.py overview` at that approval:
+
+```
+NAME      STATE    HOST    RETURN  QUESTIONS
+issue-13  done     claude          no RETURN block on screen
+issue-14  done     claude          no RETURN block on screen
+issue-15  waiting  claude          no RETURN block on screen
+```
+
+and `workmux capture issue-15 --lines 200` there, lines 29–44 of 62, the two dashed rules trimmed with `…`:
+
+```
+────────────────────────────────────────────────────────────…
+ Bash command
+ Tip: auto mode handles these prompts for you — choose "switch to auto mode" below
+ Check whether probe.txt already exists
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌…
+ ls -la probe.txt; echo "exit=$?"
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌…
+ This command requires approval
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. Yes, and don’t ask again for: echo "exit=$?"
+   3. Yes, and switch to auto mode · auto mode handles these prompts for you
+   4. No
+
+ Esc to cancel · Tab to amend
+```
+
+The commit went through after its two approvals:
+
+```console
+$ git log --oneline -2          # in <tmp>/repo__worktrees/issue-15
+d9e83c5 add probe.txt
+7bfd4bd chore: bootstrap contract
+```
+
+**The permission mode of a started session.** Every session started without a permission flag showed `⏵⏵ auto mode on` in its status line, and the transcripts record `"permissionMode": "auto"`. Nothing in the start command selects it and the owner's `settings.json` has no `defaultMode`; where this machine's default comes from was not established. In auto mode no approval prompt was shown in any step of this entry.
+
+### 6. The captured screen around a RETURN block
+
+The issue-15 session had no copy of the skill in context, so the prompt listed the fields inline, as in E26:
+
+```
+Say in one line that the first ls command was declined, then end your reply with this block in a code fence, one field per line: ### RETURN, status: needs-decision, task: issue-15, changed: none, evidence: ls was declined, findings: none, risks: none, follow-ups: none, questions: <one question of at least 400 characters asking whether to retry the ls command or skip it, with the reasons for each>, knowledge: none
+```
+
+`workmux capture issue-15 --lines 200`, after the status turned `done`, returned 61 lines on the 238 × 63 pane with no escape sequences. Lines 40–61, the two rules trimmed with `…`:
+
+```
+● 👨‍💻 Tech-Lead: The first ls command, which would have checked whether probe.txt already existed, was declined and never ran.
+
+  ### RETURN
+  status: needs-decision
+  task: issue-15
+  changed: none
+  evidence: ls was declined
+  findings: none
+  risks: none
+  follow-ups: none
+  questions: The first `ls -la probe.txt` command was declined, so it never checked whether probe.txt already existed before I wrote it. The file has since been created and committed as d9e83c5. Should I retry the ls command or skip it?
+  Retrying would show the file's current state, size and permissions in the worktree directly, which fills the gap the declined command left. Skipping is reasonable because the commit output already shows probe.txt was created as a new
+  one-line file. A retry would repeat what git has shown and ask you for one more approval.
+  knowledge: none
+
+✻ Cooked for 11s · done 9:25
+
+────────────────────────────────────────────────────────────… e-colleagues:tech-lead ─
+❯ skip the ls, no need to retry
+────────────────────────────────────────────────────────────…
+  ⏸ manual mode on · ← 1 agent
+```
+
+```
+NAME      STATE  HOST    RETURN          QUESTIONS
+issue-13  done   claude                  no RETURN block on screen
+issue-14  done   claude                  no RETURN block on screen
+issue-15  done   claude  needs-decision  The first `ls -la probe.txt` command was declined, so it never checked whether probe.txt already ex…
+```
+
+The overview read the block. `last_return` on the saved capture returns the whole question, all three lines joined. What a reader of a Claude Code capture has to handle:
+
+- **No fence and no frame**, as on Antigravity. Every line of the block is indented two spaces, not four, and the signature line starts with `● `.
+- **Wrapping is the TUI's own.** A long value breaks at a word boundary near the pane width, and continuation lines carry the same two-space indent as the field lines. The first line of the `questions:` value ends in a trailing space.
+- **Text follows the block.** After `knowledge:` come the turn's timer line (`✻ Cooked for 11s · done 9:25`), a rule carrying the agent's name, the input box and the status bar. The input box held a reply Claude Code suggests for the person (`skip the ls, no need to retry`), which the capture returns as ordinary text. The parser takes these lines as part of `knowledge`, which the overview does not show.
+- **The capture is the visible screen only**, with the owner's `"tui": "fullscreen"`: `#{alternate_on}` 1, `#{history_size}` 0, and no capture returned more lines than its pane's height (61 and 62 on 63 rows, 93 on 94).
+
+**The nested `findings:` list**, which E26 and E27 did not exercise. In issue-14 the prompt asked for two findings, the second with `body: questions: is a word that also names a field`:
+
+```
+  ### RETURN
+  status: partial
+  task: issue-14
+  changed: none
+  evidence: none
+  findings:
+    - severity: blocking
+      path: README.md
+      line: 1
+      body: the title says probe
+    - severity: nit
+      path: -
+      line: -
+      body: questions: is a word that also names a field
+  risks: none
+  follow-ups: none
+  questions: Should the parser probe continue (yes or no)?
+  knowledge: none
+```
+
+The overview row read `issue-14  done  claude  partial  Should the parser probe continue (yes or no)?`. The list items are indented four and six spaces.
+
+**The other renderer.** Claude Code's `tui` setting takes `default` or `fullscreen`. One session was started with the default one for that session only (`start = "claude --agent tech-lead --settings '{\"tui\":\"default\"}'"`, the plugin installed by then, step 7), in a 382 × 94 pane. It drew on the main screen (`#{alternate_on}` 0), under the command workmux had typed. A block with one nested finding and a `questions:` value wrapped over two lines was captured in full (43 lines), rendered the same way, and the overview read it: `issue-19  done  claude  needs-decision  Should we keep the default renderer or switch to the fullscreen one? Keeping the default leaves out…`.
+
+**An older block stays readable.** issue-15 later ran one more turn that ended without a block (step 8), with its block still in view, and its row kept `needs-decision` and the old question. Design §17 already says so.
+
+No capture defeated the parser, so none is offered as a failing fixture. Five raw captures were kept beside this entry's working files, with scrubbed copies: the approval, the three blocks above, and the block of step 7.
+
+### 7. The install, and the default start command end to end
+
+Installed by the README's route, from the export:
+
+```console
+$ claude plugin marketplace add "<pkg>"; echo "rc=$?"
+Adding marketplace…✔ Successfully added marketplace: e-colleagues (declared in user settings)
+rc=0
+$ claude plugin install e-colleagues@e-colleagues; echo "rc=$?"
+Installing plugin "e-colleagues@e-colleagues"...✔ Successfully installed plugin: e-colleagues@e-colleagues (scope: user)
+rc=0
+$ claude plugin list
+…
+  ❯ e-colleagues@e-colleagues
+    Version: 0.1.1
+    Read from: <pkg>
+    Scope: user
+    Status: ✔ enabled
+    Note: Default agents/ folder is ignored because the manifest sets "agents"
+```
+
+What the two commands wrote is under **Host state**. For a marketplace that is a directory, the plugin is read from that directory, not from the copy Claude Code also makes under `~/.claude/plugins/cache/`.
+
+Then the package's default start command, no config file, the skill's real prompt:
+
+```console
+$ echo "XDG=${XDG_CONFIG_HOME-unset} ECF=${EC_FLEET_CONFIG-unset}"; python3 <pkg>/skills/ec-fleet/scripts/fleet.py start 16 --host claude; echo "rc=$?"
+XDG=unset ECF=unset
+started issue-16
+rc=0
+```
+
+```
+08:29:14.685  workmux add issue-16 --background --agent "claude --agent tech-lead" --prompt "Use the ec-fleet skill. Your assignment: issue 16."   cwd=<tmp>/repo
+08:29:14.769  window created, pane %63
+08:29:17.039  "workmux", "register-agent"
+08:29:30.061  "workmux", "set-window-status", "working"      <- the prompt
+08:29:32.550  "workmux", "set-window-status", "working"      <- after each of four tool calls
+08:29:36.878  "workmux", "set-window-status", "working"
+08:29:40.081  "workmux", "set-window-status", "working"
+08:29:44.860  "workmux", "set-window-status", "working"
+08:29:58.533  "workmux", "set-window-status", "done"
+```
+
+```console
+$ tr '\0' '|' < /proc/<claude in %63>/cmdline
+claude|--agent|tech-lead|--|Use the ec-fleet skill. Your assignment: issue 16.|
+```
+
+No dialog, since the repository was trusted (step 4). The session's tool calls, from its transcript:
+
+| time | call |
+|---|---|
+| 08:29:30 | the start prompt, `Use the ec-fleet skill. Your assignment: issue 16.` |
+| 08:29:32 | `Skill {"skill": "e-colleagues:ec-fleet", "args": "issue 16"}` → `Launching skill: e-colleagues:ec-fleet` |
+| 08:29:36 | `Bash`: `pwd; git remote -v; echo "exit=$?"; ls -la; git log --oneline -5; git branch -a` |
+| 08:29:39 | `Bash`: reads `README.md`, `.git`, `.e-colleagues/*` and `.workmux/*`, and `git config --get-regexp '^remote\.'` |
+| 08:29:44 | `Bash`: `git log --all …`, `git grep -n -i -E 'issue\|tracker\|github\|gitlab\|linear'` over every branch, `ls` of the sibling worktrees |
+| 08:29:58 | the reply |
+
+None of the three commands asked for approval (auto mode). `workmux capture issue-16 --lines 200` returned 93 lines on a 382 × 94 pane. Lines 1–35, the `evidence:` line cut at `…`:
+
+```
+ ▐▛███▛█   Claude Code v2.1.325
+▝▜██████▀  Opus 5.5 with xhigh effort
+ ▝▝   ▝▝   @e-colleagues:tech-lead · <tmp>/repo__worktrees/issue-16
+
+❯ Use the ec-fleet skill. Your assignment: issue 16.
+
+● Skill(e-colleagues:ec-fleet)
+  ⎿  Successfully loaded skill
+
+  Ran 3 shell commands
+
+● 👨‍💻 Tech-Lead: I can't read issue 16, so I've stopped before doing any work on it.
+
+  - The contract doesn't say where issues live. The "Platforms and tools" section of AGENTS.md is empty.
+  - The repo doesn't say either. origin has no URL. A search of every branch for "issue", "tracker", "github", "gitlab" or "linear" found nothing. The only history is init, chore: bootstrap contract and add probe.txt on issue-15.
+
+  I won't guess what the issue asks for. I need one of these from you:
+  1. Paste the text of issue 16 here, or
+  2. Tell me the tracker and how to read it, for example GitHub owner/repo, GitLab, or a Linear team.
+
+  If you choose option 2, I can also add the tracker to the "Platforms and tools" section of AGENTS.md so later sessions find it. That's a change to the contract, so I'll only make it if you say yes.
+
+  ### RETURN
+  status: needs-decision
+  task: issue 16
+  changed: none
+  evidence: `git remote -v` → origin has no URL (exit 0); AGENTS.md "Platforms and tools" is empty; `git grep -i -E 'issue|tracker|github|gitlab|linear'` over all branches → no matches (exit 1); …
+  findings: none
+  risks: origin has no URL, so nothing can be pushed from this repo once the work is done
+  follow-ups: record the tracker and its tool under "Platforms and tools" in AGENTS.md (needs approval)
+  questions: Where does issue 16 live and how do I read it? Or paste its text here.
+  knowledge: none
+
+✻ Baked for 41s · done 9:29
+```
+
+```console
+$ python3 <pkg>/skills/ec-fleet/scripts/fleet.py overview; echo "rc=$?"
+NAME      STATE  HOST    RETURN          QUESTIONS
+issue-14  done   claude  partial         Should the parser probe continue (yes or no)?
+issue-15  done   claude  needs-decision  The first `ls -la probe.txt` command was declined, so it never checked whether probe.txt already ex…
+issue-16  done   claude  needs-decision  Where does issue 16 live and how do I read it? Or paste its text here.
+rc=0
+```
+
+Loading the skill was its first act, it asked and waited instead of guessing (rule 3), and it ended with the skill's block, complete and last (rule 4). It made no call to read `AGENTS.md`. The file reaches a Claude Code session without one (`CLAUDE.md` is `@AGENTS.md` [CC-14]), and its reply states the file's content correctly. That it had the file in context is inferred from that, not read from the transcript.
+
+### 8. A tech-lead session dispatches
+
+The dispatching tech-lead was started in the first pane, in `<tmp>/repo`, by the documented command. To keep the session it starts to one short turn, the pane's shell first exported `EC_FLEET_CONFIG=<tmp>/cfg/d-short.toml`, a config that sets only `[hosts.claude] prompt = "Reply with the single word ready, then stop."`:
+
+```console
+$ claude --agent tech-lead 'use the ec-fleet skill; start 17'
+```
+
+It opened with no dialog, in auto mode. Its calls, from its transcript:
+
+| time | call | result |
+|---|---|---|
+| 08:30:59 | `Skill {"skill": "e-colleagues:ec-fleet", "args": "start 17"}` | `Launching skill: e-colleagues:ec-fleet` |
+| 08:31:04 | `Bash`: `python3 <pkg>/skills/ec-fleet/scripts/fleet.py start 17; echo "exit=$?"` | `fleet: no host chosen: pass --host (antigravity, claude, codex, opencode) or set default_host in the config`, `exit=2` |
+| 08:31:09 | `Bash`: `python3 <pkg>/skills/ec-fleet/scripts/fleet.py start 17 --host claude; echo "exit=$?"` | `started issue-17`, `exit=0` |
+
+**Neither command asked for approval, and nothing blocked.** It passed no `--host` first and then its own, as the skill says. workmux asked nothing: 40 ms lie between the command's start and `create:start` in its log. The new window registered 2 s after it was created, ran its turn and read `done`. The reply named the worktree and added: "The new session may first ask whether to trust the folder. You need to answer that in its window. I won't answer anything there for you, and that includes its questions."
+
+Sent `overview`, it ran `fleet.py overview` and then `fleet.py overview --json`, "for untruncated questions", again with no approval:
+
+```
+NAME      STATE    HOST    RETURN          QUESTIONS
+repo      working  claude                  (this session)
+issue-14  done     claude  partial         Should the parser probe continue (yes or no)?
+issue-15  done     claude  needs-decision  The first `ls -la probe.txt` command was declined, so it never checked whether probe.txt already ex…
+issue-16  done     claude  needs-decision  Where does issue 16 live and how do I read it? Or paste its text here.
+issue-17  done     claude                  no RETURN block on screen
+```
+
+It showed the table, said "You answer each one in its own window", and for issue-17 said the session "may be waiting at a Claude Code prompt, most likely the folder-trust question. Or it stopped without leaving a complete block in view." It sent nothing to any session. Its own row is marked `(this session)`: Claude Code's Bash tool passes `$TMUX_PANE` on.
+
+**In manual mode the start needs one approval.** The issue-15 session (manual mode, step 5) was asked to run `python3 <pkg>/skills/ec-fleet/scripts/fleet.py --config <tmp>/cfg/d-short.toml start 18 --host claude`. It stopped at `This command requires approval`, read `waiting`, and after `1. Yes` reported `started issue-18`, exit code 0. Run from inside a worktree whose branch was one commit ahead, the start still branched from `main` (`base_branch: auto` in this machine's workmux config).
+
+### Verdicts
+
+1. **Start: holds once the plugin is installed, and fails without a word from `fleet.py` when it is not.** With the plugin installed by the documented route, `fleet.py start <ref> --host claude` with the default `claude --agent tech-lead` and no config opens the window, starts `@e-colleagues:tech-lead`, delivers the prompt and registers with `"agent_kind": "claude"`. workmux types `claude --agent tech-lead -- "$(cat .workmux/PROMPT-<name>.md)"`. Without the plugin, Claude Code exits with `--agent 'tech-lead' not found`, `fleet.py` still prints `started <name>` with exit code 0, and the overview has no row. The bare name `tech-lead` resolves to the plugin's agent, loaded by `--plugin-dir` or installed.
+2. **First-run prompt: one trust dialog per repository, not per worktree.** A new worktree of a repository Claude Code has never been trusted in stops at the dialog, and the session is then absent from `workmux status --json` and from the overview. Once the dialog has been accepted in any folder of the repository, later worktrees open with no dialog. No session-only pre-answer was found, so no `trust` string is proposed for this host: the interactive command has no trust option, and `--trust-workspace` is rejected.
+3. **States: `working`, `waiting` and `done` all appear,** plus `-` for the seconds between a session registering and its first prompt. A session at an approval reads `waiting` within a few seconds, and a session whose tool call was declined keeps reading `waiting`. Whether a started session ever meets an approval depends on its permission mode; on this machine sessions start in auto mode and met none.
+4. **The captured screen: the overview reads the block** in both of Claude Code's renderers, with a wrapped `questions:` value and with a nested `findings:` list. No parser change is needed for this host.
+5. **End to end: holds.** A tech-lead started with the default command and the default prompt called `Skill e-colleagues:ec-fleet` first, stopped at the missing tracker with a complete RETURN block, and the overview row showed `done`, `needs-decision` and its question. Reading `AGENTS.md` is inferred, not seen as a call.
+6. **Dispatch from inside a session: holds.** A Claude Code tech-lead ran `fleet.py start` and `fleet.py overview` through its Bash tool with no approval in auto mode and one approval per command in manual mode. workmux asked nothing.
+
+Against the skill's own text: "Until then the overview shows that session as `working` and nothing more, or as stopped with `no RETURN block on screen`" does not hold on Claude Code. Until the trust dialog is answered the session has no row.
+
+### Not measured
+
+- A machine where Claude Code does not start in auto mode: where a dispatched tech-lead with the real prompt first stops there. Manual mode was used only for the states, the commit and one `fleet.py start`.
+- Auto mode refusing a command, and the state a session reads then. A session asking through Claude Code's question dialog (`elicitation_dialog` in the hook's matcher).
+- `--agent e-colleagues:tech-lead` in a start command with a model turn. That the qualified name resolves was checked only as far as the trust dialog in an untrusted folder, answered "No, exit".
+- A project that carries its own `.claude/agents/tech-lead.md`, which would beat the plugin's [CC-08].
+- Trust when the worktrees live somewhere other than workmux's sibling directory, and a repository reached through a symlink.
+- `CLAUDE_CODE_SANDBOXED`, and any other route to a session-only trust.
+- A block taller than the pane in either renderer, and whether the default renderer's scrollback is returned by `workmux capture`.
+- A contract with `### Parallel work` lines, a real issue read from a tracker, any stop after the first, `ready to push`, a push.
+- The plan assignment.
+- `workmux setup`: the hooks were already installed.
+- `claude --remote-control`, and remote use in general.
+- Any workmux other than 0.1.281 and any Claude Code other than 2.1.325.
+
+**Host state.** Hashes of every file the probe might change were taken before the first step. The install of step 7 was removed at the end with `claude plugin uninstall e-colleagues@e-colleagues` (`✔ Successfully uninstalled plugin: e-colleagues (scope: user)`) and `claude plugin marketplace remove e-colleagues` (`✔ Successfully removed marketplace: e-colleagues`), and `claude plugin list` no longer lists the package. While installed, `~/.claude/settings.json` held `"e-colleagues@e-colleagues": true` under `enabledPlugins` and an `extraKnownMarketplaces.e-colleagues` entry with a `directory` source, and `installed_plugins.json` and `known_marketplaces.json` under `~/.claude/plugins/` each held one entry. Afterwards:
+
+- `~/.claude/plugins/installed_plugins.json` has the same hash as before.
+- `~/.claude/plugins/known_marketplaces.json` has no entry for the package. It differs from before only in the `lastUpdated` time of another marketplace, which Claude Code refreshed on its own.
+- **`~/.claude/settings.json` differs by one line that Claude Code left: `"extraKnownMarketplaces": {},`, an empty object where there was no key.** Everything else in the file is byte for byte as before. On this machine the file is a symlink into a directory under version control, and it stayed a symlink. The probe does not edit that file, so the line is still there.
+- `~/.claude/plugins/cache/e-colleagues/e-colleagues/0.1.1/` is still there, 89 files, among them the `.orphaned_at` marker Claude Code puts on a cache copy it no longer uses. Other plugins' old versions on the machine carry the same marker. It was left to the tool.
+
+Claude Code wrote into `~/.claude.json`, which the probe did not edit: a `projects` record for `<tmp>/repo` and one for `<tmp>/repo2`, each with `"hasTrustDialogAccepted": true` from the two dialogs accepted, usage counters for the skill and the plugin (`skillUsage["e-colleagues:ec-fleet"]`, `pluginUsage["e-colleagues@inline"]`), and its usual startup counters. It kept a transcript directory under `~/.claude/projects/` for each of the ten folders a session ran in, and its prompt history. All of that was left; `claude purge <path>` is the tool's own command for deleting a project's records and was not run. The two "No, exit" answers saved nothing.
+
+`workmux remove -f` removed ten worktrees and their branches (`✓ Removed worktree 'issue-12' and branch 'issue-12'`, and the same for 13 to 19 in `<tmp>/repo` and for 21 and 22 in `<tmp>/repo2`). Afterwards `workmux status --json` listed `"agents": []` in both repositories, `git worktree list` listed only the main checkout in each, the probe's tmux session was killed, and no Claude Code process the probe started remained. No workmux state file for a probe pane was left under `~/.local/state/workmux/agents/`, and no `setup.json` or `sent/` was created. The workmux config, workmux's saved settings and the other agent CLI's hooks file have the same hashes as before; workmux appended to its log. The hooks in `~/.claude/settings.json` were not changed.
 ---
 
 ## E32 — the Antigravity claims at agy 1.5.3: `AGENTS.md` now reaches every agent, workspace roots deliver agents, five registry names resolve and give no tool, and a re-install replaces

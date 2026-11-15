@@ -133,6 +133,16 @@ class TestStart(Base):
 
     TRUST = '[hosts.h]\nstart = "h run"\ntrust = "--trust {worktree}"\n'
 
+    def test_codex_gets_its_own_trust_for_the_worktree(self):
+        self.write_cfg()
+        (self.dir / "where.out").write_text("Worktree: /w/my repo__worktrees/issue-12\n")
+        r = self.run_fleet("start", "12", "--host", "codex")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(
+            self.logged()[-1][3],
+            "codex --profile e-colleagues "
+            "-c 'projects={\"/w/my repo__worktrees/issue-12\"={trust_level=\"trusted\"}}'")
+
     def test_a_bare_path_from_where_is_read_too(self):
         self.write_cfg(extra=self.TRUST)
         (self.dir / "where.out").write_text("\n/w/a b/issue-12\n")
@@ -325,6 +335,59 @@ AGY_SCREEN = """  👨\u200d💻 Tech-Lead: Execution of the date shell command 
 ? for shortcuts \u2026 tech-lead (Gemini 4 Argon \u00b7 high)  /agents
 """
 
+# Cut from real captures (E29, E31): each host bullets the reply and adds lines of its own.
+CODEX_SCREEN = """\u2022 \U0001f468\u200d\U0001f4bb Tech-Lead: The first touch command was declined.
+
+  ### RETURN
+  status: needs-decision
+  task: issue 16
+  changed: none
+  evidence: touch was declined
+  findings: none
+  risks: none
+  follow-ups: none
+  questions: Would you like me to retry the declined command with a fresh request for escalated permissions so that we
+  can verify creation at the originally requested path, or skip it because the replacement command already exited
+  successfully?
+  knowledge: none
+
+  Worked for 11s \u2022 9:23 AM
+
+\u203a Ask Codex to do anything
+
+  GPT-6.1-Sol high \u00b7 <tmp>/repo__worktrees/issue-16 \u00b7 Reply ready
+  \u2190 for agents \u00b7 ? for shortcuts
+"""
+
+CLAUDE_SCREEN = """\u25cf \U0001f468\u200d\U0001f4bb Tech-Lead: This is a parser probe.
+
+  ### RETURN
+  status: partial
+  task: issue-14
+  changed: none
+  evidence: none
+  findings:
+    - severity: blocking
+      path: README.md
+      line: 1
+      body: the title says probe
+    - severity: nit
+      path: -
+      line: -
+      body: questions: is a word that also names a field
+  risks: none
+  follow-ups: none
+  questions: Should the parser probe continue (yes or no)?
+  knowledge: none
+
+\u273b Worked for 4s \u00b7 done 9:25
+
+\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+\u276f yes
+\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  \u23f5\u23f5 auto mode on (shift+tab to cycle) \u00b7 \u2190 1 agent
+"""
+
 
 class TestLastReturn(unittest.TestCase):
     def setUp(self):
@@ -344,6 +407,17 @@ class TestLastReturn(unittest.TestCase):
         self.assertTrue(got["questions"].endswith("without shell timestamp output)?"))
         self.assertNotIn("  ", got["questions"])
         self.assertNotIn("shortcuts", got["questions"])
+
+    def test_a_codex_capture_is_read_and_its_footer_does_not_leak(self):
+        got = self.f.last_return(CODEX_SCREEN)
+        self.assertEqual(got["status"], "needs-decision")
+        self.assertTrue(got["questions"].startswith("Would you like me to retry"))
+        self.assertTrue(got["questions"].endswith("successfully?"))
+
+    def test_a_claude_capture_with_a_nested_finding_is_read(self):
+        got = self.f.last_return(CLAUDE_SCREEN)
+        self.assertEqual(got, {"status": "partial",
+                               "questions": "Should the parser probe continue (yes or no)?"})
 
     def test_the_last_block_wins(self):
         older = BLOCK.replace("needs-decision", "partial")
@@ -401,7 +475,7 @@ class TestOverview(Base):
         self.write_cfg()
         (self.dir / "status.json").write_text(json.dumps({"agents": agents}))
 
-    def test_stopped_sessions_are_read_and_working_ones_are_not_captured(self):
+    def test_stopped_sessions_are_read_and_busy_ones_are_not_captured(self):
         self.seed([
             {"worktree": "issue-12", "branch": "issue-12", "status": "working",
              "agent_kind": "agy", "updated_ts": 100, "pane_id": "%1"},
@@ -424,7 +498,15 @@ class TestOverview(Base):
         self.assertEqual(rows["issue-19"]["state"], "waiting")
         self.assertIsNone(rows["issue-19"]["return_status"])
         self.assertEqual([c for c in self.logged() if c[0] == "capture"],
-                         [["capture", "issue-15"], ["capture", "issue-19"]])
+                         [["capture", "issue-15"]])
+
+    def test_a_session_waiting_at_an_approval_is_not_read_for_an_old_block(self):
+        self.seed([{"worktree": "issue-15", "status": "waiting", "agent_kind": "codex",
+                    "pane_id": "%2"}])
+        (self.dir / "issue-15.screen").write_text(BLOCK)
+        r = self.run_fleet("overview")
+        self.assertEqual(r.stdout.splitlines()[1].split(), ["issue-15", "waiting", "codex"])
+        self.assertEqual([c[0] for c in self.logged()], ["status"])
 
     def test_the_callers_own_session_is_marked_and_not_captured(self):
         self.seed([{"worktree": "main", "status": "done", "pane_id": "%7"}])
