@@ -21,6 +21,8 @@ this project uses semantic versioning from 0.1.0 onward.
 
 - **D6 is read per assignment.** Only tech-leads speak and post externally, each within its
   own assignment; with one tech-lead nothing changes. Specialists still never post.
+- **An Antigravity re-install is version-dependent.** It merged at agy 1.1.27 (E8) and
+  replaced at 1.5.3 (E27). The advice stands: uninstall first when the roster shrinks.
 
 ## [0.1.1] — 2026-10-03
 

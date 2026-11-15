@@ -65,9 +65,9 @@ install:
   command: "agy plugin install <dir>"
   url_form: "agy plugin install https://github.com/<owner>/e-colleagues"   # github.com only (E8)
   destination: "~/.gemini/config/plugins/{name}/"
-  # A re-install MERGES; deleted files survive (E8). An update that drops a persona must
-  # uninstall first, or delete the stale agent directory explicitly.
-  reinstall_merges: true
+  # A re-install merged at 1.1.27, so deleted files survived (E8); at 1.5.3 it replaced (E27).
+  # An update that drops a persona must uninstall first, or delete the stale agent
+  # directory explicitly.
 
 instructions:
   # Measured (E19): AGENTS.md reaches NO agy agent — not a custom one, not the default.

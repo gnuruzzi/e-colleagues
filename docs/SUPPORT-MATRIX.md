@@ -124,7 +124,7 @@ Rejected at 1.1.27 and again at 1.2.6, despite appearing in the binary's strings
 | `AG-05` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | runtime | E19, E24, E19 addendum | a tools allowlist DOES override ambient subagent inheritance, on the CLI and on the desktop |
 | `AG-06` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | **corrected** | E17, E24 | SEVEN of the listed tool names are not in the registry |
 | `AG-07` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | runtime | E7, E18, E24 | validate [ok]; only a global install delivers agents |
-| `AG-08` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | runtime | E8, E18, E24 | destination measured; re-install merges; github URL works and lands in a directory named after the repo (E8 addendum, agy 1.2.6); `plugin@marketplace` is parsed at 1.2.10 but no marketplace is known or registrable (E8 addendum 2) |
+| `AG-08` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | runtime | E8, E18, E24, E27 | destination measured; re-install merged at 1.1.27 (E8) and replaced at 1.5.3 (E27); github URL works and lands in a directory named after the repo (E8 addendum, agy 1.2.6); `plugin@marketplace` is parsed at 1.2.10 but no marketplace is known or registrable (E8 addendum 2) |
 | `AG-10` | agy 1.1.27 / desktop 2.12.2 | confirmed | docs/source only | — | — |
 | `AG-11` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | **corrected** | E19, E24, E19 addendum | AGENTS.md does NOT reach any agy agent, CLI or desktop |
 | `AG-12` | agy 1.1.27 / desktop 2.12.2 | confirmed | **corrected** | E18 | no workspace root delivers agents, so collisions are moot |

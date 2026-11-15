@@ -156,7 +156,7 @@ In the session:
 Audit the CI pipeline and tell me what a new contributor would trip over.
 ```
 
-Only a global install delivers agents, so the roster is per machine; a re-install merges rather than replaces, so uninstall first when it shrinks (E8).
+Only a global install delivers agents, so the roster is per machine. A re-install merged at agy 1.1.27 (E8) and replaced at 1.5.3 (E27), so uninstall first when the roster shrinks.
 
 </details>
 
