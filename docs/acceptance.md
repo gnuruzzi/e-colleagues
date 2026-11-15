@@ -22,8 +22,8 @@ the feature was introduced in. Below it, nothing is promised.
 | Python | **3.11** | `tomllib` is standard library from 3.11; the shipped scripts use nothing else |
 
 `tools/gen.py` and `tools/check.py` additionally need PyYAML. Anything that ships to a user —
-`bootstrap.py`, `knowledge.py`, `status.py` — is standard library only, because it runs on
-machines this project does not control.
+`bootstrap.py`, `knowledge.py`, `status.py`, `fleet.py` — is standard library only, because it
+runs on machines this project does not control.
 
 ## What the package guarantees, and what it only asks for
 
@@ -81,11 +81,12 @@ Then, per host, by hand — because no static check can prove a runtime behaviou
 - **Antigravity has no per-project roster.** No workspace directory delivers agents at 1.1.27
   (E18), so the roster is per-user and two projects on one machine share it.
 - **opencode's roster is per-machine too.** `bootstrap.py --scope user` writes the agents to
-  `~/.config/opencode/agents/` and the four skills to `~/.config/opencode/skills/`; nothing
+  `~/.config/opencode/agents/` and the five skills to `~/.config/opencode/skills/`; nothing
   writes them into a project, and there is no bundle or plugin route (E25). The global config is never written, so the tech-lead is chosen per
   session with `--agent`, with Tab in the TUI, or by a `default_agent` the user sets.
-- **An Antigravity re-install merges rather than replaces** (E8), so an update that drops a
-  persona leaves the old agent in place and selectable. Uninstall first when the roster shrinks.
+- **An Antigravity re-install merged at agy 1.1.27** (E8), leaving a dropped persona selectable;
+  at 1.5.3 one install over an existing one replaced it (E27). Uninstall first when the roster
+  shrinks.
 - **`AGENTS.md` never reaches an Antigravity agent** (E19). The managed block is invisible
   there, which is why each rendered body carries the contract itself.
 - **A project `.claude/settings.json` `agent` key is not trust-gated** (E21) and replaces the
@@ -105,3 +106,15 @@ Then, per host, by hand — because no static check can prove a runtime behaviou
   opencode TUI the agent cycle is Shift+Tab, not Tab, and it cycles primaries only; `@` offers
   every specialist and also the built-ins the allowlist denies, and a mention routes through
   the tech-lead. The Antigravity desktop honours an explicit `tools` list the way the CLI does.
+- **`ec-fleet` needs workmux and is measured on Antigravity only** (E26, E27). workmux needs its
+  status hooks set up for each host it starts (`workmux setup`); they report the overview's
+  states. Run by `fleet.py`, which gives it no input, it did not stop to ask about another
+  agent's hooks (E27); that the missing input is why is an inference. On Codex, opencode and
+  Claude Code the skill is UNVERIFIED.
+- **For an Antigravity session workmux reports only `working` and `done`** (E26). A session at
+  one of agy's approval prompts reads `working`, and the overview does not look inside a
+  `working` session, so it cannot show that approval. A tech-lead started by `fleet.py` runs its
+  start prompt behind the first-run trust dialog and, with agy set to ask before every command,
+  waits there at the approval for its first command, so it too reads `working` (E27).
+- **Away from the desk rests on each host's own remote feature.** The package builds none, and
+  none is measured reaching a session in a window; E26 records one report for agy 1.5.3.

@@ -27,7 +27,7 @@ Each is binding. Changing one is a design change: update this table and everythi
 | D3 | **Roster is a catalog with a default of six** — tech-lead, developer, reviewer, security, designer, **platform** (new) | `ec-init` proposes the per-project roster from what the codebase justifies; the user approves it. The roster is a variable, so the managed block, the delegation surface and opencode's `permission.task` must stay consistent with it [OC-03][OC-07] |
 | D4 | **Contract + index + multi-angle audit**, with knowledge in a layered store | `AGENTS.md` stays small; deep knowledge lives outside it; the audit indexes the project's own docs first and only authors a file where the project has no home for that lens |
 | D5 | **Every knowledge file records provenance** (commit sha + paths read) | Staleness detection becomes a `git diff`, so the living-knowledge upgrade is additive rather than a redesign |
-| D6 | **The tech-lead is the only external voice.** Specialists never post; they return structured findings the lead posts verbatim | Read-only specialists need no network, so Codex's `read-only` sandbox is strict *and* usable; Claude's allowlist stripping MCP [CC-09] stops mattering; no specialist needs platform credentials. Retires Q14 |
+| D6 | **Only tech-leads speak and post externally, each within its own assignment.** Specialists never post; they return structured findings the lead posts verbatim | Read-only specialists need no network, so Codex's `read-only` sandbox is strict *and* usable; Claude's allowlist stripping MCP [CC-09] stops mattering; no specialist needs platform credentials. Retires Q14. With one tech-lead, as before; with several, see §17 |
 | D7 | **Portable floor is the tech-lead only.** Specialists ship as native agents exclusively | A skill cannot restrict tools portably, so a skill-adopted reviewer would run in a thread that can write — the exact fail-open the redesign exists to remove |
 | D8 | **The repository is public and self-contained; the evidence ships, the raw research does not** | Superseded on publication. D8 originally kept the sanitized research in-tree; it was removed before going public — 4.7 MB of vendored third-party documentation and the previous package's prompts — so what ships is the *evidence*: `experiments.md` (23 experiments run against the installed tools) and `SUPPORT-MATRIX.md`, which now states all 52 claims in full so every citation resolves inside the repository. No claim id points outward |
 
@@ -87,7 +87,7 @@ signatures:
   platform:  "⚙️ Platform: "
 ```
 
-`ec-init` proposes a roster from evidence in the repository — a UI framework in the manifests argues for `designer`, a CI configuration for `platform` — and the user approves it. The chosen roster is recorded in `.e-colleagues/lock.json` and rendered into the managed block, the delegation surface of the lead's body, and opencode's `permission.task` allowlist. `--prune` rewrites all three in one transaction, because a dangling opencode agent reference is a hard config error for every opencode user in the repository [OC-03][OC-07]. On Antigravity `--prune` must also **delete** the dropped persona's file: `agy plugin install` merges into the existing directory rather than replacing it, so a removed agent survives an upgrade and stays selectable (`experiments.md` E8).
+`ec-init` proposes a roster from evidence in the repository — a UI framework in the manifests argues for `designer`, a CI configuration for `platform` — and the user approves it. The chosen roster is recorded in `.e-colleagues/lock.json` and rendered into the managed block, the delegation surface of the lead's body, and opencode's `permission.task` allowlist. `--prune` rewrites all three in one transaction, because a dangling opencode agent reference is a hard config error for every opencode user in the repository [OC-03][OC-07]. On Antigravity `--prune` must also **delete** the dropped persona's file: at agy 1.1.27 `agy plugin install` merged into the existing directory rather than replacing it, so a removed agent survived an upgrade and stayed selectable (`experiments.md` E8). At 1.5.3 one install replaced the directory (E27); the version where that changed is UNVERIFIED.
 
 ---
 
@@ -309,6 +309,7 @@ e-colleagues/                          # dir name is load-bearing [AG-07][AG-08]
 │   ├── ec-onboard/                    # knowledge: the multi-angle audit
 │   ├── ec-onboard/                     # knowledge: SKILL.md, scripts/knowledge.py
 │   ├── ec-status/                      # staleness: SKILL.md, scripts/status.py
+│   ├── ec-fleet/                       # several tech-leads at once: SKILL.md, scripts/fleet.py
 │   ├── ec-review/  ec-audit/
 │   └── ec-tech-lead/                  # GENERATED portable floor (D7)
 ├── agents/<name>/agent.md             # GENERATED Antigravity dialect
@@ -439,7 +440,7 @@ Invoke from inside the tool: `$ec-init` (Codex) [CX-07], `/e-colleagues:ec-init`
 
 **In the package repository.** Generated files are committed but guarded: `check.py --drift` regenerates into a temp directory and fails on any diff [PA-02]. One `VERSION` is stamped into the root `plugin.json`, `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` (top level **and** entry), `.codex-plugin/plugin.json`, `team.yaml` and every `SKILL.md` `metadata.version`; `--versions` asserts lockstep [STD-01][CC-04][CX-09][AG-07].
 
-**In a consumer's tools.** Codex `codex plugin marketplace upgrade` [CX-10]; Claude refreshes the marketplace on `claude plugin install …@e-colleagues` and `extraKnownMarketplaces.*.autoUpdate` exists [CC-05][CC-06]; Antigravity `git pull` then re-install — a second install **merges** into the existing directory and leaves deleted files behind (Q12 settled, `experiments.md` E8), so uninstall-first is not a fallback but the required sequence whenever the roster shrinks [AG-08]; user-scope Codex and opencode files are re-copied by `bootstrap.py --scope user`.
+**In a consumer's tools.** Codex `codex plugin marketplace upgrade` [CX-10]; Claude refreshes the marketplace on `claude plugin install …@e-colleagues` and `extraKnownMarketplaces.*.autoUpdate` exists [CC-05][CC-06]; Antigravity `git pull` then re-install — a second install **merged** into the existing directory and left deleted files behind at agy 1.1.27 (Q12, `experiments.md` E8) and replaced it at 1.5.3 (E27). The version where that changed is UNVERIFIED, so uninstall first whenever the roster shrinks [AG-08]; user-scope Codex and opencode files are re-copied by `bootstrap.py --scope user`.
 
 **In a consumer project.** `.e-colleagues/lock.json` records the package version and a sha256 per written file. `--check` classifies each file as current, stale or project-owned; `--update` rewrites only stale package-owned files and the package-owned region of the managed block; `--prune` removes only files the tool wrote that are absent from the new roster and, in the same run, rewrites `default_agent`, `permission.task` allowlists and command `agent:` fields, because a dangling opencode reference is a hard config error for every opencode user in the repository [OC-03][OC-07]. `--check` fails if any such reference dangles.
 
@@ -545,3 +546,87 @@ use it, because every host routes on that sentence.
 reports staleness and the metadata to refresh it exists, but a refresh writes files and needs
 approval. External posting by anyone but the tech-lead, which D6 forecloses. And per-project
 rosters on Antigravity, which the host does not currently allow.
+
+---
+
+## 17. Several tech-leads at once
+
+`ec-fleet` lets one person run several tech-leads at once, one per issue, each in its own git
+worktree and terminal window, with one overview. It is one skill with `scripts/fleet.py`
+beside it, standard library only. The persona and its rendered bodies are unchanged: the rules
+live in the skill, and a tech-lead started without it behaves as before.
+
+**Nothing relays.** Questions and approvals stay in each tech-lead's own session, and the
+person answers there. The dispatching session never sends text or keys to another session, and
+never answers or approves for the person.
+
+**Start and overview.** `fleet.py start <reference> [--host <host>]` runs
+`workmux add <name> --background --agent "<start command>" --prompt "<prompt>"` (E26), the
+prompt naming the skill and the assignment. The skill passes `--host` only when the person
+names a host; E27's `start 12 --host antigravity` came from its earlier wording.
+`fleet.py overview` reads `workmux status --json` (E26); for each session that is not
+`working`, other than its own, it runs `workmux capture <name> --lines 200` (E26) and takes
+`status` and `questions` from the last RETURN block (§4), only when the block is complete on
+screen, from `### RETURN` through `knowledge:`, and its `status` is one of the four. Otherwise
+the row says `no RETURN block on screen`, or `could not read its screen` when no capture
+succeeded. A `working` session is never looked inside. A session that stops later without a
+block, with an older block still in view, shows the older status and question. The caller's
+own row, marked `(this session)`, is found by `$TMUX_PANE`, measured under tmux only (E27).
+
+**Two assignments.** *issue*, one per worktree: the issue is the brief and the person's pick
+approves implementing it, T1 still governing anything beyond; every stop ends with the RETURN
+block, `questions` holding the decision needed or `ready to push`; follow-ups are recorded under
+`## Follow-ups` on its change request or issue. *plan*, in the main checkout, started by the
+person: grooms, creates issues, collects follow-ups, and writes no file in the checkout, nor
+delegates work that would. D6 is read per assignment: an issue tech-lead posts only on its own
+issue and change request.
+
+**The contract lines** sit under `### Parallel work` in the project bindings. `ec-init` writes
+them only after a yes to "several tech-leads at once?": naming, where plans live, what an issue
+tech-lead may post, whether it may create follow-up issues, whether it may push. A missing line
+never fails a start; its default applies: the name comes from the reference (`12` becomes
+`issue-12`), plans go to the tracker the contract names (else ask), nothing is posted that the
+contract does not already grant, follow-ups are recorded and not created, and a tech-lead stops
+at `ready to push`.
+
+**The config** is optional: `~/.config/e-colleagues/fleet.toml` (under `$XDG_CONFIG_HOME` when
+set) or the path in `$EC_FLEET_CONFIG` or `--config`. It sets `default_host`, a `start` command
+and `prompt` per host, and the launcher's `start`, `status`, `capture` and `base_flag`; a
+mistyped key, or a named path that does not exist, is an error. `base_flag` defaults to
+`--base`, passed through as workmux's own `--base`, read from its help at 0.1.281 and
+UNVERIFIED by experiment. The default start commands are `agy --agent tech-lead` [AG-03],
+`codex --profile e-colleagues` (E14), `opencode --agent tech-lead` [OC-03] and
+`claude --agent tech-lead` [CC-10]. Only the workmux default is tested.
+
+**Prerequisite:** workmux, with its status hooks set up for each host it starts; they are what
+report `working` and `done` (E26 read the installed hooks; `workmux setup`, the command
+workmux's documentation gives for installing them, was not run). `workmux add` run from agy's
+terminal stopped at workmux's question about another agent's hooks (E26); run by `fleet.py` it
+asked nothing and the start went through (E27). `fleet.py` gives the launcher no input; that
+this is the reason is an inference (E27).
+
+**Measured on Antigravity** (E26, E27, agy 1.5.3, workmux 0.1.281):
+
+- an agy session can run `workmux add` and create the worktree;
+- `--agent "agy --agent tech-lead"` starts the tech-lead with its prompt, and it can commit in
+  the worktree;
+- a tech-lead started by `fleet.py start` loads `ec-fleet` from that prompt, and the overview
+  reads its stop from the screen: `done`, the RETURN `status` and its question (E27);
+- workmux reports only `working` and `done` for it, never `waiting`. A session at one of agy's
+  approval prompts reads `working`, so the overview does not show that prompt; it is on that
+  session's screen (E26);
+- every new worktree raises agy's trust dialog, and the start prompt runs behind it. With agy
+  set to ask before every command, a tech-lead started by `fleet.py` waits there at the approval
+  for its first command, so it reads `working` and its row shows only that (E27); a start prompt
+  that needs no tool read `done` there (E26). The default start command trusts nothing on the
+  person's behalf: the person accepts the dialog in the new window, or sets their own start
+  command in the config;
+- a capture is the visible screen only, so a block taller than the pane is not read.
+
+**UNVERIFIED:** all of this on Codex, opencode and Claude Code; and remote use on every host.
+At agy 1.5.3 a session started with `--remote-control` in a window was reported reachable from
+a phone (E26, reported, not measured).
+
+**Prose only:** every rule in the skill, among them the assignments, one voice per assignment,
+the RETURN block at every stop, never answering for the person, and "a planning tech-lead writes
+nothing in the checkout". No host enforces them.

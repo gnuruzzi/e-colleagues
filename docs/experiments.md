@@ -31,6 +31,8 @@ Tranches: **A** automated, **B** interactive — needing a TTY or a trust dialog
 | — | C | agy tool list, Antigravity desktop 2.12.2, opencode 1.18.29 schema, Claude 2.1.263 | **settled** (E16) |
 | — | C | the 2026-09-27 snapshot: Claude 2.1.283, Codex 0.154.0, agy 1.2.10, desktop 2.17.0 | **settled** (E24); opencode 2.0.18 in the E20 addendum |
 | — | A | can a plugin, a `references` entry or a skill source deliver agents to an opencode project | **settled** (E25): no — agents come only from the two directories and the config key; a plugin can add commands and skills |
+| — | B | a fleet of Antigravity tech-leads through workmux: dispatch from a session, prompt delivery, commit, status values, the captured screen | **settled** (E26): dispatch from a session, prompt delivery and commit hold, with stops that need the person; the states item holds only in part, because workmux reports only `working` and `done` for agy |
+| — | B | the fleet skill end to end on Antigravity: a dispatched tech-lead loads `ec-fleet` from its start prompt, and the overview reads its stop | **settled** (E27): both hold; a session at the first-run trust dialog read `working`, not `done`, because its first command waited for approval behind the dialog |
 
 ---
 
@@ -1285,3 +1287,563 @@ The route that remains was run end to end. `bootstrap.py --scope user --write --
 **Verdict**: opencode 2.0.18 loads agents from the user directory the installer writes to, and the tech-lead's body reaches the model from there. OC-01's user-directory half moves from documentation to measured. The global config was not written and was not needed for `--agent`; a `default_agent` for the TUI stays the user's own edit [OC-03].
 
 **Skills too (2026-10-03).** opencode has no plugin to carry the four skills, so the same install now copies them to `<config-home>/opencode/skills/<name>/`. From the same throwaway home, the tech-lead asked to list its `ec-` skills answered `ec-init`, `ec-onboard`, `ec-status`, `ec-tech-lead`; the control against the real config home answered `NO-EC-SKILLS`; and asked to "use the ec-status skill on this project" it ran the status script and relayed its output verbatim (`no .e-colleagues/lock.json — this project is not bootstrapped. Run ec-init.`, correct for an empty project). OC-08's user skills directory moves from documentation to measured, and opencode onboards with the same skill names as the other hosts.
+
+---
+
+## E26 — what a fleet of Antigravity tech-leads rests on: workmux dispatch, prompt delivery, commit, states, the captured screen
+
+**Date** 2026-11-14. **agy 1.5.3**, model Gemini 4 Argon (High), the configured default; **workmux 0.1.281**; **tmux 3.8**. Tranche B: every step after the first needs a terminal.
+
+A planned fleet skill will start one tech-lead per issue, each in its own workmux worktree and terminal window. It rests on six host facts:
+
+1. **The basics at the installed version:** `--agent`, the tool registry, and the install route.
+2. **A session can run workmux through its shell tool,** reaching the terminal multiplexer and creating a worktree outside its own directory.
+3. **A tech-lead that workmux starts in a worktree gets its start prompt and can commit.** Whether it loads a skill from that prompt is measured later.
+4. **The states workmux reports** for a session that is working, one that has stopped, and one at a host approval prompt.
+5. **A captured screen of a stopped session holds its last RETURN block in full.**
+6. **The host's remote feature reaches a session in a window.**
+
+This entry measures items 1 to 4. Item 5 is recorded because step 6 measured it. Item 6 is not measured.
+
+Everything ran in a throwaway repository, `<tmp>/repo` (`git init`, one commit, a repository-local identity, no signing), from a tmux session created for the probe, `e26-probe`, so no other session or window was touched. workmux puts worktrees in `<tmp>/repo__worktrees/`. These were real sessions on the owner's account. Three reached the model: the print-mode check in step 2, the dispatching tech-lead (two messages), and the worktree tech-lead (four prompts, its start prompt included). The two trust checks in step 4 sent no prompt.
+
+Every interactive session also printed `⚠ Sign-in update needed … some requests may fail`. No request failed.
+
+### 1. Versions, and the Antigravity hooks
+
+```console
+$ agy --version
+1.5.3
+$ workmux --version
+workmux 0.1.281
+$ tmux -V
+tmux 3.8
+$ cat ~/.gemini/config/hooks.json
+{
+  "workmux-status": {
+    "PreInvocation": [
+      {
+        "command": "workmux register-agent >/dev/null 2>&1 || true; printf '{}\\n'",
+        "type": "command"
+      },
+      {
+        "command": "workmux set-window-status working >/dev/null 2>&1 || true; printf '{}\\n'",
+        "type": "command"
+      }
+    ],
+    "Stop": [
+      {
+        "command": "workmux set-window-status done >/dev/null 2>&1 || true; printf '{}\\n'",
+        "type": "command"
+      }
+    ]
+  }
+}
+```
+
+That file is where `workmux docs` says `workmux setup` installs the Antigravity hooks (`PreInvocation` marks the pane working, `Stop` marks it done), and it holds exactly those hooks. Nothing in it can report a waiting state, which matches the documentation's "Antigravity CLI (`agy`): No 💬 waiting state". The hooks were already installed; `workmux setup` was not run.
+
+### 2. The basics at 1.5.3
+
+```console
+$ agy agent
+firestore-rules-author
+tech-lead
+$ agy plugin list
+Installed plugins:
+…
+- e-colleagues (enabled, 0.1.1)
+    Source:     antigravity
+    Components: 4 skills, 6 agents
+…
+$ cmp ~/.gemini/config/plugins/e-colleagues/agents/tech-lead/agent.md agents/tech-lead/agent.md; echo "cmp rc=$?"
+cmp rc=0
+$ agy --agent tech-lead --print "Say only the word ping."      # in <tmp>/repo; rc 0, stderr empty
+👨‍💻 Tech-Lead: ping
+```
+
+The global `agy plugin install` route still delivers the agents, the installed tech-lead is byte-identical to the rendered one, and its body reaches the model. The tech-lead carries an explicit list of eleven tool names, and a name missing from the registry aborts an agent before any model call (E17). By that rule, those eleven still resolve at 1.5.3. This is inferred from the one run above, not swept: the full 22-name sweep of E17 was not re-run.
+
+The validator moved. Run from the repository root:
+
+```console
+$ agy plugin validate .; echo "rc=$?"
+Validating e-colleagues (plugin.json)
+
+  ⚠ AGENTS.md: never loaded: plugins load rules only from rules/. Move it to rules/AGENTS.md
+  · plugin.json: no logo: the plugin shows a generic icon. Add "logo": "assets/logo.svg" (a .png, .svg, .jpg, .jpeg or .webp file inside the plugin)
+
+  skills 4 · agents 6 · rules 0 · hooks 0 · mcpServers 0 · sidecars 0
+
+✔ Validation passed with 1 warning
+rc=0
+```
+
+It passes, but it no longer prints the `[ok]` that `tools/check.py` looks for, so that gate fails at 1.5.3 on an unchanged tree. Its advice to move `AGENTS.md` into `rules/` is what the standing don't-do list forbids [AG-05].
+
+### 3. A session runs `workmux add`
+
+The dispatching tech-lead was started in the probe session's pane, in `<tmp>/repo`, as `agy --agent tech-lead -i "<instruction>"`, the instruction being:
+
+```
+Run this exact command yourself in the shell, then report its output: workmux add probe-a --background --agent "agy --agent tech-lead" --prompt "Reply with the single word ready, then stop."
+```
+
+It stopped three times before the worktree existed:
+
+1. agy's trust dialog for `<tmp>/repo`, a folder it had not seen. Accepted.
+2. agy's approval for the command. Option 1 was chosen:
+
+   ```
+   Requesting permission for:
+      workmux add probe-a --background --agent "agy --agent tech-lead" --prompt "Reply with the single word ready,
+   then stop."
+
+   Run this command?
+   > 1. Yes, run command
+     2. Yes, and always allow in this conversation for commands that start with 'workmux'
+     3. Yes, and always allow for commands that start with 'workmux' (Persist to settings.json)
+     4. No, cancel
+   ```
+
+   The probe machine's agy settings carry `"ask": ["command(*)", …]`. agy's behaviour without that setting was not checked.
+3. workmux's own question. agy runs commands in a pseudo-terminal (`ps` showed the `workmux add` process on its own pts), so workmux saw a terminal and offered to update the hooks of a *different* agent it detected on the machine. The command's output, from agy's task log, path redacted:
+
+   ```
+   ┌ Status Tracking
+   │
+   │  Detected Copilot CLI (found Copilot config directory; status tracking update available)
+
+     ● Update ~/.copilot/hooks/workmux-status.json
+     ├─ +13 -0 [━━━━━━━━━━━━] at line 22
+   …
+     Install or update status tracking hooks? [Y/n] n
+
+   ✓ Successfully created worktree and tmux window for 'probe-a'
+     Base: main
+     Worktree: <tmp>/repo__worktrees/probe-a
+   ```
+
+   The tech-lead did not guess. It ended its turn with `👨‍💻 Tech-Lead: I launched the command (…), and it is currently waiting on an interactive prompt:`, quoted the question, and asked `Should I send Y or n to proceed?`. `n` was typed into its input, and the log above shows the command received it and finished. `Y` would have rewritten a file in the owner's home.
+
+```console
+$ git worktree list
+<tmp>/repo                    969dfb8 [main]
+<tmp>/repo__worktrees/probe-a 969dfb8 [probe-a]
+$ tmux list-windows -t e26-probe -F '#{session_name}:#{window_index} #{window_name} #{pane_id} #{pane_width}x#{pane_height}'
+e26-probe:0  repo %22 120x40
+e26-probe:1  probe-a %23 238x63
+$ tr '\0' '|' < /proc/<agy in %23>/cmdline
+agy|--agent|tech-lead|-i|Reply with the single word ready, then stop.|
+```
+
+(The window names carry a glyph that the probe machine's shell prompt adds; it is removed above.) The worktree is outside the agy workspace, a sibling of the repository, and was created without complaint. The window opened in the tmux session of the pane that ran `workmux add`. `--agent` took a whole command with arguments. workmux appended agy's own `-i <prompt>` to it, so it recognised the command as agy, and the session later registered as `"agent_kind": "agy"`. It also wrote the prompt to `.workmux/PROMPT-probe-a.md` in the worktree and added `.workmux/` to `.git/info/exclude`.
+
+### 4. The prompt arrives, and the worktree session commits
+
+The new window did not show the prompt. It showed agy's trust dialog for the new path:
+
+```
+Accessing workspace:
+
+<tmp>/repo__worktrees/probe-a
+
+Do you trust the contents of this project?
+
+Antigravity CLI requires permission to read, edit, and execute files here.
+
+> Yes, I trust this folder
+  No, exit
+```
+
+After the dialog was accepted, the screen showed the prompt and its answer at once:
+
+```
+> Reply with the single word ready, then stop.
+…
+▸ Thought for 19s, 1.0k tokens
+
+  ready
+```
+
+The hook calls for that pane, from workmux's log (UTC):
+
+```
+20:17:08  window created, pane %23
+20:17:11  "workmux", "register-agent"
+20:17:11  "workmux", "set-window-status", "working"
+20:17:31  "workmux", "set-window-status", "done"
+          (trust dialog still on screen; accepted at about 20:19:07; no hook call follows)
+20:19:57  "workmux", "register-agent"          <- the next prompt, sent with workmux send
+```
+
+The turn took 20 seconds by the hooks and "19s" by the screen, and no hook fired after the dialog was accepted. That points to the start prompt having run *behind* the trust dialog, before the folder was trusted. This is an inference from timestamps. The prompt needed no tool, so what a start prompt that does need a tool does behind the dialog is not measured. The reply came without the signature. It followed "the single word" literally. Every later reply carried the signature.
+
+Trust is kept per exact path. The trusted `<tmp>/repo` did not cover its sibling worktree, and in a test with no prompt, `agy --agent tech-lead` in a new subfolder `<tmp>/repo/sub` raised the dialog too. That test was answered "No, exit", and the agy settings file's hash did not change. A session-only setting does avoid the dialog. `agy --agent tech-lead --settings <tmp>/trust-settings.json` with `{"trustedWorkspaces": ["<tmp>/fresh"]}`, started in a new folder `<tmp>/fresh`, opened straight at the input box with no dialog, and the settings file's hash was identical before and after.
+
+Then the commit:
+
+```console
+$ workmux send probe-a "Create a file named probe.txt containing the word probe, then commit it with git with the message: add probe.txt"
+```
+
+The file was written without a prompt. The command `git add probe.txt && git commit -m "add probe.txt"` asked for approval once and was approved once. The reply:
+
+```
+  👨‍💻 Tech-Lead: Created probe.txt with probe and committed it.
+
+    $ git add probe.txt && git commit -m "add probe.txt"
+    [probe-a 57567b8] add probe.txt
+     1 file changed, 1 insertion(+)
+     create mode 100644 probe.txt
+    (exit code 0)
+```
+
+```console
+$ git log --oneline -1          # in <tmp>/repo__worktrees/probe-a
+57567b8 add probe.txt
+```
+
+### 5. States
+
+`workmux status --json probe-a` was polled through each moment. One reading, trimmed:
+
+```json
+{
+  "worktree": "probe-a",
+  "branch": "probe-a",
+  "project": "repo",
+  "status": "done",
+  "elapsed_secs": 30,
+  "title": "…",
+  "pane_id": "%23",
+  "workdir": "<tmp>/repo__worktrees/probe-a",
+  "agent_kind": "agy",
+  "session": "e26-probe",
+  …
+}
+```
+
+| moment, in the probe-a session | `status` | `elapsed_secs` read |
+|---|---|---|
+| the commit turn, model at work (polled every 3 s) | `working` | 3, 6, 9, 12, 2, 5, 8, 0, 3, 6 (reset at each model step) |
+| at the approval for `git add … && git commit …` | `working` | 18, 28, 38 |
+| that turn finished after the approval | `done` | 1 |
+| at the approval for `date` (asked: "Run the shell command date and show its output.") | `working` | 7, 42 |
+| after choosing `4. No, cancel` there: the screen showed `⎿  User declined the tool call` and `⎿  Interrupted · What should Antigravity CLI do instead?`, input box idle | `working` | 75, 80, … 112, then 163 |
+| at the first-run trust dialog, after the start turn had finished behind it | `done` | 24, 30, 100, 120 |
+
+The dispatching tech-lead read `working` (76 s) at its own approval for `workmux add`. While the `date` approval waited, `workmux list` showed `probe-a  5m   working  ✓    ●         ../repo__worktrees/probe-a`. **`waiting` never appeared.** A declined tool call fires no `Stop`, so the declined session read `working` until its next turn ended.
+
+The screen does show the approval. `workmux capture probe-a --lines 200` at the `date` approval, tail:
+
+```
+> Run the shell command date and show its output.
+
+● Ran (date) (ctrl+o to expand)
+
+Command
+────────────────────────────────────────────────────────────…
+
+Requesting permission for:
+   date
+
+Run this command?
+> 1. Yes, run command
+  2. Yes, and always allow in this conversation for commands that start with 'date'
+  3. Yes, and always allow for commands that start with 'date' (Persist to settings.json)
+  4. No, cancel
+
+  ↑/↓ Navigate · tab Amend · ctrl+g edit/expand command
+esc to cancel … tech-lead (Gemini 4 Argon · high)  /agents
+```
+
+### 6. The captured screen around a RETURN block
+
+```console
+$ workmux send probe-a "Say in one line that the date command was declined, then end your reply with this block in a code fence, one field per line: ### RETURN, status: needs-decision, task: probe-a, changed: none, evidence: date was declined, findings: none, risks: none, follow-ups: none, questions: <one question of at least 400 characters asking whether to retry the date command or skip it, with the reasons for each>, knowledge: none"
+$ workmux capture probe-a --lines 200      # after status turned done; pane 238 columns × 63 rows
+```
+
+The session had no copy of `personas/_shared/return.md`, so the prompt listed the block's fields inline, with `findings: none`. Lines 39–63 of the 63 captured. The two long rules are trimmed with `…`, the padding in the status line is trimmed with `…`, and trailing spaces are stripped: the TUI pads the signature line, and the first two lines of the `questions:` value end in five and one trailing spaces. Nothing else is changed:
+
+```
+────────────────────────────────────────────────────────────
+> Say in one line that the date command was declined, then end your reply with this block in a code fence, one field per line: ### RETURN, status: needs-decision, task: probe-a, changed: none, evidence: date was declined, findings: none,
+  risks: none, follow-ups: none, questions: <one question of at least 400 characters asking whether to retry the date command or skip it, with the reasons for each>, knowledge: none
+
+▸ Thought for 11s, 541 tokens
+
+  👨‍💻 Tech-Lead: Execution of the date shell command was declined by the user permission check.
+
+    ### RETURN
+    status: needs-decision
+    task: probe-a
+    changed: none
+    evidence: date was declined
+    findings: none
+    risks: none
+    follow-ups: none
+    questions: Would you like me to retry running the shell command "date" (which requires your explicit permission approval in the prompt so that we can capture and verify the actual live system clock output from the shell environment
+    as originally requested), or should we skip executing the "date" command altogether (which avoids re-triggering the permission prompt and respects your previous denial while allowing us to conclude the probe-a task immediately
+    without shell timestamp output)?
+    knowledge: none
+
+────────────────────────────────────────────────────────────…
+>
+────────────────────────────────────────────────────────────…
+? for shortcuts … tech-lead (Gemini 4 Argon · high)  /agents
+```
+
+What a reader of this capture has to handle:
+
+- **No fence and no frame.** The code fence is not drawn. There are no ```` ``` ```` markers and no box characters. Every line of the block, `### RETURN` included, is indented four spaces. The signature line is indented two.
+- **Wrapping is the TUI's own.** A long value breaks at a word boundary at the pane width: the first two lines of the `questions:` value are 235 characters in a 238-column pane. The continuation lines carry the *same* four-space indent as the field lines, with no hanging indent, so only the missing `<field>:` at the start tells a continuation from a field. `tmux capture-pane -J` does not join them, because the TUI writes each line itself.
+- **The capture is the visible screen only.** agy draws on the alternate screen here: `#{alternate_on}` 1 and `#{history_size}` 0, read on the dispatching session's pane. The probe machine's agy settings carry `"altScreenMode": "always"`, and whether that is agy's default was not checked. `--lines 200` returned 63 lines on the 63-row pane, and 53 at the approval prompt. It never returned more than the pane's height. A reply whose tail is taller than the pane would lose the top of its block.
+- **Not exercised:** the nested `findings:` list, with its `  - severity:` sub-lines, so how its extra indent renders is not measured.
+
+### Reported, not measured
+
+The owner reports that at agy 1.5.3, a session started with `agy --agent tech-lead --remote-control` in a terminal-multiplexer window was visible on their phone, and that an Antigravity session was able to run workmux. The first report bears on item 6, the host's remote feature reaching a session in a window. Step 3 measures the second report; the first is still the owner's report.
+
+### Consequences
+
+1. **Item 1, the basics at the installed version, holds at agy 1.5.3.** `--agent tech-lead` resolves, the body arrives, and the global plugin install still delivers the agents. That the tech-lead's eleven tool names resolve is inferred, not swept: see the paragraph after step 2's commands. The full registry sweep was not re-run. `tools/check.py`'s `agy plugin validate` gate needs its success test updated for 1.5.3's output. That is not done here.
+2. **Item 2, a session runs workmux through its shell tool, holds, with two stops that need the person.** An agy session ran `workmux add` through its shell tool, reached tmux, and created a worktree outside its own folder. Before that it waited on agy's approval for the command, because the probe machine's settings ask before every command, and on workmux's offer to update the hooks of another agent. That offer reads an answer from the terminal agy gives its commands. So the fleet skill's prerequisite is `workmux setup` run for *every* agent workmux detects, not only Antigravity. A dispatching session should expect one approval per `workmux add` unless the person allows `workmux` commands.
+3. **Item 3, a worktree tech-lead getting its start prompt and committing, holds, with one stop per new worktree.** The start command is `workmux add <name> --background --agent "agy --agent tech-lead" --prompt "<text>"`, which workmux runs as `agy --agent tech-lead -i "<text>"`. Each new worktree path raises agy's trust dialog. Trust is per exact path, so trusting the main checkout or a parent folder does not help, and the session waits in its window until someone accepts. In a test, a session-only `--settings '{"trustedWorkspaces": ["<folder>"]}'` skipped the dialog and saved nothing, so it could go in the start command. Trusting a folder is a decision for the person. Whether a start command may make it on their behalf is left to the owner; this entry does not decide it. The worktree session committed after one approval. Loading the skill from the start prompt is not measured, because the skill does not exist yet.
+4. **Item 4, the states workmux reports, holds only in part: for agy it reports only `working` and `done`.** A session at an approval prompt reads `working`. A session whose tool call was declined reads `working` until its next turn ends. A session at the first-run trust dialog read `done` once its start turn had finished. So status alone cannot tell "waiting on the person" from "working", and an overview built on status shows less for this host. That limits the overview; it does not stop Antigravity tech-leads from being dispatched. The screen can tell: at an approval prompt the capture contains `Requesting permission for:` and `Run this command?`.
+5. **Item 5, a captured screen holding the last RETURN block in full, is outside this entry's scope.** It is recorded because step 6 measured it. It holds as long as the reply's tail fits the visible screen: the block was in the capture in full. A reader must find `### RETURN` after leading spaces, join continuation lines that do not start with a field name, and strip trailing spaces.
+
+**Host state.** `workmux remove -f probe-a` removed the worktree and the branch (`✓ Removed worktree 'probe-a' and branch 'probe-a'`). Afterwards `workmux status --json` listed `"agents": []`, `git worktree list` listed only `<tmp>/repo`, and the probe's tmux session was killed. Answering `n` had created `~/.local/state/workmux/setup.json` (`{"declined": ["copilot"], "declined_skills": []}`), `workmux send` had created `~/.local/state/workmux/sent/`, and workmux kept a state file for each of the two probe panes. All four were removed to restore the earlier state. `~/.copilot/hooks/workmux-status.json`, `~/.gemini/config/config.json` and `~/.gemini/settings.json` have the same hashes as before, and by modification time `~/.gemini/config/hooks.json` and the workmux config were not touched after the probe began. One change was left: agy itself wrote `<tmp>/repo` and `<tmp>/repo__worktrees/probe-a` into `trustedWorkspaces` in `~/.gemini/antigravity-cli/settings.json` when the two dialogs were accepted. Without those two entries, the file's current content re-serialises to exactly its size before the probe (2,583 bytes). The two entries now point at paths that no longer exist. This probe does not edit the owner's agy settings.
+
+---
+
+## E27 — the fleet skill end to end on Antigravity: a dispatched tech-lead loads `ec-fleet` from its start prompt, and the overview reads its stop
+
+**Date** 2026-11-14. **agy 1.5.3**, model Gemini 4 Argon (High), the configured default; **workmux 0.1.281**; **tmux 3.8**; this package as of commit `c2d6b91`. Tranche B.
+
+E26 left two of the fleet's host facts unmeasured, because the skill did not exist yet: the second half of its item 3, that a tech-lead workmux starts in a worktree loads the skill from its start prompt, and its item 5 end to end, that the overview reads a real stop. This entry measures both with the real skill installed, the package's default start command and no config file (`~/.config/e-colleagues/fleet.toml` absent, `XDG_CONFIG_HOME` and `EC_FLEET_CONFIG` unset).
+
+Everything ran in a throwaway repository, `<tmp>/repo` (`git init`, one commit, a repository-local identity, no signing). Its contract came from the deterministic half of `ec-init`, `python3 skills/ec-init/scripts/bootstrap.py <tmp>/repo --write` (`wrote 3 files, 3 changed`: `AGENTS.md`, `CLAUDE.md`, `.e-colleagues/lock.json`), committed. No interview was run, so the project bindings are empty: no tracker, no tools, no `### Parallel work` lines. The probe used its own tmux session, `e27-probe`, and touched no other session or window. Two real sessions on the owner's account reached the model: the dispatching tech-lead (three messages) and the dispatched one (its start prompt only). Every interactive session again printed `⚠ Sign-in update needed … some requests may fail`; no request failed.
+
+Tool-call timings below come from agy's own transcript of each session (`~/.gemini/antigravity-cli/brain/<conversation>/.system_generated/logs/transcript.jsonl`), hook timings from workmux's log, both in UTC.
+
+### 1. The install
+
+Before:
+
+```console
+$ agy --version
+1.5.3
+$ agy plugin list
+Installed plugins:
+…
+- e-colleagues (enabled, 0.1.1)
+    Source:     antigravity
+    Components: 4 skills, 6 agents
+…
+$ ls ~/.gemini/config/plugins/e-colleagues/skills
+ec-init
+ec-onboard
+ec-status
+ec-tech-lead
+```
+
+The install source was a clean export of the tracked files, so nothing untracked reached the plugin directory, in a directory named `e-colleagues` because agy keys a plugin by its directory name (E8):
+
+```console
+$ git archive fleet-skill | tar -x -C <tmp>/export/e-colleagues
+$ cd <tmp>/export && agy plugin install ./e-colleagues; echo "rc=$?"
+  [ok]    e-colleagues
+          ✔ skills      : 5 installed (ec-fleet, ec-init, ec-onboard, ec-status, ec-tech-lead)
+          ✔ agents      : 6 installed (designer, developer, platform, reviewer, security, tech-lead)
+          Installed to ~/.gemini/config/plugins/e-colleagues (replaced existing installation)
+rc=0
+$ agy plugin list
+…
+- e-colleagues (enabled, 0.1.1)
+    Source:     antigravity
+    Components: 5 skills, 6 agents
+…
+```
+
+The installed `skills/ec-fleet/SKILL.md`, `skills/ec-fleet/scripts/fleet.py` and `agents/tech-lead/agent.md` are byte-identical to the repository's (`cmp` rc 0 for each).
+
+**At 1.5.3 the install replaced the old one; it did not merge.** "replaced existing installation" is literal. Before, the destination held 116 files, 29 of them absent from the source: the earlier install's `.git/` directory and two `__pycache__/*.pyc` files. Afterwards it held exactly the export's 87 files, path for path, and the 29 were gone. E8 measured the opposite at agy 1.1.27, where a file deleted from the source survived a re-install, so on this one run at 1.5.3 the finding contradicts E8. The places that stated E8's merge finding now give both versions: `docs/acceptance.md`, the README's Antigravity block, `docs/design.md` §2.2 (`--prune` on Antigravity) and §12 (updates in a consumer's tools), `hosts/antigravity.yaml`, and claim AG-08 in `docs/SUPPORT-MATRIX.md`.
+
+### 2. The dispatching session starts issue 12
+
+The dispatching tech-lead was started in the probe session's first pane, in `<tmp>/repo`, with a session-only trust setting so that its own folder raised no dialog (E26):
+
+```console
+$ agy --agent tech-lead --settings <tmp>/trust-settings.json -i 'use the ec-fleet skill; start 12'
+```
+
+`<tmp>/trust-settings.json` holds `{"trustedWorkspaces": ["<tmp>/repo"]}`. The session opened with no dialog and still asked before every command, so the session-only setting did not drop the saved `"ask"` setting.
+
+Its first tool call read `~/.gemini/config/plugins/e-colleagues/skills/ec-fleet/SKILL.md`. Its second was the start, which asked for approval:
+
+```
+Requesting permission for:
+   python3 ~/.gemini/config/plugins/e-colleagues/skills/ec-fleet/scripts/fleet.py start 12 --host antigravity
+
+Run this command?
+> 1. Yes, run command
+…
+```
+
+Option 1 was chosen. The transcript records `Command exited with code 0.` and the output `started issue-12`, and the reply was:
+
+```
+  👨‍💻 Tech-Lead: Started worktree issue-12 for issue 12.
+
+  • Command: python3 ~/.gemini/config/plugins/e-colleagues/skills/ec-fleet/scripts/fleet.py start 12 --host antigravity (exit code 0)
+  • Output: started issue-12
+```
+
+It read no `AGENTS.md` before starting. With this contract that changes nothing: there is no naming line, so the default name applies either way. Whether a dispatching session reads the contract and honours a naming line is not measured.
+
+workmux's log for that call, trimmed, and what it started:
+
+```
+22:02:21.060  workmux add issue-12 --background --agent "agy --agent tech-lead" --prompt "Use the ec-fleet skill. Your assignment: issue 12."   cwd=<tmp>/repo
+22:02:21.096  create:start branch="issue-12" base=Some("main")
+22:02:21.139  window created, pane %26
+22:02:21.231  create:completed path=<tmp>/repo__worktrees/issue-12
+```
+
+```console
+$ tmux list-windows -t e27-probe -F '#{session_name}:#{window_index} #{window_name} #{pane_id} #{pane_width}x#{pane_height} #{pane_current_command}'
+e27-probe:0  repo %25 200x50 agy
+e27-probe:1  issue-12 %26 238x63 agy
+$ tr '\0' '|' < /proc/<agy in %26>/cmdline
+agy|--agent|tech-lead|-i|Use the ec-fleet skill. Your assignment: issue 12.|
+```
+
+A window appeared, in the probe's session. The dispatched session got no trust setting: the default start command, as the skill ships it.
+
+**workmux asked nothing.** In E26, `workmux add` run from agy's pseudo-terminal stopped to offer an update to another agent CLI's status hooks, and its log shows 90 seconds between the command's start and `create:start`. Here, run by `fleet.py`, which gives the launcher no stdin, the same two events are 36 ms apart. No question reached anyone, no `~/.local/state/workmux/setup.json` (where an answer is recorded, E26) was written, and that other agent's hooks file has the same hash as before, unchanged since before E26. `workmux setup` was not run. That workmux skips the question because its stdin is not a terminal is an inference from this one run.
+
+### 3. At the trust dialog
+
+The new window showed agy's trust dialog for the new path, trailing spaces stripped:
+
+```
+Accessing workspace:
+
+<tmp>/repo__worktrees/issue-12
+
+Do you trust the contents of this project?
+
+Antigravity CLI requires permission to read, edit, and execute files here.
+
+> Yes, I trust this folder
+  No, exit
+
+  ↑/↓ Navigate · enter Confirm
+```
+
+With the dialog on screen, the dispatching session was sent `overview`. It ran `python3 ~/.gemini/config/plugins/e-colleagues/skills/ec-fleet/scripts/fleet.py overview` after one approval, exit code 0. The output, from the transcript, matches the screen:
+
+```
+NAME      STATE    HOST  RETURN  QUESTIONS
+repo      working  agy           (this session)
+issue-12  working  agy
+```
+
+Its reply showed the table and added: "issue-12 is currently working (note that some hosts also report a session waiting at one of the host's own approval or first-run prompts as working)."
+
+**The session at the dialog read `working`, not `done`, so its row says nothing more.** It sat at the dialog for 5 min 27 s. `workmux status --json` read `working` throughout (`elapsed_secs` 34, 56, 320, 332), and no hook call came between its `working` at 22:02:23 and the dialog's acceptance at 22:07:50. The transcript shows why. The start turn ran *behind* the dialog:
+
+| step | what | created | completed |
+|---|---|---|---|
+| 0 | the start prompt, `Use the ec-fleet skill. Your assignment: issue 12.` | 22:02:23 | |
+| 1 | the model's first response, with two tool calls: `read_file ~/.gemini/config/plugins/e-colleagues/skills/ec-fleet/SKILL.md` and `run_command "pwd && ls -la"` | 22:02:23 | |
+| 2 | the read | 22:02:30 | 22:02:31 |
+| 3 | the command | 22:02:31 | 22:08:08 |
+
+The command's approval waited, unseen, behind the dialog, and a session at an approval reads `working` (E26). E26's start prompt needed no tool, so its turn ended behind the dialog and read `done`. The table also settles E26's inference from timestamps: the start prompt runs before the folder is trusted. The model ran, and a file read completed, while the dialog was on screen.
+
+The dialog was then accepted in that window, acting as the person.
+
+### 4. The dispatched tech-lead loads the skill and stops
+
+The approval for `pwd && ls -la` appeared as soon as the dialog closed. It asked three times in all, each time for a read-only command, and each was answered with option 1: `pwd && ls -la`, `ls -la .e-colleagues`, `git status && git remote -v && git log -n 5`. Between them it read `AGENTS.md`, `README.md` and the installed `scripts/fleet.py`. The `Stop` hook marked it `done` at 22:09:33.
+
+`workmux capture issue-12 --lines 200`, the overview's own read, returned 38 lines (the pane was 238 × 63; `#{alternate_on}` 1, `#{history_size}` 0). Lines 7–38 follow. The long rules and the status-line padding are trimmed with `…`, trailing spaces are stripped (the `status:` line ends in one), and nothing else is changed:
+
+```
+────────────────────────────────────────────────────────────…
+> Use the ec-fleet skill. Your assignment: issue 12.
+
+⚠ Sign-in update needed
+  ⎿  Your sign-in is missing permissions that are now required, so some requests may fail. Run /logout to sign in again.
+
+○ Thought for 52.3s (Initial hypothesis: This appears to be a fleet probe, as the README.md file suggests. Further investigation reveals AGENTS.md lacks details about platforms, tools, workflow and permissions. Therefore, access to i...)
+● Explored 1 file (SKILL.md)
+● Ran (pwd && ls -la)
+● Explored 2 files (AGENTS.md, README.md)
+● Ran 2 commands (ls -la .e-colleagues · git status && git remote -v && git log -n 5)
+● Explored 1 file (fleet.py) (ctrl+o to expand)
+
+▸ Thought for 10s, 529 tokens
+
+  👨‍💻 Tech-Lead: I read AGENTS.md, and ### Platforms and tools has no issue tracker or tool bindings configured (and git remote -v has no remote URL). Please share the brief for issue 12 or specify which tracker/tool to read it from.
+
+    ### RETURN
+    status: blocked
+    task: issue 12
+    changed: none
+    evidence: read AGENTS.md (Platforms and tools is empty); git remote -v (exit 0, empty origin)
+    findings: none
+    risks: none
+    follow-ups: none
+    questions: What is the specification for issue 12, or which tracker and tool should I use to read it?
+    knowledge: none
+
+────────────────────────────────────────────────────────────…
+>
+────────────────────────────────────────────────────────────…
+? for shortcuts … tech-lead (Gemini 4 Argon · high)  /agents
+```
+
+What shows that it loaded the skill from its start prompt:
+
+- **The prompt arrived.** It is the transcript's first user input and the first line of the conversation on screen.
+- **The skill was its first act.** The first tool call, in the model's first response to that prompt, read the installed `skills/ec-fleet/SKILL.md`. The thought summary for that response, as first shown: "Initial assessment: Task requires utilizing the `ec-fleet` skill. The first step involves reading the skill's instructions."
+- **It followed the skill's rules for an issue assignment.** It read `AGENTS.md`, as the skill's "The contract" says to. It looked for the tracker the contract names, found none, and asked and waited (rule 3) instead of guessing at an issue it could not read.
+- **It ended with the skill's RETURN block** at the very end, its keys complete and in order, `task: issue 12`, and its question under `questions` (rule 4). Nothing in the tech-lead's own body asks it to end a reply with a RETURN block: the block is what its specialists return to it, and T5 tells it to relay those as a signed summary, never raw. The block comes from the skill.
+
+The block rendered as E26 step 6 describes: no fence drawn, every line indented four spaces, the signature two. No value wrapped, and `findings: none` again, so the nested list is still not exercised.
+
+### 5. The overview reads the stop
+
+The dispatching session was sent `overview` again and ran the same command after one approval, exit code 0. The output, from the transcript, matches the screen:
+
+```
+NAME      STATE    HOST  RETURN   QUESTIONS
+repo      working  agy            (this session)
+issue-12  done     agy   blocked  What is the specification for issue 12, or which tracker and tool should I use to read it?
+```
+
+Its reply showed the table, then: `issue-12 has stopped (RETURN: blocked) and is waiting for your input in its own session: "What is the specification for issue 12, or which tracker and tool should I use to read it?"`. The installed script's `last_return`, run on the saved capture, returns `{'status': 'blocked', 'questions': 'What is the specification for issue 12, or which tracker and tool should I use to read it?'}`.
+
+`repo` is the dispatching session's own row, named after the main checkout's directory and marked `(this session)`; it reads `working` because the overview runs inside its turn. `workmux status --json` is scoped to the repository it runs in (`"scope": {"repository": "<that repository>", "all": false}`): from `<tmp>/repo` it listed only the probe's two sessions, although another agent session was registered on the same tmux server. So the overview lists the sessions of the dispatching session's repository only.
+
+### Verdicts
+
+1. **"A tech-lead started by workmux in a worktree gets its start prompt and loads the skill from it": holds** at agy 1.5.3 with workmux 0.1.281. `fleet.py start` delivered the prompt through workmux's `-i`. The tech-lead's first tool call read the installed `SKILL.md`, and its first stop followed the skill's rules for an issue assignment. The start turn begins behind the trust dialog, before the person trusts the folder.
+2. **"A captured screen of a stopped session contains its last RETURN block in full, and the overview reads it": holds.** The capture held the whole block, and the overview showed `done`, `blocked` and the question verbatim.
+3. **Against E26, and against what design §17 and the acceptance notes said: a tech-lead started by `fleet.py` read `working` at the first-run trust dialog, not `done`.** Its start turn stops at the approval for its first command, hidden behind the dialog. The overview therefore showed `working` with RETURN and QUESTIONS empty, not `no RETURN block on screen`. This was measured with agy set to ask before every command (E26). Without that setting the first command might run behind the dialog and the turn end as `done`; that is not measured.
+
+### Not measured
+
+- A contract with `### Parallel work` lines: naming, posting, pushing, and whether a dispatching session reads `AGENTS.md` and honours a naming line.
+- Any stop after the first: an answered question, `ready to push`, a commit or a push from the worktree.
+- A block taller than the pane, a wrapped value, the nested `findings:` list.
+- Several issues at once, and the plan assignment.
+- The trust dialog on a machine whose agy settings do not ask before every command.
+- Why workmux asked nothing: see the inference in step 2.
+- Codex, opencode and Claude Code, and remote use on any host.
+
+**Host state.** The plugin install replaced `~/.gemini/config/plugins/e-colleagues/` with this package's tracked files at `c2d6b91` (five skills, six agents), as the owner approved, and that install was left in place. agy wrote `<tmp>/repo__worktrees/issue-12` into `trustedWorkspaces` in `~/.gemini/antigravity-cli/settings.json` when its dialog was accepted. That entry is the file's only change (2,866 bytes before, 3,018 after), and it now points at a path that no longer exists. The dispatching session's session-only setting saved nothing. agy also kept its usual per-session records under `~/.gemini/antigravity-cli/` (conversations, transcripts, logs, prompt history), and workmux appended to its log. workmux kept a state file for each of the two probe panes under `~/.local/state/workmux/agents/`; both were removed, and the list of workmux state files matches the one taken before. No `setup.json` or `sent/` was created. `~/.gemini/config/config.json`, `~/.gemini/settings.json`, `~/.gemini/config/hooks.json` and `~/.copilot/hooks/workmux-status.json` have the same hashes as before, and the workmux config was not modified. `workmux remove -f issue-12` printed `✓ Removed worktree 'issue-12' and branch 'issue-12'`. Afterwards `workmux status --json` in `<tmp>/repo` listed `"agents": []`, `git worktree list` listed only `<tmp>/repo`, the probe's tmux session was killed, and no agy process remained.

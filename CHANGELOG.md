@@ -3,6 +3,27 @@
 Notable changes to e-colleagues. Format follows [Keep a Changelog](https://keepachangelog.com/);
 this project uses semantic versioning from 0.1.0 onward.
 
+## [Unreleased]
+
+### Added
+
+- **`ec-fleet`: several tech-leads at once.** Starts one tech-lead per issue, each in its own
+  workmux worktree and window, and shows one table of every session and why it stopped, read
+  from its last RETURN block. Questions and approvals stay in each session. The script only
+  starts, lists and reads; the dispatching session is told never to send to another session or
+  answer for the person, a rule and not a guarantee. Needs workmux; measured on Antigravity
+  only (E26, E27).
+- **`ec-init` asks whether several tech-leads will work at once**, and only on a yes asks for
+  the `### Parallel work` lines: naming, where plans live, what an issue tech-lead may post,
+  follow-up issues, pushing.
+
+### Changed
+
+- **D6 is read per assignment.** Only tech-leads speak and post externally, each within its
+  own assignment; with one tech-lead nothing changes. Specialists still never post.
+- **An Antigravity re-install is version-dependent.** It merged at agy 1.1.27 (E8) and
+  replaced at 1.5.3 (E27). The advice stands: uninstall first when the roster shrinks.
+
 ## [0.1.1] — 2026-10-03
 
 Every host moved past the version its claims were confirmed at; this release re-verifies all

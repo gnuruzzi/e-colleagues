@@ -9,7 +9,7 @@ and a reviewer that cannot edit your files. Installed once. Rendered for Codex C
 <a href="https://github.com/gnuruzzi/e-colleagues/actions/workflows/check.yml"><img alt="checks" src="https://github.com/gnuruzzi/e-colleagues/actions/workflows/check.yml/badge.svg"></a>
 <img alt="version" src="https://img.shields.io/badge/version-0.1.1-informational">
 <img alt="hosts" src="https://img.shields.io/badge/hosts-Codex%20%C2%B7%20Claude%20Code%20%C2%B7%20opencode%20%C2%B7%20Antigravity-5c6bc0">
-<img alt="evidence" src="https://img.shields.io/badge/claims%20measured-52%20%2F%2025%20experiments-2e7d32">
+<img alt="evidence" src="https://img.shields.io/badge/claims%20measured-52%20%2F%2027%20experiments-2e7d32">
 <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-blue"></a>
 </p>
 
@@ -134,7 +134,7 @@ opencode run --agent tech-lead "use the ec-onboard skill"
 opencode run --agent tech-lead "Review the change in the last commit before we merge it."
 ```
 
-In the TUI, Shift+Tab cycles to the tech-lead and `@` lists the skills and the specialists. opencode has no plugin route for agents (E25), so the agents and the four skills install as real files under `~/.config/opencode/`; your global config is never written.
+In the TUI, Shift+Tab cycles to the tech-lead and `@` lists the skills and the specialists. opencode has no plugin route for agents (E25), so the agents and the five skills install as real files under `~/.config/opencode/`; your global config is never written.
 
 </details>
 
@@ -156,7 +156,7 @@ In the session:
 Audit the CI pipeline and tell me what a new contributor would trip over.
 ```
 
-Only a global install delivers agents, so the roster is per machine; a re-install merges rather than replaces, so uninstall first when it shrinks (E8).
+Only a global install delivers agents, so the roster is per machine. A re-install merged at agy 1.1.27 (E8) and replaced at 1.5.3 (E27), so uninstall first when the roster shrinks.
 
 </details>
 
@@ -172,6 +172,17 @@ The tech-lead handles anything you would ask a session, and routes the parts tha
 - *"Audit the CI pipeline and tell me what a new contributor would trip over."* The platform persona, from the workflow files up.
 
 Every delegation ends in a RETURN block the tech-lead relays: status, what changed, evidence (the commands run and their exit codes), findings, risks, follow-ups, and the questions only you can decide. "Done" means reviewed.
+
+## Several issues at once
+
+The `ec-fleet` skill starts one tech-lead per issue, each in its own git worktree and terminal window, and shows in one table which are working and why each stopped:
+
+```text
+start 12 and 15
+overview
+```
+
+Each tech-lead asks its questions and waits for approvals in its own session, and you answer there. The script only starts, lists and reads. The dispatching session is told never to send to another session or answer for you; that is a rule, not a guarantee. It needs workmux, with its status hooks set up by `workmux setup`, and so far it is measured on Antigravity only (E26). There, each new worktree first asks you to trust the folder, and the default start command trusts nothing for you: accept it in that window, or set your own start command in `~/.config/e-colleagues/fleet.toml`.
 
 ## What is guaranteed, and what is only asked
 
@@ -192,7 +203,7 @@ The full list, with what each rests on, is in [`docs/acceptance.md`](docs/accept
 
 ## Built on evidence
 
-Every path, key and command in the design cites a fact-checked claim or says UNVERIFIED. [`docs/SUPPORT-MATRIX.md`](docs/SUPPORT-MATRIX.md) states all 52 claims with the version each was last confirmed at; [`docs/experiments.md`](docs/experiments.md) holds the 25 experiments behind them, exact command and raw output included, and an experiment outranks any claim it contradicts. That discipline caught seven Antigravity tool names the vendor's documentation lists that abort an agent at startup, and a tool registry, a keybinding and a plugin API that moved between releases.
+Every path, key and command in the design cites a fact-checked claim or says UNVERIFIED. [`docs/SUPPORT-MATRIX.md`](docs/SUPPORT-MATRIX.md) states all 52 claims with the version each was last confirmed at; [`docs/experiments.md`](docs/experiments.md) holds the 27 experiments behind them, exact command and raw output included, and an experiment outranks any claim it contradicts. That discipline caught seven Antigravity tool names the vendor's documentation lists that abort an agent at startup, and a tool registry, a keybinding and a plugin API that moved between releases.
 
 - [`docs/design.md`](docs/design.md): the decision record, and how to add a host or a persona
 - [`docs/acceptance.md`](docs/acceptance.md): minimum versions, guarantees, known limits

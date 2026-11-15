@@ -184,6 +184,8 @@ BANNED_TOKENS = ["$ARGUMENTS", "${CLAUDE_SKILL_DIR}", "${CLAUDE_PLUGIN_ROOT}"]
 
 
 def check_skills():
+    ret = (ROOT / "personas" / "_shared" / "return.md").read_text()
+    block = ret[ret.index("### RETURN"): ret.rindex("```")].strip()
     files = sorted((ROOT / "skills").rglob("SKILL.md"))
     if not files:
         fail("skills/: none found")
@@ -214,6 +216,8 @@ def check_skills():
             fail(f"{f}: a leading `!` command is Claude-only [CX-12]")
         if len(body.encode()) > 7 * 1024:
             fail(f"{f}: body over 7 KB")
+        if "### RETURN" in body and block not in body:
+            fail(f"{f}: the RETURN block differs from personas/_shared/return.md")
     ok(f"skills ({len(files)}) frontmatter and portability clean")
 
 
