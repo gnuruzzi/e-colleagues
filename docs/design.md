@@ -139,7 +139,7 @@ A tool's vocabulary never appears in `personas/`. Claude's `Read, Edit` copied i
 - **Codex** `dist/codex/agents/<name>.toml` for specialists: `name`, `description`, `sandbox_mode`, `approval_policy`, `developer_instructions` — five keys, no more. The file flattens the whole config schema, so any ordinary config key parses, but a key that is neither `name`/`description`/`nickname_candidates` nor a valid config key drops the entire agent with only a startup warning [CX-02]. For the tech-lead it renders `developer_instructions` into `dist/codex/config.snippet.toml` (the managed region for a project config) and `dist/codex/e-colleagues.config.toml` (the user profile) instead [CX-06].
 - **Claude** `dist/claude/agents/<name>.md`: `name`, `description`, `model`, and either a `tools` allowlist (read-only personas) or `disallowedTools` (writers). The tech-lead carries **no** `tools` key, because an explicit allowlist removes every tool it does not name — all MCP tools, `Skill`, `AskUserQuestion`, `TodoWrite`, plan mode — and MCP can only be re-admitted per server name, which the package cannot know [CC-09]. Never `permissionMode`, `hooks` or `mcpServers` (silently ignored in plugin agents) and never `memory` on a read-only persona, which re-enables Write and Edit [CC-07].
 - **opencode** `dist/opencode/agents/<name>.md`: `description`, `mode`, `permission`, `model`; no `name` key, since frontmatter `name` overrides the filename-derived one [OC-02]; body becomes `prompt`. Delegation and shell rules are emitted under both the schema's names (`task`, `bash`) and the 2.x runtime's (`subagent`, `shell`): the runtime accepts either, unknown permission keys are schema-valid, and one spelling alone is a silent fail-open on the version that knows only the other (`experiments.md` E20 addendum).
-- **Antigravity** `agents/<name>/agent.md`: `name`, `description`, `mainAgent`, `subagent`, `model`, `commandExecutionPolicy: sandbox`, explicit `tools`; body uses H2 headings only, because bodies are described as H1-delimited and the slicing is UNVERIFIED [AG-02].
+- **Antigravity** `agents/<name>/agent.md`: `name`, `description`, `mainAgent`, `subagent`, `model`, explicit `tools`; body uses H2 headings only, because bodies are described as H1-delimited and the slicing is UNVERIFIED [AG-02].
 - **`skills/ec-tech-lead/SKILL.md`**: the tech-lead body as a portable skill, frontmatter `name`, `description`, `metadata` only [STD-01].
 
 Every body is shared fragments + persona prompt + team table + a host-specific "Your runtime" appendix, and opens with a `generated from personas/<name>.yaml, do not edit` line. Generated files are committed, because Claude, Codex and Antigravity all copy the plugin directory on install and a consumer install must be a plain fetch with no build step [AG-08]. `tools/check.py --drift` regenerates into a temp directory and fails CI on any diff [PA-02].
@@ -306,11 +306,9 @@ e-colleagues/                          # dir name is load-bearing [AG-07][AG-08]
 ├── team.yaml
 ├── skills/
 │   ├── ec-init/                       # contract: SKILL.md, references/, scripts/bootstrap.py
-│   ├── ec-onboard/                    # knowledge: the multi-angle audit
-│   ├── ec-onboard/                     # knowledge: SKILL.md, scripts/knowledge.py
+│   ├── ec-onboard/                    # knowledge: the multi-angle audit; SKILL.md, scripts/knowledge.py
 │   ├── ec-status/                      # staleness: SKILL.md, scripts/status.py
 │   ├── ec-fleet/                       # several tech-leads at once: SKILL.md, scripts/fleet.py
-│   ├── ec-review/  ec-audit/
 │   └── ec-tech-lead/                  # GENERATED portable floor (D7)
 ├── agents/<name>/agent.md             # GENERATED Antigravity dialect
 ├── dist/                              # GENERATED, committed
@@ -456,7 +454,7 @@ Invoke from inside the tool: `$ec-init` (Codex) [CX-07], `/e-colleagues:ec-init`
    **Measured at 2.1.263 (`experiments.md` E15): validate misses most agent frontmatter faults.** A value containing a colon — which the canonical routing sentence always has — triggers a repairing sanitizer, so an unterminated quote *passes*. Also passing: a colon in `name`, `permissionMode`/`hooks`/`mcpServers`, an unknown key, and `memory: true` on a `tools`-restricted persona. It reliably catches only a parse error with no colon in the value, and a missing `description`. Skills are covered better than agents: a broken `SKILL.md` is caught even from manifest mode.
 
    Therefore **`check.py` owns the [CC-07] guard**: it parses every rendered Claude agent's frontmatter with a strict YAML parser and enforces the key whitelist — no `permissionMode`, `hooks`, `mcpServers`, no `memory` on a read-only persona, no `:` in `name`, no unknown keys. Because `gen.py` renders these files, a fault means a generator bug, which is what the drift gate is for; the gate simply has to be ours.
-3. `agy plugin validate .` must print `[ok]` with the expected component counts; no `mcp_config.json` is shipped, so it is not PATH-dependent [AG-07]. `check.py --agy-tools` asserts every tool name is in the list re-derived at the installed agy version [AG-06].
+3. `agy plugin validate .` must pass, printing `[ok]` up to agy 1.2.10 and `Validation passed` at 1.5.3, with the expected component counts; no `mcp_config.json` is shipped, so it is not PATH-dependent [AG-07]. `check.py --agy-tools` asserts every tool name is in the list re-derived at the installed agy version [AG-06].
 4. **Codex has no validate subcommand**: `check.py --codex` parses each TOML with `tomllib`, asserts the five-key whitelist and non-blank `name`, `description`, `developer_instructions` [CX-02], and `sandbox_mode = "read-only"` with `approval_policy = "never"` for every `edit: false` persona.
 5. `check.py --opencode` carries a vendored copy of `https://opencode.ai/config.json` at `hosts/opencode-config.schema.json` and fails when the key lists in `hosts/opencode.yaml` drift from it — agent keys, permission keys, command keys — so a change to the published schema fails a run instead of going unnoticed; refresh the copy with `curl -sS https://opencode.ai/config.json -o hosts/opencode-config.schema.json` and re-run. It rejects any agent frontmatter key outside opencode's known set and any `options` content, because agents fail open [OC-01][OC-02]; requires lowercase permission keys drawn from the schema's 15 plus the 2.x runtime names, each aliased pair (`task`/`subagent`, `bash`/`shell`) present together with identical rules (E20 addendum), `mode: primary` on the tech-lead, `mode: subagent` plus a description on specialists [OC-03][OC-04], `permission.task` on any delegating persona [OC-05], command keys within **{template, description, agent, model, variant, subtask}** with `template` **required** and `additionalProperties: false` (the vendored schema; the earlier list omitted `template` and `variant`), and `agent` resolving to a rendered agent [OC-07], and `default_agent` resolving to a non-hidden primary [OC-03].
 6. `check.py --skills`: frontmatter within {name, description, metadata}; `name` equals the directory and matches `^[a-z0-9]+(-[a-z0-9]+)*$`, at most 64 characters; description at most 1024; no `compatibility`, which Codex's bundled validator omits [STD-01]; no `$ARGUMENTS`, `$N`, `!cmd`, `${CLAUDE_SKILL_DIR}` or `${CLAUDE_PLUGIN_ROOT}` in any body, because Codex and Antigravity load the skill and perform no substitution, so the literal token reaches the model [CX-12][AG-10]; body under 7 KB.
@@ -598,8 +596,7 @@ set) or the path in `$EC_FLEET_CONFIG` or `--config`. It sets `default_host`, a 
 and `base_flag`; a mistyped key, or a named path that does not exist, is an error. Only
 Antigravity has default `trust` arguments, `--settings '{"trustedWorkspaces":["{worktree}"]}'`
 (E28); `trust = ""` leaves them out. `base_flag` defaults to
-`--base`, passed through as workmux's own `--base`, read from its help at 0.1.281 and
-UNVERIFIED by experiment. The default start commands are `agy --agent tech-lead` [AG-03],
+`--base`, passed through as workmux's own `--base` (E28). The default start commands are `agy --agent tech-lead` [AG-03],
 `codex --profile e-colleagues` (E14), `opencode --agent tech-lead` [OC-03] and
 `claude --agent tech-lead` [CC-10]. Only the workmux default is tested.
 
@@ -636,4 +633,4 @@ a phone (E26, reported, not measured).
 
 **Prose only:** every rule in the skill, among them the assignments, one voice per assignment,
 the RETURN block at every stop, never answering for the person, and "a planning tech-lead writes
-nothing in the checkout". No host enforces them.
+nothing in the checkout and delegates no work that would". No host enforces them.

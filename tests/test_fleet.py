@@ -112,6 +112,10 @@ class TestStart(Base):
         r = self.run_fleet("start", "12", "--dry-run", config=False)
         self.assertEqual(r.returncode, 2)
         self.assertIn("--host", r.stderr)
+        # The skill tells the dispatcher to retry on exactly this text.
+        self.assertIn("no host chosen", r.stderr)
+        skill = (ROOT / "skills" / "ec-fleet" / "SKILL.md").read_text()
+        self.assertIn("`no host chosen`", skill)
 
     def test_default_host_and_start_command_come_from_the_config(self):
         self.write_cfg(top='default_host = "antigravity"\n',
@@ -350,6 +354,13 @@ class TestLastReturn(unittest.TestCase):
         framed = "\n".join("\u2502  " + ln for ln in BLOCK.splitlines())
         self.assertEqual(self.f.last_return(framed)["status"], "needs-decision")
 
+    def test_only_a_line_that_is_the_heading_starts_a_block(self):
+        self.assertIsNone(self.f.last_return(BLOCK.replace("### RETURN", "### RETURNS")))
+        quoted = BLOCK.replace("Keep the old flag", "Is the ### RETURN block right? Keep the flag")
+        self.assertEqual(self.f.last_return(quoted)["status"], "needs-decision")
+        bulleted = BLOCK.replace("### RETURN", "\u25cf ### RETURN \u2502")
+        self.assertEqual(self.f.last_return(bulleted)["status"], "needs-decision")
+
     def test_a_block_cut_off_before_knowledge_is_unreadable(self):
         cut = "### RETURN\nstatus: partial\ntask: x\nquestions: Which one?\n>\n? for shortcuts\n"
         self.assertIsNone(self.f.last_return(cut))
@@ -430,6 +441,22 @@ class TestOverview(Base):
         self.assertIn("issue-15", r.stdout)
         self.assertIn("needs-decision", r.stdout)
         self.assertIn("Keep the old flag", r.stdout)
+
+    def test_a_long_question_is_cut_to_one_hundred_characters(self):
+        self.seed([{"worktree": "issue-15", "status": "done", "agent_kind": "agy",
+                    "pane_id": "%2"}])
+        (self.dir / "issue-15.screen").write_text(
+            BLOCK.replace("Keep the old flag", "Keep " + "very " * 40 + "old flag"))
+        line = self.run_fleet("overview").stdout.splitlines()[1]
+        question = line[line.index("Keep"):]
+        self.assertEqual(len(question), 100)
+        self.assertTrue(question.endswith("\u2026"))
+
+    def test_the_skill_names_every_text_the_table_can_show(self):
+        skill = (ROOT / "skills" / "ec-fleet" / "SKILL.md").read_text()
+        f = load()
+        for text in (f.NO_BLOCK, f.NO_SCREEN, "(this session)"):
+            self.assertIn(f"`{text}`", skill)
 
     def test_a_stopped_session_with_no_block_says_so(self):
         self.seed([{"worktree": "issue-19", "status": "done", "pane_id": "%3"}])

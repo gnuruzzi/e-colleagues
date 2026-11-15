@@ -187,5 +187,5 @@ class TestSkillsGate(unittest.TestCase):
         r = self.check()
         self.assertEqual(r.returncode, 1)
         self.assertIn("ec-fleet", r.stdout)
-        self.assertIn("RETURN", r.stdout)
+        self.assertIn("the RETURN block differs from personas/_shared/return.md", r.stdout)
 

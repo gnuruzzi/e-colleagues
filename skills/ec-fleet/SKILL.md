@@ -38,10 +38,9 @@ On success it prints one line, `started <name>`, naming the worktree. If it fail
 way, show its message; do not retry with other flags.
 
 In a new worktree the host may first show a first-run prompt, such as whether to trust the
-folder, before the tech-lead does anything. On Antigravity the script trusts the new worktree
-for that one session; elsewhere the person answers the prompt in that session. You never
-answer it. Until then the overview shows that session as `working` and nothing more, or as
-stopped with `no RETURN block on screen`.
+folder, before the tech-lead starts. On Antigravity the script trusts the new worktree for
+that one session; elsewhere the person answers it there. You never answer it. Until then the
+overview shows that session as `working`, or as stopped with `no RETURN block on screen`.
 
 ### Overview
 
@@ -57,6 +56,7 @@ Show the table as printed; `--json` gives the same rows as data. One row per ses
   why it stopped, and what it needs.
 - `no RETURN block on screen`: the session may be at one of its host's own prompts, or it
   stopped without a complete block in view. Say so.
+- `could not read its screen`: the capture failed. Say so.
 - `(this session)` marks your own row.
 
 ### What you never do

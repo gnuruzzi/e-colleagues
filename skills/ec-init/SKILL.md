@@ -42,7 +42,7 @@ Ask only what the repository cannot tell you, in one round, and accept "skip" fo
 - Will several tech-leads work on this project at once, each on its own issue?
 
 On "no" or "skip" to the last, ask nothing more about it and write nothing for it. On "yes",
-ask these five in one round, each accepting "skip":
+ask these five in a second round, each accepting "skip":
 
 - How an issue maps to a branch and worktree name
 - Where plans and planning documents live
@@ -50,8 +50,8 @@ ask these five in one round, each accepting "skip":
 - Whether an issue tech-lead may create follow-up issues, or only record them
 - Whether a tech-lead may push on its own
 
-State the two defaults: follow-ups are recorded, not created, and a tech-lead stops at
-"ready to push".
+Tell the user the two defaults as you ask: follow-ups are recorded, not created, and a
+tech-lead stops at "ready to push". A skipped line is not written, and its default applies.
 
 ## 4. Write
 

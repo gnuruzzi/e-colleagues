@@ -182,7 +182,7 @@ start 12 and 15
 overview
 ```
 
-Each tech-lead asks its questions and waits for approvals in its own session, and you answer there. The script only starts, lists and reads. The dispatching session is told never to send to another session or answer for you; that is a rule, not a guarantee. It needs workmux, with its status hooks set up by `workmux setup`, and so far it is measured on Antigravity only (E26). There, agy would ask you to trust each new worktree; the script trusts it for that one session and saves nothing (E28). To keep the dialog, set `trust = ""` under `[hosts.antigravity]` in `~/.config/e-colleagues/fleet.toml`.
+Each tech-lead asks its questions and waits for approvals in its own session, and you answer there. The script only starts, lists and reads. The dispatching session is told never to send to another session or answer for you; that is a rule, not a guarantee. It needs workmux, with its status hooks set up by `workmux setup`, and so far it is measured on Antigravity only (E26, E27). There, agy would ask you to trust each new worktree; the script trusts it for that one session and saves nothing (E28). To keep the dialog, set `trust = ""` under `[hosts.antigravity]` in `~/.config/e-colleagues/fleet.toml`.
 
 ## What is guaranteed, and what is only asked
 

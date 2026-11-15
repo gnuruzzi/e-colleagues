@@ -402,7 +402,11 @@ def check_agy_tools():
 # own CLAUDE.md sits at the plugin root. Claude warns that a plugin-root CLAUDE.md is not
 # loaded as project context — true, and irrelevant here: that file exists for the project
 # role, not the plugin role. It is the one warning this gate tolerates, by exact text.
-KNOWN_CLAUDE_WARNINGS = ["CLAUDE.md at the plugin root is not loaded as project context"]
+# The last two come from the plugin-directory checks Claude Code 2.1.325 prints beside the
+# result: this plugin ships no icon, and its folder also holds the marketplace manifest.
+KNOWN_CLAUDE_WARNINGS = ["CLAUDE.md at the plugin root is not loaded as project context",
+                         "No icon (ICON_MISSING)",
+                         "This folder also holds a marketplace manifest"]
 
 
 def check_hosts():
@@ -427,8 +431,8 @@ def check_hosts():
                            if not any(k in c for k in KNOWN_CLAUDE_WARNINGS)]
                 has_errors = re.search(r"Found \d+ error", out) is not None
                 if complaints and not unknown and not has_errors:
-                    ok(f"claude validate {label}: passes but for the known plugin-root "
-                       f"CLAUDE.md warning")
+                    ok(f"claude validate {label}: passes but for {len(complaints)} known "
+                       f"warning(s)")
                 else:
                     fail(f"claude plugin validate --strict {' '.join(args)} failed: "
                          f"{out.strip().splitlines()[-1] if out.strip() else '(no output)'}")
@@ -440,10 +444,12 @@ def check_hosts():
     if shutil.which("agy"):
         r = subprocess.run(["agy", "plugin", "validate", "."], capture_output=True,
                            text=True, cwd=ROOT)
-        if r.returncode != 0 or "[ok]" not in (r.stdout + r.stderr):
-            fail(f"agy plugin validate did not report [ok]: {(r.stdout + r.stderr).strip()[:120]}")
+        out = r.stdout + r.stderr
+        # agy printed "[ok]" up to 1.2.10 and prints "Validation passed" at 1.5.3.
+        if r.returncode != 0 or not ("[ok]" in out or "Validation passed" in out):
+            fail(f"agy plugin validate did not pass: {out.strip()[:120]}")
         else:
-            ok("agy plugin validate reports [ok]")
+            ok("agy plugin validate passes")
     else:
         print("  skip agy plugin validate (agy not on PATH)")
 

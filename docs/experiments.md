@@ -1954,15 +1954,40 @@ Antigravity CLI requires permission to read, edit, and execute files here.
 
 It read `done`, as E26 saw for a start prompt that needs no tool. It was answered "No, exit".
 
+### 6. A path with a space, and `--base`
+
+A second repository, `<tmp>/my repo`, with a branch `other` one commit ahead of `main`. `fleet.py start 20`, then `fleet.py start 21 --base other`. workmux's log:
+
+```
+args=["workmux", "add", "issue-20", "--dry-run"]
+args=["workmux", "add", "issue-20", "--background", "--agent", "agy --agent tech-lead --settings '{\"trustedWorkspaces\":[\"<tmp>/my repo__worktrees/issue-20\"]}'", "--prompt", "Reply with the single word ready, then stop."]
+args=["workmux", "add", "issue-21", "--dry-run"]
+args=["workmux", "add", "issue-21", "--background", "--agent", "agy --agent tech-lead --settings '{\"trustedWorkspaces\":[\"<tmp>/my repo__worktrees/issue-21\"]}'", "--prompt", "Reply with the single word ready, then stop.", "--base", "other"]
+```
+
+Both sessions opened with no dialog and answered `ready`, so a path holding a space passes through the setting. And `--base` reaches workmux as its own `--base`:
+
+```console
+$ git worktree list
+<tmp>/my repo                     0db7aa5 [main]
+<tmp>/my repo__worktrees/issue-20 0db7aa5 [issue-20]
+<tmp>/my repo__worktrees/issue-21 19c2ce2 [issue-21]
+$ git log --oneline --all
+0db7aa5 init
+19c2ce2 other
+```
+
+`issue-21` starts at `other`'s commit, `issue-20` at `main`'s. The settings file's hash was unchanged.
+
 ### Verdict
 
 **At agy 1.5.3 with workmux 0.1.281, `fleet.py start` opens an Antigravity tech-lead in a new worktree with no trust dialog and saves nothing.** It asks workmux for the path with `workmux add <name> --dry-run`, reads the `Worktree:` line, and appends `--settings '{"trustedWorkspaces":["<path>"]}'` to the start command. The trust is for that session and that path only. When the script cannot learn the path it says so on stderr and starts without the setting, so the dialog shows as before.
 
 **Not measured:**
 
-- A worktree path holding a space. The script passes one through; a path holding a quote or a backslash is refused, and the start then goes ahead without the setting.
+- A worktree path holding a quote or a backslash. The script refuses one, and the start then goes ahead without the setting; that refusal is tested, not measured against agy.
 - Any workmux other than 0.1.281. The `Worktree:` line is its human-readable output, not an interface it promises.
 - What agy loads from a folder trusted this way, such as that folder's own hooks, against one trusted through the dialog.
 - Codex, opencode and Claude Code, whose own first-run prompts were not looked at.
 
-**Host state.** Four worktrees were made and removed (`✓ Removed worktree 'issue-12' and branch 'issue-12'`, and the same for 14, 15 and 16). Afterwards `workmux status --json` in `<tmp>/repo` listed `"agents": []`, `git worktree list` listed only `<tmp>/repo`, the probe's tmux session was killed and no agy process remained. `~/.gemini/antigravity-cli/settings.json` had the same hash at every step. workmux kept a state file for each of three probe panes under `~/.local/state/workmux/agents/`; all three were removed. agy kept its usual per-session records, and workmux appended to its log.
+**Host state.** Six worktrees were made and removed (`✓ Removed worktree 'issue-12' and branch 'issue-12'`, and the same for 14, 15, 16, 20 and 21). Afterwards `workmux status --json` in `<tmp>/repo` listed `"agents": []`, `git worktree list` listed only `<tmp>/repo`, both probe tmux sessions were killed and no agy process remained. `~/.gemini/antigravity-cli/settings.json` had the same hash at every step. workmux kept a state file for each of five probe panes under `~/.local/state/workmux/agents/`; all five were removed. agy kept its usual per-session records, and workmux appended to its log.

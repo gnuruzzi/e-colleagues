@@ -176,6 +176,8 @@ RETURN_KEYS = ("status", "task", "changed", "evidence", "findings", "risks", "fo
 KEY_LINE = re.compile(r"^(%s):" % "|".join(RETURN_KEYS))
 NON_ALNUM = re.compile(r"^[^0-9A-Za-z]+")
 FRAMING = re.compile(r"^[\s\u2500-\u257f]+")
+# Hosts frame and bullet their lines, so only letters and digits around it disqualify a heading.
+HEADING = re.compile(r"[^0-9A-Za-z]*### RETURN[^0-9A-Za-z]*")
 STATUSES = ("done", "partial", "blocked", "needs-decision")
 NO_BLOCK = "no RETURN block on screen"
 NO_SCREEN = "could not read its screen"
@@ -183,7 +185,7 @@ NO_SCREEN = "could not read its screen"
 
 def last_return(screen: str) -> dict | None:
     lines = screen.splitlines()
-    heads = [i for i, ln in enumerate(lines) if "### RETURN" in ln]
+    heads = [i for i, ln in enumerate(lines) if HEADING.fullmatch(ln)]
     if not heads:
         return None
     fields: dict[str, list[str]] = {}
