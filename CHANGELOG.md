@@ -17,6 +17,9 @@ this project uses semantic versioning from 0.1.0 onward.
   trusts the new worktree for that one session and saves nothing: on Antigravity (E28) and on
   Codex (E29). Claude Code asks once per repository (E31) and opencode never asks (E30).
   `trust = ""` for a host in the config keeps its prompt.
+- **A start says when a project's own agent would replace the tech-lead.** At agy 1.5.3 a
+  repository's `.agents/agents/` file with the tech-lead's name runs in place of the installed
+  one (E32). `fleet.py start` names the file and starts all the same.
 - **`ec-init` asks whether several tech-leads will work at once**, and only on a yes asks for
   the `### Parallel work` lines: naming, where plans live, what an issue tech-lead may post,
   follow-up issues, pushing.

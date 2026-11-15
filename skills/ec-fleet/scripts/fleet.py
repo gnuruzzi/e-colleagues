@@ -11,6 +11,7 @@ import json
 import os
 import pathlib
 import re
+import shlex
 import subprocess
 import sys
 import tomllib
@@ -150,6 +151,35 @@ def worktree_path(cfg: dict, name: str) -> str | None:
     if r.returncode or not os.path.isabs(path) or re.search(r"['\"\\\x00-\x1f\x7f]", path):
         return None
     return path
+
+
+AGY_AGENT_GLOBS = (".agents/agents/**/*.md", "_agents/agents/**/*.md",
+                   ".agents/plugins/*/agents/**/*.md", "_agents/plugins/*/agents/**/*.md")
+
+
+def shadowing_agents(start: str) -> tuple[str, list[str]]:
+    """Agent files in this project that agy would run in place of the installed agent the
+    start command names: at 1.5.3 a workspace agent wins, by its frontmatter name (E32)."""
+    try:
+        words = shlex.split(start)
+    except ValueError:
+        return "", []
+    if not words or pathlib.Path(words[0]).name != "agy" or "--agent" not in words[:-1]:
+        return "", []
+    agent = words[words.index("--agent") + 1]
+    root = pathlib.Path.cwd()
+    root = next((d for d in (root, *root.parents) if (d / ".git").exists()), root)
+    named = re.compile(rf"^name:\s*[\"']?{re.escape(agent)}[\"']?\s*$", re.M)
+    found = []
+    for pattern in AGY_AGENT_GLOBS:
+        for f in sorted(root.glob(pattern)):
+            try:
+                head = f.read_text(errors="replace")[:4000]
+            except OSError:
+                continue
+            if named.search(head):
+                found.append(str(f.relative_to(root)))
+    return agent, found
 
 
 def start_argv(cfg: dict, ref: str, name: str | None, host: str | None, base: str | None,
@@ -335,6 +365,10 @@ def main() -> int:
         return 0
     if not trusted:
         print(f"fleet: {NO_PATH}", file=sys.stderr)
+    agent, shadows = shadowing_agents(cfg["hosts"][a.host or cfg["default_host"]]["start"])
+    if shadows:
+        print(f"fleet: this repository has its own agent named {agent!r} ({', '.join(shadows)}); "
+              "the session runs that one, not the installed one", file=sys.stderr)
     try:
         r = run_launcher(argv)
     except LauncherError as e:

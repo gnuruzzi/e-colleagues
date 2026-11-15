@@ -66,7 +66,7 @@ class Base(unittest.TestCase):
             f'capture = [{py}, {fake}, "capture", "{{name}}"]\n'
             f'where = [{py}, {fake}, "where", "{{name}}"]\n' + extra)
 
-    def run_fleet(self, *args, config=True, env=None, stdin=None):
+    def run_fleet(self, *args, config=True, env=None, stdin=None, cwd=None):
         e = {**os.environ, "FAKE_LOG": str(self.log), "FAKE_DIR": str(self.dir)}
         if config:
             e["EC_FLEET_CONFIG"] = str(self.cfg)
@@ -76,7 +76,7 @@ class Base(unittest.TestCase):
         e.pop("TMUX_PANE", None)
         e.update(env or {})
         return subprocess.run([sys.executable, str(FLEET), *args],
-                              capture_output=True, text=True, env=e, input=stdin)
+                              capture_output=True, text=True, env=e, input=stdin, cwd=cwd)
 
     def logged(self):
         return [json.loads(ln) for ln in self.log.read_text().splitlines()]
@@ -133,6 +133,41 @@ class TestStart(Base):
         self.assertEqual(r.returncode, 2)
         self.assertIn("[hosts.opencode]", r.stderr)
         self.assertEqual(run("claude").returncode, 0)
+
+    def project(self, files):
+        root = self.dir / "project"
+        (root / ".git").mkdir(parents=True)
+        (root / "src").mkdir()
+        for rel, name in files.items():
+            (root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (root / rel).write_text(f"---\nname: {name}\ndescription: x\n---\nbody\n")
+        return root
+
+    def test_a_project_agent_that_would_replace_the_tech_lead_is_named(self):
+        """At agy 1.5.3 a workspace agent runs in place of the installed one of the same
+        name, by its frontmatter name and not its folder's (E32)."""
+        root = self.project({".agents/agents/anything/agent.md": "tech-lead",
+                             "_agents/plugins/p/agents/lead.md": '"tech-lead"',
+                             ".agents/agents/reviewer/agent.md": "reviewer"})
+        self.write_cfg()
+        (self.dir / "where.out").write_text("Worktree: /w/issue-12\n")
+        r = self.run_fleet("start", "12", "--host", "antigravity", cwd=root / "src")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout, "started issue-12\n")
+        self.assertIn("fleet: this repository has its own agent named 'tech-lead'", r.stderr)
+        self.assertIn(".agents/agents/anything/agent.md", r.stderr)
+        self.assertIn("_agents/plugins/p/agents/lead.md", r.stderr)
+        self.assertNotIn("reviewer", r.stderr)
+
+    def test_no_such_warning_without_such_an_agent_or_on_another_host(self):
+        self.write_cfg()
+        (self.dir / "where.out").write_text("Worktree: /w/issue-12\n")
+        plain = self.project({".agents/agents/reviewer/agent.md": "reviewer"})
+        self.assertEqual(self.run_fleet("start", "12", "--host", "antigravity",
+                                        cwd=plain).stderr, "")
+        (plain / ".agents/agents/tl").mkdir()
+        (plain / ".agents/agents/tl/agent.md").write_text("---\nname: tech-lead\n---\n")
+        self.assertEqual(self.run_fleet("start", "12", "--host", "claude", cwd=plain).stderr, "")
 
     def test_base_is_appended_with_the_launchers_flag(self):
         r = self.run_fleet("start", "12", "--host", "codex", "--base", "main", "--dry-run",

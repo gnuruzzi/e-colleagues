@@ -99,7 +99,8 @@ Then, per host, by hand — because no static check can prove a runtime behaviou
   At agy 1.5.3 a repository's `.agents/agents/<name>/agent.md` is what `agy --agent <name>`
   runs there instead of the installed plugin's agent, in print mode even in a folder nobody
   has trusted. Measured with a probe name, not with `tech-lead`. That is Antigravity's
-  behaviour, not this package's.
+  behaviour, not this package's, which never writes such a file. `fleet.py start` names any
+  agent file in the project that carries the tech-lead's name, and starts all the same.
 - **Both questions left open at publication are settled.** A github-sourced self-marketplace
   does *not* skip the Claude install step: trusting the folder registers and fetches the
   marketplace, the plugin loads only after `claude plugin install`, and nothing is printed to
