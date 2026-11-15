@@ -103,6 +103,30 @@ class TestStart(Base):
             "agy --agent tech-lead --settings '{\"trustedWorkspaces\":[\"{worktree}\"]}'",
             "--prompt", "Use the ec-fleet skill. Your assignment: issue 12."])
 
+    def test_opencode_is_given_the_tech_lead_through_a_config_file_beside_the_script(self):
+        """opencode's TUI takes no --agent at 2.2.7; a config file named in the environment
+        chooses the agent, and a private server makes the session read it (E30)."""
+        r = self.run_fleet("start", "12", "--host", "opencode", "--dry-run", config=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        shipped = FLEET.resolve().parent / "opencode-tech-lead.json"
+        self.assertEqual(json.loads(r.stdout)[5],
+                         f"env OPENCODE_CONFIG={shipped} opencode --standalone")
+        self.assertEqual(json.loads(shipped.read_text()), {"default_agent": "tech-lead"})
+
+    def test_a_script_path_the_launcher_would_break_is_refused_for_such_a_start(self):
+        moved = self.dir / "my skills" / "scripts"
+        moved.mkdir(parents=True)
+        (moved / "fleet.py").write_text(FLEET.read_text())
+        e = {**os.environ, "XDG_CONFIG_HOME": str(self.dir / "xdg")}
+        e.pop("EC_FLEET_CONFIG", None)
+        run = lambda host: subprocess.run(
+            [sys.executable, str(moved / "fleet.py"), "start", "12", "--host", host, "--dry-run"],
+            capture_output=True, text=True, env=e)
+        r = run("opencode")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("[hosts.opencode]", r.stderr)
+        self.assertEqual(run("claude").returncode, 0)
+
     def test_base_is_appended_with_the_launchers_flag(self):
         r = self.run_fleet("start", "12", "--host", "codex", "--base", "main", "--dry-run",
                            config=False)

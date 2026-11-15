@@ -9,7 +9,7 @@ and a reviewer that cannot edit your files. Installed once. Rendered for Codex C
 <a href="https://github.com/gnuruzzi/e-colleagues/actions/workflows/check.yml"><img alt="checks" src="https://github.com/gnuruzzi/e-colleagues/actions/workflows/check.yml/badge.svg"></a>
 <img alt="version" src="https://img.shields.io/badge/version-0.1.1-informational">
 <img alt="hosts" src="https://img.shields.io/badge/hosts-Codex%20%C2%B7%20Claude%20Code%20%C2%B7%20opencode%20%C2%B7%20Antigravity-5c6bc0">
-<img alt="evidence" src="https://img.shields.io/badge/claims%20measured-52%20%2F%2028%20experiments-2e7d32">
+<img alt="evidence" src="https://img.shields.io/badge/claims%20measured-52%20%2F%2032%20experiments-2e7d32">
 <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-blue"></a>
 </p>
 
@@ -182,7 +182,7 @@ start 12 and 15
 overview
 ```
 
-Each tech-lead asks its questions and waits for approvals in its own session, and you answer there. The script only starts, lists and reads. The dispatching session is told never to send to another session or answer for you; that is a rule, not a guarantee. It needs workmux, with its status hooks set up by `workmux setup`, and it is measured on Antigravity, Codex and Claude Code (E26 to E29, E31). Antigravity would ask you to trust each new worktree, and Codex a repository it has never seen; the script trusts the worktree for that one session and saves nothing (E28, E29). Claude Code asks once per repository, in the new window. To keep a host's dialog, set `trust = ""` under `[hosts.<host>]` in `~/.config/e-colleagues/fleet.toml`.
+Each tech-lead asks its questions and waits for approvals in its own session, and you answer there. The script only starts, lists and reads. The dispatching session is told never to send to another session or answer for you; that is a rule, not a guarantee. It needs workmux, with its status hooks set up by `workmux setup`, and it is measured on all four hosts (E26 to E31); for opencode workmux's current plugin is needed, the one `workmux setup` installs now. Antigravity would ask you to trust each new worktree, and Codex a repository it has never seen; the script trusts the worktree for that one session and saves nothing (E28, E29). Claude Code asks once per repository, in the new window. To keep a host's dialog, set `trust = ""` under `[hosts.<host>]` in `~/.config/e-colleagues/fleet.toml`.
 
 ## What is guaranteed, and what is only asked
 
@@ -203,7 +203,7 @@ The full list, with what each rests on, is in [`docs/acceptance.md`](docs/accept
 
 ## Built on evidence
 
-Every path, key and command in the design cites a fact-checked claim or says UNVERIFIED. [`docs/SUPPORT-MATRIX.md`](docs/SUPPORT-MATRIX.md) states all 52 claims with the version each was last confirmed at; [`docs/experiments.md`](docs/experiments.md) holds the 28 experiments behind them, exact command and raw output included, and an experiment outranks any claim it contradicts. That discipline caught seven Antigravity tool names the vendor's documentation lists that abort an agent at startup, and a tool registry, a keybinding and a plugin API that moved between releases.
+Every path, key and command in the design cites a fact-checked claim or says UNVERIFIED. [`docs/SUPPORT-MATRIX.md`](docs/SUPPORT-MATRIX.md) states all 52 claims with the version each was last confirmed at; [`docs/experiments.md`](docs/experiments.md) holds the 32 experiments behind them, exact command and raw output included, and an experiment outranks any claim it contradicts. That discipline caught seven Antigravity tool names the vendor's documentation lists that abort an agent at startup, and a tool registry, a keybinding and a plugin API that moved between releases.
 
 - [`docs/design.md`](docs/design.md): the decision record, and how to add a host or a persona
 - [`docs/acceptance.md`](docs/acceptance.md): minimum versions, guarantees, known limits

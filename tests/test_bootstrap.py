@@ -427,6 +427,41 @@ class TestUserScopeInstall(Base):
         self.assertEqual(r.returncode, 1)
         self.assertIn("e-colleagues.config.toml", r.stdout)
 
+    def test_what_codex_appended_to_the_profile_is_kept_and_is_not_stale(self):
+        """Started with --profile, Codex appends its own state to the profile file: a model
+        choice, hook trust, trusted projects (E29, E30). An update must not drop it."""
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        home = self.root / "fakehome"
+        (home / ".codex" / "agents").mkdir(parents=True)
+        self.install(home)
+        profile = home / ".codex/e-colleagues.config.toml"
+        tail = 'model = "some-model"\n\n[tui]\nscreen_reader_detection_done = true\n'
+        profile.write_text(profile.read_text() + tail)
+        env = {**__import__("os").environ, "HOME": str(home),
+               "XDG_CONFIG_HOME": str(home / ".config")}
+        args = [sys.executable, str(BOOTSTRAP), "--scope", "user", "--check",
+                "--profile", "library",
+                "--team-json", str(TEAM), "--dist", str(ROOT / "dist" / "codex" / "agents")]
+        r = subprocess.run(args, capture_output=True, text=True, env=env)
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.install(home)
+        self.assertTrue(profile.read_text().endswith(tail))
+        self.assertFalse(profile.with_name(profile.name + ".bak").exists())
+
+    def test_an_outdated_profile_is_replaced_and_the_old_file_is_kept_beside_it(self):
+        self.seed(**{"AGENTS.md": "# proj\n"})
+        home = self.root / "fakehome"
+        (home / ".codex" / "agents").mkdir(parents=True)
+        self.install(home)
+        profile = home / ".codex/e-colleagues.config.toml"
+        current = profile.read_text()
+        old = 'developer_instructions = "old"\nmodel = "some-model"\n'
+        profile.write_text(old)
+        r = self.install(home)
+        self.assertEqual(profile.read_text(), current)
+        self.assertEqual(profile.with_name(profile.name + ".bak").read_text(), old)
+        self.assertIn("e-colleagues.config.toml.bak", r.stdout)
+
     def test_installs_the_opencode_agents_for_the_roster(self):
         """opencode has no bundle or plugin route for agents (E25), so the user-scope install
         delivers them the way it delivers Codex roles: real files, the roster only."""

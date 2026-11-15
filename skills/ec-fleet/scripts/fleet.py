@@ -24,7 +24,10 @@ DEFAULTS = {
                         "trust": "--settings '{\"trustedWorkspaces\":[\"{worktree}\"]}'"},
         "codex": {"start": "codex --profile e-colleagues",
                   "trust": "-c 'projects={\"{worktree}\"={trust_level=\"trusted\"}}'"},
-        "opencode": {"start": "opencode --agent tech-lead"},
+        # opencode's TUI has no --agent: a config file named in the environment chooses it,
+        # and only a private server reads that from this session's environment (E30).
+        "opencode": {"start": "env OPENCODE_CONFIG={skill}/opencode-tech-lead.json "
+                              "opencode --standalone"},
         "claude": {"start": "claude --agent tech-lead"},
     },
     "launcher": {
@@ -162,6 +165,13 @@ def start_argv(cfg: dict, ref: str, name: str | None, host: str | None, base: st
         check_flag("--base", base)
     prompt = hosts[host].get("prompt", PROMPT).replace("{ref}", ref)
     agent, trust, trusted = hosts[host]["start"], hosts[host].get("trust", ""), True
+    if "{skill}" in agent:
+        here = str(pathlib.Path(__file__).resolve().parent)
+        # The launcher passes this unquoted, so a space or a quote in it would split it.
+        if not re.fullmatch(r"[A-Za-z0-9_./@%+=:,~-]+", here):
+            raise ConfigError(f"this script's own path, {here!r}, would not survive the "
+                              f"launcher; set [hosts.{host}] start in the config")
+        agent = agent.replace("{skill}", here)
     if "{worktree}" in trust and not dry_run:
         path = worktree_path(cfg, name)
         trust, trusted = (trust.replace("{worktree}", path), True) if path else ("", False)

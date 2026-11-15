@@ -114,14 +114,22 @@ Then, per host, by hand — because no static check can prove a runtime behaviou
   opencode TUI the agent cycle is Shift+Tab, not Tab, and it cycles primaries only; `@` offers
   every specialist and also the built-ins the allowlist denies, and a mention routes through
   the tech-lead. The Antigravity desktop honours an explicit `tools` list the way the CLI does.
-- **`ec-fleet` needs workmux and is measured on Antigravity, Codex and Claude Code** (E26 to
-  E29, E31). workmux needs its status hooks set up for each host it starts (`workmux setup`);
+- **`ec-fleet` needs workmux and is measured on all four hosts** (E26 to E31). workmux needs its status hooks set up for each host it starts (`workmux setup`);
   they report the overview's states. Run by `fleet.py`, which gives it no input, it did not
   stop to ask about another agent's hooks (E27); that the missing input is why is an inference.
-  On opencode the skill is UNVERIFIED, and so is the Codex plugin route.
+  The Codex plugin route is UNVERIFIED.
 - **`fleet.py start` reports success once the launcher returns.** If the host then exits, the
   session has no row in the overview: on Claude Code without this package's plugin,
   `claude --agent tech-lead` ends with `--agent 'tech-lead' not found` (E31).
+- **On opencode the fleet needs workmux's current plugin and starts a private server per
+  session** (E30). An earlier one-file workmux plugin does not load at opencode 2.2.7, and then
+  no opencode session has a row; `workmux setup` replaces it. The start command names a config
+  file beside the script and uses `--standalone`, because opencode's TUI takes no `--agent`;
+  what a server per session costs is not measured. opencode shows no trust prompt: it applies
+  a repository's own config and runs its plugins unasked.
+- **A `--scope user` update keeps what Codex appended to its profile** only while the package's
+  part of that file is unchanged. When it has changed, the old file is kept as `.bak` and
+  Codex's own entries are not carried into the new one (E29, E30).
 - **A session at its host's trust prompt can be missing from the overview.** On Codex and Claude
   Code workmux does not list it until the prompt is answered (E29, E31). Codex asks only in a
   repository it has never trusted, and the default start trusts the worktree for that session,

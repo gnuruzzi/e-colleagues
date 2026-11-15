@@ -328,7 +328,7 @@ def install_user_scope(team: dict, a) -> int:
         if profile_src.exists():
             if not profile_dst.exists():
                 stale.append("e-colleagues.config.toml is not installed")
-            elif profile_dst.read_text() != profile_src.read_text():
+            elif not profile_dst.read_text().startswith(profile_src.read_text()):
                 stale.append("e-colleagues.config.toml is out of date")
         if oc_dist.exists():
             for name in roster:
@@ -360,8 +360,21 @@ def install_user_scope(team: dict, a) -> int:
 
     profile_src = dist.parent / "e-colleagues.config.toml"
     if profile_src.exists():
-        (codex_home / "e-colleagues.config.toml").write_text(profile_src.read_text())
-        print("installed ~/.codex/e-colleagues.config.toml — run `codex --profile e-colleagues`")
+        # Started with --profile, Codex appends its own state to this file: a model choice,
+        # hook trust, trusted projects (experiments.md E29, E30). A file that still begins
+        # with the current profile is left alone; an outdated one is kept as a .bak.
+        profile_dst = codex_home / "e-colleagues.config.toml"
+        new = profile_src.read_text()
+        old = profile_dst.read_text() if profile_dst.exists() else None
+        if old is not None and old.startswith(new):
+            print("~/.codex/e-colleagues.config.toml is current — run `codex --profile e-colleagues`")
+        else:
+            if old is not None:
+                profile_dst.with_name(profile_dst.name + ".bak").write_text(old)
+                print("kept the previous profile as ~/.codex/e-colleagues.config.toml.bak: "
+                      "anything Codex added to it is there, not in the new file")
+            profile_dst.write_text(new)
+            print("installed ~/.codex/e-colleagues.config.toml — run `codex --profile e-colleagues`")
 
     if oc_dist.exists():
         written, _ = install_personas(oc_dist, oc_dest, roster, dry_run=False, ext=".md")

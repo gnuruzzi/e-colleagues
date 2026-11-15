@@ -35,6 +35,7 @@ Tranches: **A** automated, **B** interactive — needing a TTY or a trust dialog
 | — | B | the fleet skill end to end on Antigravity: a dispatched tech-lead loads `ec-fleet` from its start prompt, and the overview reads its stop | **settled** (E27): both hold; a session at the first-run trust dialog read `working`, not `done`, because its first command waited for approval behind the dialog |
 | — | B | can `fleet.py` start an Antigravity tech-lead in a new worktree without agy's trust dialog | **settled** (E28): yes — it reads the path from `workmux add <name> --dry-run` and passes it in a session-only `trustedWorkspaces` setting; nothing is saved |
 | — | B | the fleet skill on Codex: start, first-run prompts, states, the captured screen, end to end | **settled** (E29): all hold with the default start command; workmux reports `working`, `waiting` and `done`; a session at Codex's trust prompt is missing from the overview, and a session-only `-c 'projects={…}'` override removes that prompt; the plugin route was not measured |
+| — | B | the fleet skill on opencode: start, first-run prompts, states, the captured screen, end to end | **settled** (E30, opencode 2.2.7): the TUI has no `--agent`, so the old default start failed while `fleet.py` reported success; a config file named in `$OPENCODE_CONFIG` with `--standalone` starts the tech-lead; no first-run prompt; `working`, `waiting` and `done`; the block is read once text beside it is ignored; a session with no agent configured ran as opencode's own default agent and did not adopt the tech-lead |
 | — | B | the fleet skill on Claude Code: start, first-run prompts, states, the captured screen, end to end | **settled** (E31): all hold once the plugin is installed; without it the host exits and `fleet.py start` still reports success; trust is kept per repository, with no session-only way to pre-answer it; a session at the trust dialog is missing from the overview |
 | — | C | the 2026-11-15 Antigravity sweep: agy 1.5.3 | **settled** (E32): AG-06, AG-07, AG-11 and AG-12 changed; the desktop not driven |
 
@@ -2652,6 +2653,580 @@ No prompt, `('issue-31', 'done', 4, 'codex', '%73')`, and asked for `git branch 
 Nine worktrees were made and removed in `<tmp>/repo`, two in `<tmp>/repo.two` and two in `<tmp>/my repo`, each with `✓ Removed worktree '<name>' and branch '<name>'`. Afterwards `workmux status --json` listed `"agents": []` in all three, `git worktree list` listed only the main checkout in all three, the probe's tmux session was killed, and `pgrep -x codex` found no process. workmux kept a state file for seven of the probe's panes under `~/.local/state/workmux/agents/`; all seven were removed, and no file there names a path of this probe. The approved command created `/dev/shm/e29-probe-approval.txt`, which was removed; the declined one created nothing.
 
 Two slips, both in the probe's own panes. `workmux list`, run once from the shell pane, stopped at workmux's offer to update another agent CLI's status hooks (E26); it was ended with ctrl-c, unanswered. No `~/.local/state/workmux/setup.json` or `sent/` exists, and that agent's hooks file was last modified a month before the probe. And one command line meant for the shell was typed into Codex's own session list, which is where ctrl-c at the update prompt leads, not to the shell. Checked right after, no session file had been created since the previous probe session, and Codex's session index and state database had not been written since then either.
+
+---
+
+## E30 — the fleet skill on opencode 2.2.7: the default start command no longer exists and the installed workmux plugin no longer loads; with `default_agent` set and workmux's current plugin, a tech-lead loads `ec-fleet`, workmux reports `working`, `waiting` and `done`, and the overview reads its RETURN block unless the block sits beside opencode's sidebar
+
+**Date** 2026-11-15. **opencode 2.2.7**; **workmux 0.1.281**; **tmux 3.8**; this package as of commit `754fce5`. The model was a local one served by llama.cpp behind an OpenAI-compatible endpoint, the probe machine's last-used model in the opencode TUI, except for one turn (step 4). Tranche B.
+
+E26 to E28 measured `ec-fleet` on Antigravity only, and design §17 lists opencode as UNVERIFIED. The repository's opencode claims were last confirmed at 2.0.18. This entry answers the same questions for opencode at 2.2.7:
+
+1. **Start.** Does `fleet.py start` with the package's default command open the window, start the tech-lead and deliver the prompt, and does workmux report the session?
+2. **First-run prompts.** Does a new worktree stop at one, and can it be pre-answered for one session?
+3. **States.** Which of `working`, `done` and `waiting` does workmux report, and what does a session at an approval read?
+4. **The captured screen.** Does the overview read a RETURN block from opencode's screen?
+5. **End to end.** Does a started tech-lead load `ec-fleet` from its start prompt, read `AGENTS.md` and stop with a RETURN block that the overview shows?
+6. **Dispatch from inside a session.** Can an opencode tech-lead itself run `fleet.py start`, and what does it need?
+
+Everything ran in a throwaway repository, `<tmp>/repo` (`git init`, one commit, a repository-local identity, no signing, then `python3 skills/ec-init/scripts/bootstrap.py <tmp>/repo --write`, `wrote 3 files, 3 changed`, committed), from a tmux session created for the probe, `e30-probe`. `fleet.py` was run from a shell pane of that session, from a clean export of the package at `754fce5`. No `~/.config/e-colleagues/fleet.toml` existed, and `XDG_CONFIG_HOME` and `EC_FLEET_CONFIG` were unset; a run "with a config file" below passed `--config <tmp>/cfg/<name>.toml` and says what the file held. Where a question did not need the real prompt, the config set `prompt = "Reply with the single word ready, then stop."`.
+
+The fixture changed during the probe, and each change was a commit in `<tmp>/repo`, so every new worktree carried it:
+
+- first, after the one turn that reached a hosted model (step 4, the probe's second start), an `opencode.json` that restricts opencode to the machine's local provider (`enabled_providers`, `model`, `small_model`), so that no further prompt left the machine;
+- then workmux's current opencode plugin under `.opencode/plugins/workmux-status/` (step 3);
+- then `"default_agent": "tech-lead"` in that `opencode.json` (step 4), taken out again for the two `OPENCODE_CONFIG_CONTENT` starts in step 4 and for all of steps 10 and 11.
+
+Twelve sessions reached a model, each for one to five prompts. In the captures below the local model's label is replaced by `<local model>`, its provider's by `<local provider>`, the name of an MCP server in the sidebar by `<mcp server>`, and trailing spaces are stripped. Times are UTC, from workmux's log and from opencode's own session export (`opencode session export <id>`).
+
+### 1. Versions, the install, and what was there
+
+```console
+$ opencode --version
+opencode v2.2.7
+$ workmux --version
+workmux 0.1.281
+$ tmux -V
+tmux 3.8
+$ opencode service status
+stopped
+```
+
+The package was already installed for opencode, from an earlier version. `~/.config/opencode/agents/` held its six agents, `~/.config/opencode/skills/` held `ec-init`, `ec-onboard`, `ec-status` and `ec-tech-lead` and no `ec-fleet`, beside six skills that are not this package's, and `~/.config/opencode/plugins/` held one file, `workmux-status.ts`. The six installed agents were byte-identical to the export's (`cmp` rc 0 for each).
+
+The documented update, `bootstrap.py --scope user --write` (design §7, §9), is one command for two hosts: it also rewrites `~/.codex/agents/*.toml` and `~/.codex/e-colleagues.config.toml`. Its `--check` said so:
+
+```console
+$ python3 skills/ec-init/scripts/bootstrap.py --scope user --check; echo "rc=$?"
+  e-colleagues.config.toml is out of date
+  opencode/skills/ec-fleet is missing or out of date
+  opencode/skills/ec-init is missing or out of date
+3 file(s) need --write
+rc=1
+```
+
+The first line is not a stale package file. `diff` of the export's profile against the installed one showed the installed file as the export's 111 lines plus 33 more that Codex had appended itself: a model choice, `[tui]` counters and seven `[hooks.state…] trusted_hash` entries. `--write` replaces that file whole, so it would have dropped them. This probe's host is opencode, so it did not run that. It ran the same script with `--dist` pointing at a staging directory `<tmp>/stage/dist/codex/agents` that holds no Codex files, beside links to the export's `dist/opencode/agents` and `skills`, which makes the script skip its Codex half:
+
+```console
+$ python3 skills/ec-init/scripts/bootstrap.py --scope user --write --dist <tmp>/stage/dist/codex/agents; echo "rc=$?"
+installed 0 personas into ~/.codex/agents as real files:
+delivered as developer_instructions instead, not a role file: tech-lead, developer, reviewer, security, designer, platform [CX-06]
+installed 6 agents into ~/.config/opencode/agents: tech-lead, developer, reviewer, security, designer, platform
+installed 5 skills into ~/.config/opencode/skills: ec-fleet, ec-init, ec-onboard, ec-status, ec-tech-lead
+start with `opencode run --agent tech-lead`; in the TUI cycle to it with Shift+Tab, or set `default_agent` in your global opencode config, which this script never writes [OC-03]
+rc=0
+```
+
+By `sha256sum` before and after, three files changed under `~/.config/opencode/`: `skills/ec-fleet/SKILL.md` and `skills/ec-fleet/scripts/fleet.py` are new, and `skills/ec-init/SKILL.md` differs. The six agents and the other three skills were rewritten with the same bytes. The six foreign skills, the plugin file, and the global config have the same hashes as before. `diff -r` of the export's `skills/` against the installed directory reported only the six foreign skills. The script's first two output lines are wrong for this run; they describe the empty staging directory.
+
+`opencode debug agents`, run in `<tmp>/repo`, listed `tech-lead` with `"mode": "primary"`, a first permission rule of `*` / `*` / `allow`, and `read` of `*.env` set to `ask`. So this tech-lead runs shell commands with no approval, and reading a `.env` file is one thing that raises opencode's permission prompt. That command also started opencode's background service (`opencode serve --service`), which every later session shared. It was stopped at the end.
+
+### 2. Start: the default command fails, and `fleet.py` reports success
+
+```console
+$ python3 skills/ec-fleet/scripts/fleet.py start 12 --host opencode; echo "rc=$?"
+started issue-12
+rc=0
+```
+
+workmux's log for that call, and what it typed into the new pane:
+
+```
+08:14:33  workmux add issue-12 --background --agent "opencode --agent tech-lead" --prompt "Use the ec-fleet skill. Your assignment: issue 12."   cwd=<tmp>/repo
+08:14:33  create:creating worktree branch="issue-12" path=<tmp>/repo__worktrees/issue-12 base=Some("main")
+08:14:34  create:completed
+```
+
+```console
+$ opencode --agent tech-lead --prompt "$(cat .workmux/PROMPT-issue-12.md)"
+DESCRIPTION
+  OpenCode command line interface
+
+USAGE
+  opencode <subcommand> [flags] [<directory>]
+…
+FLAGS
+  --standalone            Run with a private server instead of the background service
+  --server string         Connect to a server URL instead of the background service
+  --auto                  Auto-approve permissions that are not explicitly denied
+  --continue, -c          Continue the last session
+  --session, -s string    Session ID to continue, or to create if it does not exist
+  --prompt string         Prompt to use
+…
+ERROR
+  Unrecognized flag: --agent in command opencode
+
+$ echo "last rc=$?"
+last rc=1
+```
+
+**At 2.2.7 the top-level `opencode` command has no `--agent` flag.** `opencode run --help` and `opencode mini --help` both still list `--agent string    Agent to use`; the TUI does not. The window opened, in the probe's session, the worktree and the prompt file were made, and workmux recognised the command as opencode and appended `--prompt "$(cat …)"`. Then opencode printed its usage and exited, and the pane fell back to a shell.
+
+Nothing reports the failure. `fleet.py` printed `started issue-12` with rc 0, because workmux had done its part. No session registered:
+
+```console
+$ workmux status --json          # in <tmp>/repo
+…
+  "agents": [],
+…
+$ python3 skills/ec-fleet/scripts/fleet.py overview; echo "rc=$?"
+no sessions
+rc=0
+```
+
+### 3. The status plugin installed on this machine does not load at 2.2.7
+
+`~/.config/opencode/plugins/workmux-status.ts` is workmux's opencode plugin in an earlier form: one file that exports a named `Plugin` function and calls `workmux register-agent` and `workmux set-window-status` from opencode's server. opencode 2.2.7 refuses it, at every start of a session, in `~/.local/share/opencode/log/opencode.log`:
+
+```
+level=WARN message="failed to load plugin" target=~/.config/opencode/plugins/workmux-status.ts cause="Cause([Fail(PluginModule.LoadError: Plugin must export a default definition with an id and an effect or setup function. (cause: SchemaError(Missing key\n  at [\"default\"])))])" role=server
+```
+
+The effect, measured with a config file holding `start = "opencode"` and the short prompt: the TUI opened, answered `ready`, and `workmux status --json` listed `"agents": []` at every poll, from 6 seconds after the start to after the turn's end 90 seconds later. workmux's log shows no `register-agent` and no `set-window-status` from that pane. **On this machine as found, workmux reports nothing for an opencode session, so the overview has no row for it.**
+
+workmux 0.1.281 carries a newer plugin. To read it without changing the owner's files, `workmux setup --hooks` was run with `HOME` set to an empty scratch directory holding only `.config/opencode/` (it needs a terminal, so it ran in a pane of the probe's session):
+
+```
+  • OpenCode (found OpenCode config directory): not configured
+  Install or update status tracking hooks? [Y/n] Y
+  ✓ Installed OpenCode plugin to <scratch home>/.config/opencode/plugins/wo…
+```
+
+It wrote `plugins/workmux-status/index.ts`, `status.ts` and `tui.ts`, and a manifest `.workmux-status.json`. `index.ts` is a server plugin that does nothing, with the comment `Pane-local status tracking belongs to the TUI, not OpenCode's shared server.` `tui.ts` is a TUI plugin: it runs `workmux register-agent` when the TUI starts and `workmux set-window-status working|waiting|done` from the TUI process, `waiting` on `permission.asked` and `form.created`. Run again in a second scratch home holding a copy of this machine's one-file plugin, the same command said `OpenCode (found OpenCode config directory): update available` and offered to replace it. It was answered `n`. `workmux setup` was not run against the real home, and `~/.config/opencode/plugins/workmux-status.ts` has the same hash as before.
+
+For the rest of this entry, those three files were committed to the fixture as `.opencode/plugins/workmux-status/`. opencode loaded them from there with no prompt (`msg="loading plugin" id=<tmp>/repo__worktrees/issue-15/.opencode/plugins/workmux-status`), and the same start as above then registered:
+
+```
+08:21:35  workmux add issue-15 --background --agent "opencode" --prompt "Reply with the single word ready, then stop."
+08:21:38  "workmux", "register-agent"                  pane %53
+08:21:38  "workmux", "set-window-status", "working"
+08:22:41  "workmux", "set-window-status", "done"
+```
+
+```json
+{
+  "worktree": "issue-15",
+  "branch": "issue-15",
+  "project": "repo",
+  "status": "done",
+  "elapsed_secs": 4,
+  "title": "OpenCode",
+  "pane_id": "%53",
+  "workdir": "<tmp>/repo__worktrees/issue-15",
+  "agent_kind": "opencode",
+  "session": "e30-probe",
+  …
+}
+```
+
+So every status reading below is workmux's current plugin, loaded from the project. That the same plugin behaves the same when `workmux setup` installs it under `~/.config/opencode/` is an inference.
+
+### 4. What does start a tech-lead
+
+**`opencode mini --agent tech-lead` starts the tech-lead and is invisible to workmux.** With `start = "opencode mini --agent tech-lead"` and the short prompt, workmux typed `opencode mini --agent tech-lead --prompt "$(cat .workmux/PROMPT-issue-13.md)"`, and the pane showed:
+
+```
+▪ oc mini v2.2.7 · <tmp>/repo__worktrees/issue-13
+› Reply with the single word ready, then stop.
+👨‍💻 Tech-Lead: ready
+Tech-Lead · Iceman Free · 2.6s
+┃
+tech-lead · Iceman Free · 12.1K (5%) · OpenCode · ctrl+p menu
+```
+
+The persona arrived. The model did not come from the TUI's last-used model: `mini` picked a hosted model of the `OpenCode` provider. That is the one turn that left the machine, and it is why the fixture then got its `opencode.json`. Repeated later with that file and with workmux's current plugin in the fixture, `mini` answered on the local model as `Tech-Lead`, and `workmux status --json` listed `"agents": []` at every poll through the 74-second turn: the TUI plugin does not run in `mini`.
+
+**Plain `opencode` starts whatever agent the config names.** With `start = "opencode"` workmux typed `opencode --prompt "$(cat .workmux/PROMPT-issue-14.md)"`. Without `default_agent` the footer read `Build · <local model>`, opencode's own default agent, and it answered `ready`. With `"default_agent": "tech-lead"` in the fixture's `opencode.json` the same start gave:
+
+```
+  ┃  Reply with the single word ready, then stop.
+
+     + Thought · 2.0s
+
+     ready
+
+     Tech-Lead · <local model> · 1m 8s · 0.3 tok/s
+  ┃
+  ┃  Tech-Lead · <local model> <local provider> · medium
+```
+
+and `workmux status --json` read `working` through the turn and `done` after it, `"agent_kind": "opencode"`. That is the combination the rest of this entry uses: `start = "opencode"`, `default_agent` in a config opencode reads, and workmux's current plugin. [OC-03]'s `default_agent` still holds at 2.2.7 for the TUI; its `opencode --agent <name>` does not.
+
+**Carrying `default_agent` in the start command did not work.** opencode reads a config from the environment variable `OPENCODE_CONFIG_CONTENT`, and `--standalone` gives a session its own server, which would read that session's environment. Two forms were tried with `default_agent` taken out of the fixture again:
+
+```
+start = "env 'OPENCODE_CONFIG_CONTENT={\"default_agent\":\"tech-lead\"}' opencode --standalone"
+  typed:  env OPENCODE_CONFIG_CONTENT={"default_agent":"tech-lead"} opencode --standalone --prompt "$(cat .workmux/PROMPT-issue-18.md)"
+  log:    level=WARN message="configuration normalization diagnostic" source=OPENCODE_CONFIG_CONTENT … action="rejected malformed JSON or JSONC document"
+  footer: Build · <local model>
+
+start = "env 'OPENCODE_CONFIG_CONTENT={\"default_agent\": \"tech-lead\"}' opencode --standalone"
+  typed:  env OPENCODE_CONFIG_CONTENT={"default_agent": "tech-lead"} opencode --standalone -- "$(cat .workmux/PROMPT-issue-19.md)"
+  pane:   env: ‘tech-lead}’: No such file or directory
+```
+
+workmux dropped the single quotes around the assignment both times, so the shell ate the double quotes. In the first form it still recognised opencode behind `env`, injected `--prompt`, and the standalone session registered with workmux (`working`, then `done`) as `Build`. Inline JSON cannot be carried this way. A path to a file can: step 10.
+
+### 5. First-run prompts: none
+
+No new worktree stopped at a prompt. Nine worktrees were opened in the TUI, steps 10 and 11 included, and two in `mini`, each a path opencode had never seen, and each went straight to its start prompt. opencode also read the fixture's `opencode.json` (the `default_agent` above) and loaded and ran the fixture's `.opencode/plugins/` code without asking. So there is nothing to pre-answer, no `trust` string for this host was looked for, and no control was run. The other side of that: at 2.2.7 a repository's own config chooses the agent and its plugin code runs in the TUI, before anyone is asked anything. Only the fixture's files were used to see this.
+
+### 6. States
+
+One session, `issue-17`, the tech-lead in the TUI. Prompts were typed into its pane. `workmux status --json` was polled every 4 or 5 seconds; the hook times are from workmux's log.
+
+| moment | `status` | hook call |
+|---|---|---|
+| the start turn, model at work | `working` | 08:24:30 `working` |
+| that turn ended | `done` | 08:25:39 `done` |
+| asked to read `.env`; model at work | `working` | 08:25:57 `working` |
+| at opencode's permission prompt for `Read .env` | **`waiting`** (elapsed 1, 6, 29) | 08:26:05 `waiting` |
+| `Reject` chosen there: the reply footer says `interrupted` | `done` | 08:26:57 `done` |
+| asked again; at the same prompt | `waiting` (elapsed 1, 13) | 08:30:51 `waiting` |
+| `Allow once` chosen | `working`, then `done` 2 s later | 08:31:04 `working`, 08:31:06 `done` |
+| a tech-lead at a form of opencode's question tool (steps 8 and 9) | `waiting` | 08:43:52, 08:50:01 `waiting` |
+| that form dismissed with esc: footer `interrupted` | `done` | 08:44:30 `done` |
+
+**All three states appear.** `workmux capture issue-17 --lines 200` at the permission prompt, tail:
+
+```
+  ┃  Read the file .env in this directory with your read tool and tell me how many lines it has.
+  ┃
+     + Thought · 7.1s
+     ⠼ Read .env
+  ┃
+  ┃  △ Permission required
+  ┃    → Read .env
+  ┃
+  ┃  Path: .env
+  ┃
+  ┃
+  ┃   Allow once   Always allow   Reject                              ctrl+f fullscreen  ⇆ select  enter confirm
+```
+
+and the overview there:
+
+```
+NAME      STATE    HOST      RETURN  QUESTIONS
+issue-17  waiting  opencode          no RETURN block on screen
+```
+
+Unlike Antigravity (E26), a rejected permission and a dismissed question both end the turn, so the session reads `done`, not `working`. The tech-lead's permissions allow everything but reading `.env` files, so its shell commands never raised a prompt: in this entry `waiting` came only from the `.env` read and from the question tool.
+
+### 7. The captured screen around a RETURN block
+
+The same session was asked for the block the way E26 step 6 asked: one line, then the block in a code fence, `findings: none`, and a question of at least 400 characters. The local model left `knowledge:` out the first time (its raw text ends `…assuming it is safe.` and the closing fence, by the session export). The overview said `no RETURN block on screen`, which is what the skill promises for an incomplete block. Asked to add the last line, it sent the block whole. `workmux capture issue-17 --lines 200` returned 62 lines on the 238 × 63 pane (`#{alternate_on}` 1, `#{history_size}` 0). Lines 40 to 55:
+
+```
+     Reading .env was rejected (the tool call was declined), so I have no line count to report.
+
+     ### RETURN
+     status: needs-decision
+     task: issue-17
+     changed: none
+     evidence: the read of .env was rejected
+     findings: none
+     risks: none
+     follow-ups: none
+     questions: Do you want me to retry reading `.env` so I can report its line count, or should I skip it entirely? Retrying is the right move if `.env` is expected to be readable by me and its
+     line count is genuinely needed for this task; skip it if the file is sensitive/should never be opened, if the count was only a provisional check now superseded, or if access was denied for
+     permission or policy reasons that retrying would not change. Note that `.env` often holds secrets, so I want your explicit go-ahead before opening it again rather than assuming it is safe.
+     knowledge: none
+
+     Tech-Lead · <local model> · 12.7s · 18.6 tok/s
+```
+
+```
+NAME      STATE  HOST      RETURN          QUESTIONS
+issue-17  done   opencode  needs-decision  Do you want me to retry reading `.env` so I can report its line count, or should I skip it entirely…
+```
+
+What a reader of an opencode capture has to handle:
+
+- **No fence and no frame**, as on Antigravity. Every line of the block is indented five spaces, and so is the sentence above it. The user's own prompt is drawn inside a `┃` bar; the reply is not.
+- **Wrapping is the TUI's own**, at a word boundary, and a continuation line has the same indent as a field line.
+- **The capture is the visible screen only.** The TUI draws on the alternate screen: 62 lines from a 63-row pane, 93 from a 94-row pane, 23 from a 24-row one.
+- **The nested `findings:` list** (from step 8): `- severity:` is indented seven spaces and `path:`, `line:`, `body:` nine, but a wrapped `body:` falls back to five, the block's own indent. `fleet.py` read that block correctly.
+- **The sidebar shares the block's rows.** In a pane this wide the TUI draws a sidebar at the right edge: the session's title, `Context`, a token count, a percentage, `MCP` and one line per MCP server, on screen rows 3 to 10. The probe machine's opencode settings carry `"sidebar": "auto"`; whether that is opencode's default was not checked. A capture is whole screen rows, so a block line on one of those rows ends in sidebar text.
+
+That last point breaks the parser. On the 63-row pane the block sat on rows 42 to 53 and the sidebar on rows 3 to 10, so they never met. The window was then resized to 238 × 25, which puts the same block on rows 4 to 15. Rows 4 to 10 of that capture, with the blank columns between the two parts cut and marked `~`:
+
+```
+     ### RETURN                               ~
+     status: needs-decision                   ~     Context
+     task: issue-17                           ~     14,020 tokens
+     changed: none                            ~     21% used
+     evidence: the read of .env was rejected  ~
+     findings: none                           ~     MCP
+     risks: none                              ~     • <mcp server>              Connected
+```
+
+```console
+$ python3 skills/ec-fleet/scripts/fleet.py overview
+NAME      STATE  HOST      RETURN  QUESTIONS
+issue-17  done   opencode          no RETURN block on screen
+```
+
+The block is on screen, whole, from `### RETURN` through `knowledge:`. `last_return` reads the status as `needs-decision`, a run of spaces, `Context`, which is not one of the four, and returns nothing. One row higher (238 × 24) the status line fell on a sidebar row that is blank, and the same block read correctly, with `task`, `changed` and `evidence` carrying sidebar text that `fleet.py` does not use. A `questions:` line on a sidebar row would be shown with the sidebar's text on its end; that was not produced. The failing capture is saved as a fixture, 24 lines, with the path in its footer, the model's label and the MCP server's name replaced by text of the same length so that no column moves; `last_return` returns `None` on the saved copy too. In a long session the sidebar also lists other things, such as modified files, and reaches further down; how far was not measured.
+
+### 8. End to end
+
+With the skill installed as in step 1, `default_agent` and the plugin in the fixture, and a config file holding only `start = "opencode"`, so the prompt was the package's own:
+
+```
+08:31:17  workmux add issue-12 --background --agent "opencode" --prompt "Use the ec-fleet skill. Your assignment: issue 12."
+08:31:20  "workmux", "register-agent"                  pane %65
+08:31:20  "workmux", "set-window-status", "working"
+08:43:52  "workmux", "set-window-status", "waiting"
+```
+
+The session's tool calls, from its export, shortened:
+
+| time | tool | input |
+|---|---|---|
+| 08:31:20 | `skill` | `{"id": "ec-fleet"}` |
+| 08:32:29 | `shell` ×2 | `cd "<the worktree's path, mistyped>" && pwd && git status …` (both failed: no such directory) |
+| 08:33:17 | `shell` | `pwd && echo "---" && ls -la` |
+| 08:34:58 | `shell` ×2 | `echo "=== AGENTS.md ==="; cat AGENTS.md; … cat CLAUDE.md; … cat README.md; … cat opencode.json`, and a listing |
+| 08:35:53 to 08:37:44 | `shell` ×7 | the prompt file, the lock, `git log`, `git remote -v`, `git ls-files`, the head of the installed `fleet.py` |
+| 08:39:13 | `shell` | `cd ~/.config/opencode/skills/ec-fleet && … python3 scripts/fleet.py overview` |
+| 08:39:13 | `shell` | `workmux status …; workmux status --json …` |
+| 08:43:52 | `question` | a form with three options and a free-text field |
+
+- **The prompt arrived**, as the first line of the conversation on screen and the export's first message.
+- **The skill was its first act**, through opencode's `skill` tool, by the name in the prompt.
+- **It read `AGENTS.md`**, with `cat`, three and a half minutes in. It ran every shell command with no approval.
+- **It did not stop with a RETURN block.** It found no tracker and no brief, said so, and asked through opencode's question tool: `→ Asked 1 question`, then a form headed `Questions` with `↑↓ select  enter submit  esc dismiss`. A form is not the end of a turn, so the session read `waiting`, and the overview showed:
+
+  ```
+  NAME      STATE    HOST      RETURN  QUESTIONS
+  issue-12  waiting  opencode          no RETURN block on screen
+  ```
+
+  The question itself was on that session's screen. The skill's rule 4 asks for the block "every time you stop"; whether a question form counts as a stop is not something the skill says, and this model read it as not one.
+- **An issue tech-lead ran the overview.** The skill tells an issue tech-lead to ignore **Dispatching**. This one ran `fleet.py overview` anyway, and it ran it from the skill's directory, which is not inside the repository. `workmux status --json` is scoped to the repository it runs in (E27); run from outside any repository it was not scoped at all, and the table listed a session of another repository on the same tmux server beside the fixture's own, which was marked `(this session)`. That other session read `working`, so its screen was not captured. Had it been stopped, `fleet.py` would have captured it.
+
+The form was dismissed with esc, which ended the turn (`interrupted`, `done`). The session was then told, in its own pane, that the question was dismissed, that the project names no tracker, and to stop the way the skill tells an issue tech-lead to stop. Its second stop, lines 69 to 86 of the 93 captured on the 382 × 94 pane, the three longest lines cut with `…`:
+
+```
+     ### RETURN
+     status: blocked
+     task: issue 12 (ec-fleet assignment)
+     changed: none
+     evidence: git log --oneline --all -20 (5 chore commits, author Fleet Probe); git diff main..issue-12 --stat (empty); git remote -v (origin, no URL); …
+     findings:
+       - severity: blocking
+         path: -
+         line: -
+         body: "issue 12 has no substantive brief: the worktree is a probe fixture (README: 'A throwaway repository for a host probe'; …), the PROMPT is fleet.py's literal prompt constant, and the project names no tracker (git remote `origin` has no URL). There is nothing to implement here. The
+     fleet mechanics the probe targets do work: … Carrying on into an empty brief was not possible, and the user disabled further questions, so this
+     is handed back."
+     risks: none outstanding
+     follow-ups: none — this run only verified the opencode host + workmux-status integration, which is working. …
+     questions: ready to push
+     knowledge: none
+
+     Tech-Lead · <local model> · 15m 38s · 11.6 tok/s
+```
+
+```console
+$ python3 skills/ec-fleet/scripts/fleet.py overview
+NAME      STATE  HOST      RETURN   QUESTIONS
+issue-12  done   opencode  blocked  ready to push
+```
+
+The overview read it: `done`, `blocked`, and the `questions` value as written. `ready to push` under `blocked` is the model's, not the parser's.
+
+### 9. A tech-lead session runs `fleet.py start`
+
+The dispatching tech-lead was started in the probe's shell pane, in `<tmp>/repo`, with no fleet config of any kind:
+
+```console
+$ opencode --prompt 'use the ec-fleet skill; start 13'
+```
+
+It opened with no prompt of opencode's own, as `Tech-Lead`, and registered with workmux as `repo`. Its tool calls and their results, from the export:
+
+```
+08:47:24  skill   {"id": "ec-fleet"}
+08:48:32  shell   cd ~/.config/opencode/skills/ec-fleet && python3 scripts/fleet.py start 13
+                  fleet: no host chosen: pass --host (antigravity, claude, codex, opencode) or set default_host in the config          exit 2
+08:49:28  question  "Which host should the worktree for issue 13 start on?"  (opencode (Recommended) / claude / codex / antigravity)
+08:50:19  shell   cd ~/.config/opencode/skills/ec-fleet && python3 scripts/fleet.py start 13 --host opencode
+                  Error: Current directory is not a git repository.                                                                 exit 1
+08:50:37  shell   python3 ~/.config/opencode/skills/ec-fleet/scripts/fleet.py start 13 --host opencode   workdir=<the repository's path, mistyped>
+                  Working directory does not exist: …
+```
+
+Three things stopped it before a worktree existed, none of them an approval:
+
+1. **It changed into the skill's directory to run the script.** The skill says "Run the script beside this file" and shows `python3 scripts/fleet.py start <reference>`. This session and the one in step 8 both turned that into `cd <skill directory> && python3 scripts/fleet.py …`. From there `workmux add` is outside the repository and fails. Had the skill's directory been inside some other git repository, workmux would have made the worktree there; that was checked beforehand and it is not.
+2. **It asked which host**, through the question tool, where the skill says to run the script again with its own host. The session read `waiting`. `opencode (Recommended)` was chosen, acting as the person.
+3. **It mistyped the repository's path** when it tried to go back, and then looked for the repository under the parent directories. That is this model and this long path, not the host.
+
+It was interrupted and told to run the script by its full path with no `cd`:
+
+```
+08:53:45  shell   python3 ~/.config/opencode/skills/ec-fleet/scripts/fleet.py start 13 --host opencode
+                  started issue-13                                                                                                  exit 0
+08:53:50  shell   python3 ~/.config/opencode/skills/ec-fleet/scripts/fleet.py overview
+                  NAME      STATE    HOST      RETURN   QUESTIONS
+                  repo      working  opencode           (this session)
+                  issue-12  done     opencode  blocked  ready to push                                                               exit 0
+```
+
+```
+08:53:50.571  workmux add issue-13 --background --agent "opencode --agent tech-lead" --prompt "Use the ec-fleet skill. Your assignment: issue 13."   cwd=<tmp>/repo tmux_pane=%40
+08:53:50.608  create:start branch="issue-13" base=Some("main")
+08:53:50.655  window created, pane %76
+08:53:50.751  create:completed path=<tmp>/repo__worktrees/issue-13
+```
+
+- **No approval was asked**, by opencode or by workmux. opencode ran the command at once, under the tech-lead's `*: allow`. workmux asked nothing: 37 ms from the command's start to `create:start`. Earlier in the probe a bare `workmux list` typed in a terminal pane had stopped at workmux's offer to update another agent CLI's hooks (E26); it was aborted with ctrl+c, and nothing was written.
+- **The shell tool runs in the session's own pane environment.** workmux logged `tmux_pane=%40`, the dispatching TUI's pane, although the shared `opencode serve --service` process carried the `TMUX_PANE` of the window that had first started it, a pane closed long before. So the new window opened in the dispatching session's tmux session, and the overview marked the right row `(this session)`.
+- **The dispatched window died as in step 2.** It was started with the package's default command, printed `Unrecognized flag: --agent in command opencode`, and held a shell. The dispatching tech-lead read `started issue-13`, ran the overview twice, saw no `issue-13` row, and went looking for the reason. It was interrupted there.
+
+### 10. The agent through a config file named in the environment
+
+OC-10 says opencode merges a config file from the path in `$OPENCODE_CONFIG` after the global config and before the project's. A path needs no quotes, so it can pass through workmux where inline JSON could not (step 4). The file was `<tmp>/agentcfg/agent.json`, holding only `{"default_agent": "tech-lead"}`. The fixture's `opencode.json` had no `default_agent`; it kept the local provider, and the fixture kept workmux's plugin.
+
+First with no prompt, in `<tmp>/repo`, with the background service stopped:
+
+```console
+$ env OPENCODE_CONFIG=<tmp>/agentcfg/agent.json opencode --standalone debug config      # rc 0; type, path and default_agent of each source, in the order printed
+document   ~/.config/opencode/opencode.json     default_agent: -
+directory  ~/.config/opencode
+document   <tmp>/agentcfg/agent.json            default_agent: tech-lead
+document   <tmp>/repo/opencode.json             default_agent: -
+directory  <tmp>/repo/.opencode
+$ env OPENCODE_CONFIG=<tmp>/agentcfg/agent.json opencode --standalone models            # rc 0: six models, all of the local provider
+```
+
+**`$OPENCODE_CONFIG` is read at 2.2.7**, in the place OC-10 gives it, and the project's provider restriction still applied. The same two commands were the check, before each start below, that the session would be on the local provider.
+
+**With `--standalone`: holds.** A config file with `start = "env OPENCODE_CONFIG=<tmp>/agentcfg/agent.json opencode --standalone"` and the short prompt:
+
+```
+09:09:04.168  workmux add issue-20 --background --agent "env OPENCODE_CONFIG=<tmp>/agentcfg/agent.json opencode --standalone" --prompt "Reply with the single word ready, then stop."
+09:09:07.025  "workmux", "register-agent"                  pane %80
+09:09:07.484  "workmux", "set-window-status", "working"
+09:10:08.907  "workmux", "set-window-status", "done"
+```
+
+workmux typed `env OPENCODE_CONFIG=<tmp>/agentcfg/agent.json opencode --standalone --prompt "$(cat .workmux/PROMPT-issue-20.md)"`. The probe's own read of that line was cut after `--prom`; the process list gives the rest, `opencode|--standalone|--prompt|Reply with the single word ready, then stop.|`, with a child `opencode serve --stdio --port 0`, both carrying `OPENCODE_CONFIG=<tmp>/agentcfg/agent.json` and the new pane's `TMUX_PANE`. The screen:
+
+```
+     ready
+
+     Tech-Lead · <local model> · 1m 0s · 0.3 tok/s
+  ┃
+  ┃  Tech-Lead · <local model> <local provider> · medium
+```
+
+The footer read `Tech-Lead` from the first capture, 8 seconds after the start. `workmux status --json` read `working` and then `done`, `"agent_kind": "opencode"`. `opencode service status` read `stopped` before and after: the session used no shared service.
+
+**Without `--standalone`: it depends on who started the background service.** The variable is read by the server process, and the shared service is one process that keeps the environment of whichever client started it.
+
+| the background service | `opencode debug config`, no variable on the client | `env OPENCODE_CONFIG=… opencode debug config` | `fleet.py start` with `start = "env OPENCODE_CONFIG=<tmp>/agentcfg/agent.json opencode"` |
+|---|---|---|---|
+| stopped, then started by a client that carried the variable (`env OPENCODE_CONFIG=… opencode models`) | lists `<tmp>/agentcfg/agent.json`, `default_agent: tech-lead` | lists it | `issue-21`: footer `Tech-Lead`, prompt arrived, registered as `opencode`, `working` then `done` |
+| stopped, then started by a client without it (`opencode debug config`) | does not list it | **does not list it** | `issue-22`: footer **`Build`**, prompt arrived, registered as `opencode`, `working` then `done` |
+
+In both rows workmux typed the same thing, `env OPENCODE_CONFIG=<tmp>/agentcfg/agent.json opencode --prompt "$(cat .workmux/PROMPT-issue-22.md)"` (the name apart), and the TUI process carried the variable:
+
+```
+opencode|serve|--service|                                                 TMUX_PANE=%79
+opencode|--prompt|Reply with the single word ready, then stop.|           TMUX_PANE=%82 OPENCODE_CONFIG=<tmp>/agentcfg/agent.json
+```
+
+So on a service that is already running, the variable on the start command does nothing, silently. And a service started with it gives the file to every later session on that machine, also ones started without the variable (first row, second column), until the service stops. opencode's log names the variable nowhere. A server that read the file logged a file watcher on the file's directory (`message="watcher started" path=<tmp>/agentcfg`); the server that ignored the client's variable logged nothing about it.
+
+**A path with a space: fails.** The same file at `<tmp>/agent cfg/agent.json`, with the assignment in single quotes:
+
+```
+start = "env 'OPENCODE_CONFIG=<tmp>/agent cfg/agent.json' opencode --standalone"
+  typed:  env OPENCODE_CONFIG=<tmp>/agent cfg/agent.json opencode --standalone -- "$(cat .workmux/PROMPT-issue-23.md)"
+  pane:   env: ‘cfg/agent.json’: No such file or directory
+```
+
+workmux dropped the quotes again, as in step 4, and here it also did not recognise opencode: it appended `-- "<prompt>"`, not `--prompt`. No session started, `fleet.py` printed `started issue-23` with rc 0, and `workmux status --json` listed `"agents": []`.
+
+### 11. The fallback: no agent configured, and the real prompt
+
+With `start = "opencode"`, no `default_agent` in any config, no `$OPENCODE_CONFIG`, and the package's own prompt. The fixture's `AGENTS.md` carries the managed block, with its line "If no Tech-Lead persona is active in this session, invoke the `ec-tech-lead` skill first."
+
+```
+09:14:00.865  "workmux", "register-agent"                  pane %84, issue-24
+09:14:01.334  "workmux", "set-window-status", "working"
+09:28:14.270  "workmux", "set-window-status", "done"       <- interrupted by the probe
+```
+
+The footer read `Build`. What it did, in order, from the session export:
+
+| time | what |
+|---|---|
+| 09:14:01 | text: "I'll start by loading the ec-fleet skill to understand the workflow for this assignment." Tool `skill`, `{"id": "ec-fleet"}` |
+| 09:15:03 | text: "I've been assigned issue 24 as an issue tech-lead. Let me start by reading the AGENTS.md (in context) …". `shell`: `pwd`, branch, status, log. `shell`: `cd ~ && git log …; ls -d ~/repos/*` |
+| 09:15:38 | `shell`: `cd ~/.config/opencode/skills/ec-fleet && python3 scripts/fleet.py overview`. `shell`: `cd` to a guessed path under the home directory, mistyped, which failed |
+| 09:16:05 to 09:26:21 | seventeen more `shell` calls and three `read` calls, two of them failed: the worktree, its git metadata, the prompt file, the lock, the installed `fleet.py`, and repeated attempts to `cd` to its own path, mistyped |
+| 09:28:14 | interrupted with esc, 14 minutes in, with no stop of its own |
+
+- **It did not load `ec-tech-lead`.** One `skill` call in the whole session, `ec-fleet`. The managed block's line was in its context, by its own words, and it did not act on it.
+- **It never signed.** None of its 16 text parts carries the tech-lead's signature, and all 21 assistant messages are recorded with `"agent": "build"`.
+- **It took the assignment anyway**, calling itself "an issue tech-lead", with `Build`'s permissions: everything allowed, and no delegation limit. It wrote nothing: 21 `shell`, 3 `read`, 1 `skill`, no edit, and `git status` in the worktree was clean afterwards.
+- **It left the worktree.** Its second command listed the directories under `~/repos`, and it ran the overview from the skill's directory, which again listed a session of another repository (step 8).
+- **It did not stop by itself** in 14 minutes. Told, in its pane, that the project names no tracker and to stop the way the skill tells an issue tech-lead to stop, it ended 4 min 42 s later with a complete block. Lines 74 to 86 of the 93 captured, the evidence line cut with `…`:
+
+```
+     ### RETURN
+     status: blocked
+     task: issue 24
+     changed: none
+     evidence: fleet.py overview (…); git worktree list (…); git log --all --oneline (6 chore commits, no issue content); cat .e-colleagues/lock.json (roster/lenses, no tracker); …
+     git remote -v (origin empty); AGENTS.md bindings read (no tracker/platforms named)
+     findings: []
+     risks: none — nothing was changed or shipped
+     follow-ups: none
+     questions: There is no issue 24 brief available in this fixture — no tracker is named in AGENTS.md and the repo has no remote, so the brief cannot be read. Point me at it (URL, local path, or paste it), or tell me to redefine the assignment.
+     knowledge: none
+
+     Build · <local model> · 4m 42s · 12.2 tok/s
+```
+
+```console
+$ python3 skills/ec-fleet/scripts/fleet.py overview
+NAME      STATE  HOST      RETURN   QUESTIONS
+issue-24  done   opencode  blocked  There is no issue 24 brief available in this fixture — no tracker is named in AGENTS.md and the rep…
+```
+
+So with no agent configured the overview looks the same as for a tech-lead, `opencode` in the HOST column and a readable block, and nothing in it says the session is not one. One run, one local model.
+
+### Verdicts
+
+1. **Start: fails with the package's default, and nothing says so.** `opencode --agent tech-lead` is not a command at 2.2.7: the top-level command has no `--agent`. workmux opens the window and types `opencode --agent tech-lead --prompt "$(cat .workmux/PROMPT-<name>.md)"`; the pane then holds a shell with opencode's usage error, `fleet.py start` prints `started <name>` with rc 0, and `workmux status --json` reports no session. With `start = "opencode"` and `default_agent: tech-lead` in a config opencode reads, workmux types `opencode --prompt "$(cat .workmux/PROMPT-<name>.md)"`, the TUI opens as the tech-lead and the prompt arrives. `opencode mini --agent tech-lead` also starts the tech-lead but is never reported. Without `default_agent` in a config, `start = "env OPENCODE_CONFIG=<path>/agent.json opencode --standalone"`, the file holding `{"default_agent": "tech-lead"}`, starts the tech-lead too, tracked, whatever the machine's config says; without `--standalone` the same command works only when it is the one that starts the background service, and a path with a space breaks it (step 10). The session is reported, with `"agent_kind": "opencode"`, only by workmux 0.1.281's current plugin: the one-file plugin installed on this machine fails to load at 2.2.7, so as found workmux reports no opencode session at all and the overview has no row. The current plugin was loaded from the fixture.
+2. **First-run prompts: none.** A new worktree goes straight to its prompt, and opencode applies the repository's config and runs its plugins unasked. There is nothing to pre-answer, so no `trust` string is needed and none was tested.
+3. **States: `working`, `waiting` and `done`, all three.** A session at opencode's permission prompt, or at a question-tool form, reads `waiting`. A rejected permission or a dismissed form ends the turn and reads `done`.
+4. **The captured screen: the overview reads the block, with one parser bug.** A complete block was read on a 63-row and a 94-row pane, with a wrapped value and with the nested `findings:` list. When the `status:` line shares a screen row with sidebar text, the overview says `no RETURN block on screen` with the whole block in view. That capture is saved as a fixture.
+5. **End to end: holds in part.** The tech-lead loaded `ec-fleet` from the start prompt as its first act and read `AGENTS.md`. Its first stop was a question-tool form, not a RETURN block, and the overview showed `waiting` and `no RETURN block on screen`. Told to stop as the skill says, it ended with a complete block and the overview showed `done`, `blocked` and its `questions` value. With no agent configured, `start = "opencode"` and the same prompt, opencode's `Build` agent took the assignment: it loaded `ec-fleet`, did not load `ec-tech-lead`, never signed, did not stop in 14 minutes, and gave a block the overview read once it was told to stop (step 11). The managed block's line did not hold in that run.
+6. **Dispatch from inside a session: holds, with no approval and with one trap.** An opencode tech-lead ran `fleet.py start` and `fleet.py overview` through its shell tool with no approval, workmux asked nothing, and the window opened in its own tmux session. Left alone, it first ran the script from the skill's directory, where the start fails with `Current directory is not a git repository` and from where the overview is no longer scoped to the project. The window it started died on the default start command, as in verdict 1.
+
+### Not measured
+
+- Any of this with workmux's plugin installed by `workmux setup` under `~/.config/opencode/`. It was loaded from the fixture's `.opencode/plugins/` only.
+- `default_agent` in the global config. It was set in the fixture's `opencode.json` only.
+- What `--standalone` costs and changes: each session then runs its own server, and whether such a session shares the session list, the service's remote features or anything else with the background service was not looked at.
+- The `$OPENCODE_CONFIG` form in a home directory whose path holds a space, beyond the one failing start in step 10, and any way to quote such a path through workmux.
+- The fallback of step 11 more than once, or with another model.
+- Which model the TUI uses in a new worktree with no project config. From step 4 on the fixture named the local one.
+- Any model but the one local model. The mistyped paths, the question forms and the overview run by an issue tech-lead are that model's.
+- A `questions:` line beside sidebar text, the sidebar in a long session, and a pane too narrow for the sidebar.
+- A block taller than the pane.
+- A contract with `### Parallel work` lines, a commit or a push from a worktree, several issues at once, and the plan assignment.
+- `--auto`, opencode's flag that approves every permission not denied, and a tech-lead whose permissions ask before shell commands.
+- opencode's remote features (`opencode pair`, `--server`).
+- opencode between 2.0.18 and 2.2.7: the version at which `--agent` left the top-level command, and the one at which the one-file plugin stopped loading, are UNVERIFIED.
+
+**Host state.** The opencode install was updated from the export at `754fce5` and left updated: under `~/.config/opencode/`, `skills/ec-fleet/` is new (two files) and `skills/ec-init/SKILL.md` changed; the six agents and the other three `ec-` skills were rewritten with identical bytes. The six skills that are not this package's, `plugins/workmux-status.ts`, `cli.json`, the global `opencode.json` and the global `AGENTS.md` have the same hashes as before. Nothing was written under `~/.codex/` by this probe. Its agents directory is untouched. `~/.codex/e-colleagues.config.toml` has a different hash than before; who wrote it is not established here. opencode's background service was started by the probe and stopped at the end (`opencode service status`: `stopped`, as before; no opencode process left); stopping it removed a stale `~/.local/state/opencode/service.json` left by an earlier opencode version. opencode kept its usual records: twelve sessions in its database, its log, and twelve prompts appended to `~/.local/state/opencode/prompt-history.jsonl`, the TUI's input history. `model.json`, `kv.json` and `auth.json` have the same hashes as before. Fifteen worktrees were made and removed, `issue-12` to `issue-24` with 12 and 13 made twice (`✓ Removed worktree 'issue-12' and branch 'issue-12'`, and the same for each). Afterwards `workmux status --json` in `<tmp>/repo` listed `"agents": []`, `git worktree list` listed only `<tmp>/repo`, and the probe's tmux session was killed. workmux kept a state file for four probe panes under `~/.local/state/workmux/agents/`; all four were removed. No `setup.json` and no `sent/` was created, the other agent CLI's hooks file has the same hash as before, and the workmux config was not modified. workmux appended to its log. The two scratch homes used in step 3 and the two `agent.json` files of step 10 are under `<tmp>`. Steps 10 and 11 were a second sitting, with its own probe session of the same name and its own hashes: between its start and its end the only file that differs is `prompt-history.jsonl`, and the service, started and stopped twice, was left stopped.
 
 ---
 

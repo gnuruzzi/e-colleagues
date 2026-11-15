@@ -396,7 +396,7 @@ Prose-only ceilings, stated plainly: signatures everywhere; the primary persona 
 Notes that bind the implementation:
 
 - **Real files, never symlinks.** Codex opens a role's config with `O_NOFOLLOW` at spawn, so a symlinked `~/.codex/agents/*.toml` is discovered but fails when spawned — **measured** (Q4, `experiments.md` E5): identical file content, symlink → `agent type is currently not available`, real file → spawns [CX-02]. `--scope user` writes copies, and `check.py` refuses to emit a symlink into an agents directory. Consequence for §14: a symlink-installed persona cannot spawn at all, so replacing that layout is a fix rather than a tidy-up.
-- **`~/.codex/config.toml` is never written by this package.** Codex rewrites that file itself, and on this machine it is deliberately untracked state. The profile is a separate file; `codex --profile` reads `~/.codex/<name>.config.toml` [CX-03].
+- **`~/.codex/config.toml` is never written by this package.** Codex rewrites that file itself, and on this machine it is deliberately untracked state. The profile is a separate file; `codex --profile` reads `~/.codex/<name>.config.toml` [CX-03]. Started with the profile, Codex 0.167.0 appends its own state to that file too: a model choice, hook trust, trusted projects (E29, E30). `--scope user` therefore leaves a profile that still begins with the current text alone, and keeps an outdated one as `.bak` beside the new file.
 - **Skills live in exactly one scope per host.** A user with the plugin *and* project `.agents/skills` copies sees `ec-init` twice, because same-named skills are not merged [CX-07]. The plugin is the documented route; project copies would be opt-in, and no option writes them yet. Project skills are **not** trust-gated (the CX-03 correction), so `$ec-tech-lead` works in an untrusted clone even when the agents do not load — **measured** in one run (Q17, `experiments.md` E12): the skill loaded and its body was followed, while the project agent failed with `unknown agent_type '<name>'`.
 - **Two install stories, one of which ships.** Route A is per-user and is what exists: plugin for skills, `bootstrap.py --scope user` for the Codex personas and profile and, since E25 ruled out a plugin route, for the opencode agents and skills too. Route B is per-repo — the project carrying `.codex/agents/`, the `.codex/config.toml` managed region and vendored skills, so a teammate clones, trusts once and has the team with nothing installed — and it is a design sketch, not code: nothing writes those files today.
 - **Locating the script after a plugin install** is settled (Q15, `experiments.md` E6): the whole tree is copied to `~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/`, so the script is at `.../skills/ec-init/scripts/bootstrap.py`. The **version is a path segment**, so nothing may hardcode the path; the skill resolves the script relative to its own `SKILL.md`, as §6 already requires.
@@ -604,8 +604,12 @@ Antigravity (E28) and `-c 'projects={"{worktree}"={trust_level="trusted"}}'` for
 Claude Code has none, because no session-only way to pre-answer its trust dialog was found
 (E31). `trust = ""` leaves them out. `base_flag` defaults to
 `--base`, passed through as workmux's own `--base` (E28). The default start commands are `agy --agent tech-lead` [AG-03],
-`codex --profile e-colleagues` (E14), `opencode --agent tech-lead` [OC-03] and
-`claude --agent tech-lead` [CC-10]. Only the workmux default is tested.
+`codex --profile e-colleagues` (E14), `claude --agent tech-lead` [CC-10] and, for opencode,
+`env OPENCODE_CONFIG=<the skill's scripts directory>/opencode-tech-lead.json opencode --standalone`
+(E30): opencode's TUI takes no `--agent` at 2.2.7, the file holds `{"default_agent": "tech-lead"}`,
+and only a session with its own server reads the variable from its own environment. `{skill}`
+in a start command stands for that directory; the launcher passes it unquoted, so a start that
+uses it is refused when the path holds a space. Only the workmux default is tested.
 
 **Prerequisite:** workmux, with its status hooks set up for each host it starts; they are what
 report `working` and `done` (E26 read the installed hooks; `workmux setup`, the command
@@ -665,7 +669,29 @@ this is the reason is an inference (E27).
 - a Claude Code session can run `fleet.py`: with no approval in auto mode, with one in manual
   mode.
 
-**UNVERIFIED:** all of this on opencode; and remote use on every host. At agy 1.5.3 a session
+**Measured on opencode** (E30, 2.2.7, workmux 0.1.281):
+
+- `opencode --agent tech-lead`, the default start until then, is not a command at 2.2.7: the
+  pane shows a usage error, and `fleet.py start` still prints `started <name>`;
+- `env OPENCODE_CONFIG=<path>/agent.json opencode --standalone` starts the tech-lead with its
+  prompt whatever the person's own config holds. Without `--standalone` the variable counts only
+  if that start is the one that launches opencode's background service. The shipped file's own
+  path was not run; the form was;
+- workmux reports an opencode session only with its current plugin (`workmux setup`): the
+  one-file plugin of an earlier workmux does not load at 2.2.7, and then the overview has no row;
+- there is no first-run prompt: a new worktree goes straight to its start prompt, and opencode
+  applies the repository's own config and runs its plugins unasked;
+- workmux reports `working`, `waiting` and `done`; a permission prompt or a question form reads
+  `waiting`;
+- the overview reads a RETURN block from an opencode screen once text on the same rows, in
+  opencode's sidebar, is ignored;
+- a dispatched tech-lead loads `ec-fleet` first and reads `AGENTS.md`. On a slow local model its
+  first stop was a question form with no block; told to stop as the skill says, it gave one;
+- with no agent configured, plain `opencode` ran the assignment as opencode's own default agent:
+  it loaded `ec-fleet`, did not adopt `ec-tech-lead`, never signed, and its row looks like any
+  other. One run.
+
+**UNVERIFIED:** the Codex plugin route; and remote use on every host. At agy 1.5.3 a session
 started with `--remote-control` in a window was reported reachable from a phone (E26, reported,
 not measured).
 
