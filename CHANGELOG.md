@@ -26,8 +26,34 @@ this project uses semantic versioning from 0.1.0 onward.
 
 ### Changed
 
-- **D6 is read per assignment.** Only tech-leads speak and post externally, each within its
-  own assignment; with one tech-lead nothing changes. Specialists still never post.
+- **Every sub-agent reaches the session's MCP tools, and the project's contract says what it
+  may do with them (D6).** A specialist posts externally only where `AGENTS.md` grants it to
+  its role; by default none does and findings return to the tech-lead. `ec-init` asks. Only
+  tech-leads speak to the user, each within its own assignment. No host enforces the posting
+  rule: none tells a write through MCP from a read (E33).
+- **On Claude Code the reviewer and security now have MCP tools.** Their `tools` allowlist
+  stripped every one (E33). They carry a denylist instead, so `Write` and `Edit` stay refused
+  by the host and everything the list does not name is inherited.
+- **On Claude Code every specialist is denied what it was measured to inherit and does not
+  need (E36):** a prompt into another conversation, scheduling, worktrees, and the tools that
+  reach your account or devices. The developer and platform no longer inherit the web tools
+  their personas say they lack.
+- **Corrected: on Codex a role file does not sandbox a spawned reviewer.** At 0.167.0 it ran
+  with the session's sandbox and approval policy and wrote wherever the session could (E33).
+  Only a session started `read-only` holds, and it binds the developer too. Nothing tried
+  narrows one role alone (E34).
+- **Corrected: on Codex the plugin's skills are `$e-colleagues:ec-init` and so on.** Codex
+  expands a plugin skill only under the plugin's name; the short `$ec-init` is for a project
+  skill (E34).
+- **The Codex, opencode and Claude Code claims are re-run at 0.167.0, 2.2.7 and 2.1.325
+  (E34 to E36).** One changed: opencode no longer expands a slash command in a `run` prompt,
+  which this package does not use.
+- **On opencode the reviewer and security refuse more shell writes.** A redirection that
+  writes a file, `tee`, `cp`, `mv`, `rm`, `mkdir`, `touch` and `git init` are now refused
+  beside `git commit`, `git stash` and `sed -i` (E35). It narrows and is not a sandbox, and a
+  command with a literal `>` in an argument is refused too.
+- **The opencode tech-lead is told the delegation tool's current name**, `subagent` with
+  `agent`, beside the older `task` with `subagent_type`.
 - **The Antigravity claims are re-run at agy 1.5.3 (E32), and four changed.** `AGENTS.md` now
   reaches every agent tried. Workspace folders deliver agents, and a workspace agent replaces
   the installed one of the same name, in print mode even in an untrusted folder. Five listed
@@ -35,11 +61,20 @@ this project uses semantic versioning from 0.1.0 onward.
   replaces the old one.
 - **Antigravity needs agy 1.5.3 or later.** Versions 1.1.27 to 1.2.10 are no longer supported.
   The rendered agents list the 1.5.3 tool names, and the checker refuses a name that loads and
-  gives no tool. agy 1.5.3 has no search tool to list: a persona with a shell searches through
-  it, and the designer, which has none, reads only the paths it is given.
+  gives no tool. agy 1.5.3 has no search tool to list, so a persona searches through its
+  shell.
+- **The designer may run commands**, like the developer and platform. Without a shell it could
+  not list or find a file on Antigravity, which has no search tool.
 
 ### Fixed
 
+- **`ec-fleet` no longer reports a start that did not happen.** `fleet.py start` now looks
+  for the new session in the session list and prints `opened <name>, host not confirmed`
+  when the host exited at once or waits at a first-run prompt (E37). `confirm_seconds` in
+  the config sets the wait; `0` turns it off.
+- **`ec-fleet` on opencode starts the tech-lead every time.** With the start prompt on the
+  command line opencode 2.2.7 ran half the sessions as its own `build` agent; the fleet's
+  config file now disables `build` and `plan` for its sessions (E37).
 - **A `--scope user` update no longer drops what Codex wrote into its profile file.** Codex
   appends a model choice, hook trust and trusted projects there (E29, E30). A profile that
   still begins with the current text is left alone, and an outdated one is kept as `.bak`.

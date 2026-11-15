@@ -14,6 +14,7 @@ import re
 import shlex
 import subprocess
 import sys
+import time
 import tomllib
 
 DEFAULTS = {
@@ -38,12 +39,14 @@ DEFAULTS = {
         "status": ["workmux", "status", "--json"],
         "capture": ["workmux", "capture", "{name}", "--lines", "200"],
         "where": ["workmux", "add", "{name}", "--dry-run"],
+        "confirm_seconds": 10,
     },
 }
 PROMPT = "Use the ec-fleet skill. Your assignment: issue {ref}."
 
 HOST_KEYS = {"start": str, "prompt": str, "trust": str}
-LAUNCHER_KEYS = {"start": list, "status": list, "capture": list, "where": list, "base_flag": str}
+LAUNCHER_KEYS = {"start": list, "status": list, "capture": list, "where": list, "base_flag": str,
+                 "confirm_seconds": int}
 NO_PATH = "could not learn the worktree's path, so the session may open at its host's trust prompt"
 
 
@@ -71,8 +74,10 @@ def _check(table: object, allowed: dict, where: str) -> dict:
         dotted = f"{where}.{key}" if where else key
         if key not in allowed:
             raise ConfigError(f"{dotted}: unknown key (allowed: {', '.join(sorted(allowed))})")
-        if not isinstance(value, allowed[key]):
+        if not isinstance(value, allowed[key]) or isinstance(value, bool):
             raise ConfigError(f"{dotted}: expected {allowed[key].__name__}")
+        if allowed[key] is int and value < 0:
+            raise ConfigError(f"{dotted}: expected zero or more")
         if allowed[key] is list and not value:
             raise ConfigError(f"{dotted}: expected a non-empty list")
         if allowed[key] is list and not all(isinstance(i, str) for i in value):
@@ -107,6 +112,8 @@ def load_config(path: pathlib.Path | None) -> dict:
     if "start" in launcher and "where" not in launcher:
         # The default asks workmux, which says nothing about another launcher's worktrees.
         cfg["launcher"]["where"] = None
+    if "start" in launcher and not {"status", "confirm_seconds"} & set(launcher):
+        cfg["launcher"]["confirm_seconds"] = 0
     for host, table in data.get("hosts", {}).items():
         _check(table, HOST_KEYS, f"hosts.{host}")
         merged = {**cfg["hosts"].get(host, {}), **table}
@@ -129,6 +136,23 @@ def run_launcher(argv: list[str]) -> subprocess.CompletedProcess:
         return subprocess.run(argv, capture_output=True, text=True, stdin=subprocess.DEVNULL)
     except OSError as e:
         raise LauncherError(argv[0], e)
+
+
+def listed(cfg: dict, name: str) -> bool:
+    """Whether the launcher's status lists the session before the wait runs out. The launcher
+    returns before the host is up, and a host that exits at once never registers (E30, E31)."""
+    launcher = cfg["launcher"]
+    deadline = time.monotonic() + launcher["confirm_seconds"]
+    while True:
+        try:
+            agents = json.loads(run_launcher(launcher["status"]).stdout)["agents"]
+            if any(isinstance(a, dict) and a.get("worktree") == name for a in agents):
+                return True
+        except (LauncherError, ValueError, KeyError, TypeError):
+            pass
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.5)
 
 
 def check_flag(flag: str, value: str) -> None:
@@ -393,6 +417,13 @@ def main() -> int:
     if shadows:
         print(f"fleet: this repository has its own agent named {agent!r} ({', '.join(shadows)}); "
               "the session runs that one, not the installed one", file=sys.stderr)
+    seconds = cfg["launcher"]["confirm_seconds"]
+    if seconds and not listed(cfg, name):
+        print(f"fleet: {name} is not in the session list after {seconds}s: its host may have "
+              "exited at once, or it waits at a first-run prompt. Look at its window",
+              file=sys.stderr)
+        print(f"opened {name}, host not confirmed")
+        return 0
     print(f"started {name}")
     return 0
 

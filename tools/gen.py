@@ -49,11 +49,12 @@ def shared(name: str) -> str:
 
 CONTRACT = """## The contract
 
-This host does not deliver `AGENTS.md` to you, so the contract is stated here rather than
-assumed. Read the project's `AGENTS.md` yourself if you need its project-specific bindings.
+This host may not deliver `AGENTS.md` to you, so the contract is stated here rather than
+assumed. Read the project's `AGENTS.md` yourself for its project-specific bindings.
 
-- The Tech-Lead is the only voice to the user and the only persona that posts externally.
-- Specialists return findings; they never post, and never contact each other.
+- The Tech-Lead is the only voice to the user. It posts externally; a specialist does so only
+  where `AGENTS.md` grants it to its role.
+- Specialists return findings and never contact each other.
 - Evidence before claims: "passes" and "fixed" carry the command and its output.
 """
 
@@ -96,8 +97,9 @@ def host_appendix(persona, team, host) -> str:
     elif host["host"] == "opencode":
         lines.append(
             f"To delegate, use the `{d['tool']}` tool with `{d['parameter']}` exactly one of: "
-            f"{addressed}. The allowlist is enforced by the runtime, so an attempt to reach "
-            f"anyone else is refused rather than silently permitted.")
+            f"{addressed}. An older opencode names them `{d['old_tool']}` with "
+            f"`{d['old_parameter']}`. The allowlist is enforced by the runtime, so an attempt "
+            f"to reach anyone else is refused rather than silently permitted.")
     elif host["host"] == "antigravity":
         lines.append(
             f"To delegate, use `{d['tool']}` with one of: {addressed}.")
@@ -233,7 +235,7 @@ def yaml_scalar(v: str) -> str:
 
 
 def render_claude(personas, team, host, roster):
-    """Claude dialect: a tools allowlist for read-only personas, nothing for the primary."""
+    """Claude dialect: tools denied by name for specialists, nothing for the primary."""
     out = {}
     caps = host["capabilities"]
     for name in roster:
@@ -241,12 +243,13 @@ def render_claude(personas, team, host, roster):
         fm = [f"name: {p['name']}",
               f"description: {yaml_scalar(' '.join(p['description'].split()))}",
               f"model: {p['model']}"]
-        if p["role"] == "primary":
-            pass                      # no tools key at all [CC-09]
-        elif p["capabilities"]["edit"]:
-            fm.append("disallowedTools: " + ", ".join(caps["edit_true"]["disallowed_tools"]))
-        else:
-            fm.append("tools: " + ", ".join(caps["edit_false"]["tools"]))
+        if p["role"] != "primary":    # the primary carries neither key [CC-09]
+            denied = list(caps["specialist"]["disallowed_tools"])
+            if not p["capabilities"]["edit"]:
+                denied += caps["edit_false"]["disallowed_tools"]
+            if not p["capabilities"]["web"]:
+                denied += caps["no_web"]["disallowed_tools"]
+            fm.append("disallowedTools: " + ", ".join(denied))
         body = render_body(p, team, host)
         out[host["agent_file"]["path"].format(name=name)] = (
             "---\n" + "\n".join(fm) + "\n---\n\n" + body)

@@ -16,7 +16,7 @@
     "ci-cd-and-infra"
   ],
   "written": {
-    "AGENTS.md": "f575642a3fdaf04182a855f3b94ba66f1b6ed13f4bcd5f3d191a440c872d1fc1",
+    "AGENTS.md": "72d0576099816519cd71a208608d07814532c2ad70a8a052f7f22fbf9a823df6",
     "CLAUDE.md": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49"
   },
   "completed_lenses": [
@@ -26,5 +26,5 @@
     "security-posture",
     "ci-cd-and-infra"
   ],
-  "updated": "2026-10-03"
+  "updated": "2026-11-15"
 }

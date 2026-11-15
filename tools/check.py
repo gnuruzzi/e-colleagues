@@ -62,7 +62,7 @@ def check_personas():
         d = " ".join(p["description"].split())
         if "Use " not in d or "not use" not in d.lower():
             fail(f"{f.name}: description must be a routing sentence saying when NOT to use it")
-        # D6: only the tech-lead may post externally
+        # D6: only the tech-lead posts externally by default; the contract may grant more
         if p["external_post"] != (p["role"] == "primary"):
             fail(f"{f.name}: external_post must be true only for the primary (D6)")
         # D7 + flat team: only the primary may delegate
@@ -140,6 +140,14 @@ def check_codex():
 CLAUDE_ALLOWED = {"name", "description", "model", "effort", "maxTurns", "tools",
                   "disallowedTools", "skills", "memory", "background", "isolation"}
 CLAUDE_FORBIDDEN = {"permissionMode", "hooks", "mcpServers"}
+# Without a `tools` allowlist a persona inherits every tool these sets do not name (E36).
+CLAUDE_DENIED = {
+    "specialist": {"Agent", "SendMessage", "EnterWorktree", "ExitWorktree", "CronCreate",
+                   "CronDelete", "RemoteTrigger", "PushNotification", "ShareOnboardingGuide",
+                   "DesignSync"},
+    "read-only": {"Write", "Edit", "NotebookEdit", "Monitor"},
+    "no web": {"WebFetch", "WebSearch"},
+}
 
 
 def check_claude_agents():
@@ -174,8 +182,21 @@ def check_claude_agents():
         if not str(fm.get("description", "")).strip():
             fail(f"{f.name}: description is required")
         p = yaml.safe_load((ROOT / "personas" / f"{fm['name']}.yaml").read_text())
-        if not p["capabilities"]["edit"] and fm.get("memory"):
+        caps = p["capabilities"]
+        if not caps["edit"] and fm.get("memory"):
             fail(f"{f.name}: memory re-enables Write and Edit on a read-only persona [CC-07]")
+        if "tools" in fm:
+            fail(f"{f.name}: a tools allowlist strips every MCP tool from the persona "
+                 f"[CC-09] (E33); name what it must not have in disallowedTools instead")
+        if p["role"] == "primary":
+            continue
+        denied = {t.strip() for t in str(fm.get("disallowedTools", "")).split(",")}
+        for kind, applies in (("specialist", True), ("read-only", not caps["edit"]),
+                              ("no web", not caps["web"])):
+            missing = CLAUDE_DENIED[kind] - denied if applies else None
+            if missing:
+                fail(f"{f.name}: a {kind} persona must deny {sorted(missing)} in "
+                     f"disallowedTools; nothing else keeps them from it (E36)")
     ok(f"claude agents ({len(files)}) frontmatter parsed and whitelisted")
 
 
@@ -236,8 +257,8 @@ def check_rendered_bodies():
                 fail(f"{f.name}: body is missing the '{section}' section")
         if block not in body:
             fail(f"{f.name}: the RETURN block is not present verbatim")
-        if "never post" not in body.lower():
-            fail(f"{f.name}: R5 (never post externally) missing (D6)")
+        if "only where `AGENTS.md` grants it to your role" not in body:
+            fail(f"{f.name}: R5 (post externally only where AGENTS.md grants it) missing (D6)")
         n += 1
     ok(f"rendered specialist bodies ({n}) carry the skeleton and RETURN verbatim")
 

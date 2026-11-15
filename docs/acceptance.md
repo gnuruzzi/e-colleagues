@@ -14,9 +14,9 @@ the feature was introduced in. Below it, nothing is promised.
 
 | host | minimum | why this floor |
 |---|---|---|
-| OpenAI Codex CLI | **0.153.4** | `read-only` + `approval_policy = "never"` blocks every write (E4); role files parse under `deny_unknown_fields` with a five-key whitelist [CX-02]. Re-verified at 0.154.0 (E24) |
-| Claude Code | **2.1.263** | plugin `agents` takes a file list and replaces the default scan (E10); `subagent_type` needs the qualified name (E10). Re-verified at 2.1.283 (E24) |
-| opencode | **1.18.29** | the 15 permission keys and `AgentConfig`'s 15 properties, re-derived from the published schema (E16 C3). Re-verified at 2.0.18 (E20 addendum) |
+| OpenAI Codex CLI | **0.153.4** | `read-only` + `approval_policy = "never"` blocks every write (E4); role files parse under `deny_unknown_fields` with a five-key whitelist [CX-02]. Re-verified at 0.167.0 (E34) |
+| Claude Code | **2.1.263** | plugin `agents` takes a file list and replaces the default scan (E10); `subagent_type` needs the qualified name (E10). Re-verified at 2.1.325 (E36) |
+| opencode | **1.18.29** | the 15 permission keys and `AgentConfig`'s 15 properties, re-derived from the published schema (E16 C3). Re-verified at 2.2.7 (E35) |
 | Google Antigravity (`agy`) | **1.5.3** | every Antigravity claim was re-run there (E32): the ten tool names that load and give a tool, which are the only ones the rendered agents list; `AGENTS.md` reaching the default agent, a custom agent and a sub-agent; and a re-install that replaces the installed directory exactly. Versions 1.1.27 to 1.2.10 are no longer supported |
 | Antigravity desktop | 2.17.0 *(observed)* | **not a floor** — inspected at 2.12.2, driven once at 2.17.0 (E19 addendum): the `tools` allowlist holds there too and `AGENTS.md` does not arrive. At 2.12.2 it lacked the `agents:` key the CLI had (E16); at 2.17.0 it carries it (E24). Not driven since: at 2.29.1 only its binary was read (E32). The renderer still never emits the key, so that agents render the same on every version of either binary |
 | Python | **3.11** | `tomllib` is standard library from 3.11; the shipped scripts use nothing else |
@@ -34,15 +34,21 @@ exists to remove.
 |---|---|---|---|---|
 | tech-lead is primary | prose (`developer_instructions`) | mechanical (`--agent`) | mechanical (`default_agent`) | mechanical (`mainAgent`) |
 | specialists cannot spawn | V1 depth cap; **V2 prose** | mechanical (tool list) | mechanical (child `task * deny`) | mechanical (`tools` omits `invoke_subagent`, E32) |
-| reviewer cannot edit **files** | mechanical | mechanical | mechanical | mechanical |
-| reviewer cannot edit **via the shell** | **mechanical** (read-only sandbox, E4) | prose — Bash writes (E13) | narrowed by bash patterns | prose — `run_command` writes |
-| specialists never post externally | mechanical side-effect (no network under read-only) | prose | prose | prose |
+| reviewer cannot edit **files** | mechanical only in a `read-only` session (E33) | mechanical, denied by name (E33, E36) | mechanical | mechanical |
+| reviewer cannot edit **via the shell** | **mechanical** in a `read-only` session (E4); prose under `workspace-write` (E33) | prose — Bash writes (E13) | narrowed by bash patterns | prose — `run_command` writes |
+| a specialist posts only where the contract grants it | prose | prose | prose | prose |
 | return contract and signatures | prose | prose | prose | prose |
 
-The one place "cannot edit" is a filesystem guarantee rather than a tool-surface one is Codex
-under `read-only` + `never`. Everywhere else a determined shell command can still write, and
+The one place "cannot edit" is a filesystem guarantee rather than a tool-surface one is a Codex
+session started `read-only`. The role file's `read-only` + `never` did not reach a spawned
+reviewer at 0.167.0: it ran with the session's sandbox and wrote where the session could (E33).
+Everywhere else a determined shell command can still write, and
 E13 measured exactly that on Claude: a read-only reviewer running the project's own test
 suite wrote two build artefacts, doing nothing wrong.
+
+Every sub-agent reaches the session's MCP tools (E32, E33), and no host tells a write through
+MCP from a read. What a specialist may do with a platform is the project's contract and
+nothing else.
 
 ## The cost of that guarantee
 
@@ -66,8 +72,8 @@ python3 -m unittest discover -s tests
 
 Then, per host, by hand — because no static check can prove a runtime behaviour:
 
-- **Codex** — `$ec-init` resolves in a session; a spawned reviewer cannot write even through
-  an approved command; a symlinked role file fails with `agent type is currently not
+- **Codex** — `$e-colleagues:ec-init` resolves in a session; the sandbox a spawned reviewer
+  ran under is read from its thread record (E33, E34); a symlinked role file fails with `agent type is currently not
   available`, so the installer must write real files.
 - **Claude** — `claude --plugin-dir . --agent tech-lead` spawns `e-colleagues:<name>` and not
   a built-in; the bare name is absent from the agent list.
@@ -82,9 +88,11 @@ Then, per host, by hand — because no static check can prove a runtime behaviou
   choice, so two projects on one machine share the roster. The host itself delivers workspace
   agents, from `.agents/agents/`, `_agents/agents/`, `.agents/plugins/` and `_agents/plugins/`
   (E32).
-- **An Antigravity persona has no search tool**, because agy has none to list (E32). A persona
-  with a shell searches through `run_command`; the designer, which has no shell, can only read
-  paths it is given.
+- **An Antigravity persona has no search tool**, because agy has none to list (E32). It
+  searches through `run_command`, which every persona has.
+- **The designer and the tech-lead have web access and a shell together.** A page either one
+  reads could try to steer it into running a command; nothing but the persona's own rules and
+  the host's approvals stands between. The other specialists have a shell and no web access.
 - **opencode's roster is per-machine too.** `bootstrap.py --scope user` writes the agents to
   `~/.config/opencode/agents/` and the five skills to `~/.config/opencode/skills/`; nothing
   writes them into a project, and there is no bundle or plugin route (E25). The global config is never written, so the tech-lead is chosen per
@@ -123,9 +131,10 @@ Then, per host, by hand — because no static check can prove a runtime behaviou
   they report the overview's states. Run by `fleet.py`, which gives it no input, it did not
   stop to ask about another agent's hooks (E27); that the missing input is why is an inference.
   The Codex plugin route is UNVERIFIED.
-- **`fleet.py start` reports success once the launcher returns.** If the host then exits, the
-  session has no row in the overview: on Claude Code without this package's plugin,
-  `claude --agent tech-lead` ends with `--agent 'tech-lead' not found` (E31).
+- **`fleet.py start` says `started` only once the session is listed.** If the host exits at
+  once, as `claude --agent tech-lead` does without this package's plugin (E31), or waits at a
+  first-run prompt, it prints `opened <name>, host not confirmed` after ten seconds; it cannot
+  tell the two apart (E37).
 - **On opencode the fleet needs workmux's current plugin and starts a private server per
   session** (E30). An earlier one-file workmux plugin does not load at opencode 2.2.7, and then
   no opencode session has a row; `workmux setup` replaces it. The start command names a config

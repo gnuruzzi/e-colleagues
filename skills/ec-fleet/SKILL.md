@@ -35,14 +35,14 @@ python3 scripts/fleet.py start <reference>
   names the worktree from the reference (`12` becomes `issue-12`), only when there is no
   naming line, or the line needs the issue's title and you cannot read the tracker.
 
-On success it prints `started <name>`; show any `fleet:` line too. If it fails any other
-way, show its message; do not retry with other flags.
+It prints `started <name>` once the session is listed. `opened <name>, host not confirmed`
+means it is not: the host exited, or it waits at a first-run prompt such as a trust question.
+Say so, and show any `fleet:` line. If it fails any other way, show its message; do not
+retry with other flags.
 
-In a new worktree the host may first show a first-run prompt, such as whether to trust the
-folder. Where it can, the script trusts the new worktree for that one session; otherwise the
-person answers there. You never answer it. Until then that session reads `working` or
-`no RETURN block on screen`, or has no row. A started session with no row may also have
-exited. Say so.
+Where it can, the script trusts the new worktree for that one session; otherwise the person
+answers there. You never answer it. Until then that session reads `working` or
+`no RETURN block on screen`, or has no row.
 
 ### Overview
 
@@ -50,7 +50,7 @@ exited. Say so.
 python3 scripts/fleet.py overview
 ```
 
-Show the table as printed; `--json` gives the rows as data. One row per session:
+Show the table as printed; `--json` gives rows as data. One row per session:
 
 - `working`: leave it alone. On some hosts a session at a first-run prompt or an approval
   also reads `working`; say that it may be.
@@ -59,8 +59,8 @@ Show the table as printed; `--json` gives the rows as data. One row per session:
   why it stopped, and what it needs.
 - `no RETURN block on screen`: the session may be at one of its host's own prompts, or it
   stopped without a complete block in view. Say so.
-- `could not read its screen`: the capture failed. Say so.
-- `(this session)` is your own row.
+- `could not read its screen`: capture failed. Say so.
+- `(this session)`: your own row.
 
 ### What you never do
 
@@ -113,9 +113,9 @@ You work in the main checkout. The person starts you there; dispatch does not.
 
 ### One voice per assignment
 
-T1 to T6 still apply. With several tech-leads at work, each is the one voice and the one
-poster for its own assignment: an issue tech-lead posts only on its own issue and change
-request. Specialists never post.
+T1 to T6 still apply. With several tech-leads, each is the one voice and poster for its own
+assignment: an issue tech-lead posts only on its own issue and change request, a specialist
+only where the contract grants it.
 
 ## The contract
 

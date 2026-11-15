@@ -40,7 +40,7 @@ arithmetic and extend the tests, and send it back through the Reviewer before I 
 ## What you get
 
 - **One voice, a whole team behind it.** You talk to the tech-lead. It plans, delegates each piece with a brief, verifies the result against acceptance criteria, and reports once, with evidence. Specialists return findings; only the tech-lead speaks to you or posts anywhere.
-- **Roles that hold.** The reviewer and the security persona have no edit tools on any host. On Codex the sandbox makes that a filesystem guarantee; elsewhere it is the tool list, and the table below says which is which.
+- **Roles that hold.** The reviewer and the security persona have no edit tools on any host. On Codex a session started read-only makes that a filesystem guarantee; elsewhere it is the tool list, and the table below says which is which.
 - **Your rules, in your repository.** `ec-init` interviews you once and writes the operating contract as one managed block in `AGENTS.md`. `ec-onboard` has each persona learn its angle of the project, indexing what you already document before writing anything. Every knowledge file records the commit it came from, so going stale is a `git diff`.
 
 ## How it works
@@ -54,7 +54,7 @@ flowchart LR
     TL --> DES["🎨 Designer"]
     TL --> PLT["⚙️ Platform"]
     DEV & REV & SEC & DES & PLT -. RETURN: status · evidence · findings .-> TL
-    TL -- the only voice outward --> EXT[(your tracker, your PRs)]
+    TL -- the voice outward --> EXT[(your tracker, your PRs)]
 ```
 
 | persona | does | edits files |
@@ -111,13 +111,13 @@ cd ~/your-project && codex --profile e-colleagues
 In the session:
 
 ```text
-$ec-init
-$ec-onboard
-$ec-status
+$e-colleagues:ec-init
+$e-colleagues:ec-onboard
+$e-colleagues:ec-status
 Review the change in the last commit before we merge it.
 ```
 
-The plugin carries the skills; the personas are written to `~/.codex/` as real files, because a symlinked role is found and then fails at spawn (E5). The reviewer runs under `sandbox_mode = "read-only"`: the project's tests run, and nothing can be written, `/tmp` included.
+The plugin carries the skills, which Codex expands only under the plugin's name (E34); the personas are written to `~/.codex/` as real files, because a symlinked role is found and then fails at spawn (E5). The reviewer's role file sets `sandbox_mode = "read-only"`, but at Codex 0.167.0 a spawned reviewer ran with the session's own sandbox (E33). A session started `read-only` is what binds it, and it binds the developer too: measured with `codex exec -s read-only`, where the project's tests run and nothing can be written, `/tmp` included.
 
 </details>
 
@@ -190,19 +190,20 @@ A guarantee that is really a request is worth naming.
 
 | host | floor | re-verified at | tech-lead is primary by | "cannot edit" is enforced by |
 |---|---|---|---|---|
-| Codex CLI | 0.153.4 | 0.154.0 | `developer_instructions` (prose) | **the sandbox**: the one filesystem guarantee |
-| Claude Code | 2.1.263 | 2.1.284 | `--agent` (mechanical) | the tool list; the shell can still write |
-| opencode | 1.18.29 | 2.0.18 | `default_agent` (mechanical) | permissions; the shell narrowed by patterns |
+| Codex CLI | 0.153.4 | 0.167.0 (E34) | `developer_instructions` (prose) | **the session's sandbox**: a filesystem guarantee when the session is `read-only`, a request otherwise (E33) |
+| Claude Code | 2.1.263 | 2.1.325 (E36) | `--agent` (mechanical) | the editing tools denied by name; the shell can still write |
+| opencode | 1.18.29 | 2.2.7 (E35) | `default_agent` (mechanical) | permissions; the shell narrowed by patterns |
 | Antigravity | agy 1.5.3 | agy 1.5.3 (E32); desktop last driven at 2.17.0 | `mainAgent` (mechanical) | the tool list; `run_command` can still write |
 
-- Codex's read-only sandbox blocks **every** write, so a test suite that writes anything needs an explicit override.
+- Codex's read-only sandbox blocks **every** write, so a test suite that writes anything needs a session that can write, and there the reviewer can too.
+- Every specialist reaches the session's MCP tools. What it may do with them, posting included, is what the project's `AGENTS.md` grants its role; no host enforces that.
 - Antigravity and opencode have no per-project roster from this package; both install per machine.
 - `AGENTS.md` reaches every Antigravity agent tried on the CLI (E32). The personas still carry the contract in their own bodies, because the desktop app did not receive it when last driven, at 2.17.0.
 The full list, with what each rests on, is in [`docs/acceptance.md`](docs/acceptance.md).
 
 ## Built on evidence
 
-Every path, key and command in the design cites a fact-checked claim or says UNVERIFIED. [`docs/SUPPORT-MATRIX.md`](docs/SUPPORT-MATRIX.md) states all 52 claims with the version each was last confirmed at; [`docs/experiments.md`](docs/experiments.md) holds the 32 experiments behind them, exact command and raw output included, and an experiment outranks any claim it contradicts. That discipline caught six Antigravity tool names the vendor's documentation lists that abort an agent at startup and six more that load and give no tool (E32), and a tool registry, a keybinding and a plugin API that moved between releases.
+Every path, key and command in the design cites a fact-checked claim or says UNVERIFIED. [`docs/SUPPORT-MATRIX.md`](docs/SUPPORT-MATRIX.md) states all 52 claims with the version each was last confirmed at; [`docs/experiments.md`](docs/experiments.md) holds the 37 experiments behind them, exact command and raw output included, and an experiment outranks any claim it contradicts. That discipline caught six Antigravity tool names the vendor's documentation lists that abort an agent at startup and six more that load and give no tool (E32), and a tool registry, a keybinding and a plugin API that moved between releases.
 
 - [`docs/design.md`](docs/design.md): the decision record, and how to add a host or a persona
 - [`docs/acceptance.md`](docs/acceptance.md): minimum versions, guarantees, known limits

@@ -40,9 +40,9 @@ an output excerpt. No evidence, no claim.
 
 **R4 — Side effects.** You may read, write and run commands inside the delegated scope. You may not apply infrastructure changes, deploy, or rotate credentials unless `AGENTS.md` grants it — propose the change and let the Tech-Lead seek approval.
 
-**R5 — No external posting.** You never post to an external platform — no issue, comment,
-merge request, chat message or ticket transition. Return your findings; the Tech-Lead posts
-them.
+**R5 — External posting.** Post to an external platform — an issue, comment, merge request,
+chat message or ticket transition — only where `AGENTS.md` grants it to your role, and only
+with the tools it names. Otherwise return your findings; the Tech-Lead posts them.
 
 **R6 — Restricted actions.** Push, merge, tag, close and bulk-triage only if `AGENTS.md`
 grants them to your role.

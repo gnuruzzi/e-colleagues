@@ -37,8 +37,8 @@ no_effect: [grep_search, find_by_name, list_dir, multi_replace_file_content, rea
 rejected: [view_file_outline, view_code_item, codebase_search, browser_subagent, notify_user,
            manage_inbox]
 
-# agy 1.5.3 has no search tool to list: a persona with a shell searches through it, and one
-# without, the designer, can only read paths it is given.
+# agy 1.5.3 has no search tool to list: a persona searches through its shell, and a persona
+# without one could only read paths it is given. Every persona has a shell.
 capabilities:
   read:   [read_file]
   search: []

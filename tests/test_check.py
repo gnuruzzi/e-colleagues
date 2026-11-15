@@ -256,3 +256,129 @@ class TestAgyToolsGate(unittest.TestCase):
         for f in sorted((ROOT / "agents").glob("*/agent.md")):
             fm = f.read_text().split("---")[1]
             self.assertFalse(dead & set(re.findall(r"^  - (\S+)$", fm, re.M)), f.parent.name)
+
+
+class TestPostingRule(unittest.TestCase):
+    """D6: a specialist posts externally only where the project's contract grants it. Every
+    rendered body must say so, and none may still say it never posts."""
+
+    def test_every_rendered_body_carries_the_rule(self):
+        files = (sorted((ROOT / "dist").rglob("*.md")) + sorted((ROOT / "dist").rglob("*.toml"))
+                 + sorted((ROOT / "agents").rglob("*.md"))
+                 + [ROOT / "skills" / "ec-tech-lead" / "SKILL.md"])
+        bodies = [f for f in files if "R4 — Side effects" in f.read_text()]
+        self.assertGreaterEqual(len(bodies), 20)
+        for f in bodies:
+            text = f.read_text()
+            self.assertIn("R5 — External posting.", text, f.name)
+            self.assertIn("only where `AGENTS.md` grants it to your role", text, f.name)
+            self.assertNotIn("never post", text.lower(), f.name)
+
+
+class TestClaudeDenylistGate(unittest.TestCase):
+    """D6: every sub-agent reaches MCP tools. On Claude Code a `tools` allowlist strips them
+    and no pattern re-admits every server (E33), so no persona carries one. A specialist names
+    what it must not have in `disallowedTools`, and inherits everything else (E36)."""
+
+    EVERY = ["Agent", "SendMessage", "EnterWorktree", "ExitWorktree", "CronCreate", "CronDelete",
+             "RemoteTrigger", "PushNotification", "ShareOnboardingGuide", "DesignSync"]
+    READ_ONLY = ["Write", "Edit", "NotebookEdit", "Monitor"]
+    NO_WEB = ["WebFetch", "WebSearch"]
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = pathlib.Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+        (self.root / "tools").mkdir()
+        shutil.copy(ROOT / "tools" / "check.py", self.root / "tools" / "check.py")
+        for d in ("personas", "hosts"):
+            shutil.copytree(ROOT / d, self.root / d)
+        shutil.copytree(ROOT / "dist" / "claude", self.root / "dist" / "claude")
+
+    def check(self):
+        return subprocess.run([sys.executable, str(self.root / "tools" / "check.py"),
+                               "--claude"], capture_output=True, text=True)
+
+    @staticmethod
+    def denied(path):
+        fm = path.read_text().split("---")[1]
+        m = re.search(r"(?m)^disallowedTools: (.*)$", fm)
+        return (m.group(1).split(", ") if m else []), fm
+
+    def test_the_rendered_agents_pass(self):
+        r = self.check()
+        self.assertEqual(r.returncode, 0, r.stdout)
+
+    def test_each_rendered_persona_denies_what_its_capabilities_say(self):
+        want = {"reviewer": self.EVERY + self.READ_ONLY + self.NO_WEB,
+                "security": self.EVERY + self.READ_ONLY + self.NO_WEB,
+                "developer": self.EVERY + self.NO_WEB,
+                "platform": self.EVERY + self.NO_WEB,
+                "designer": self.EVERY}
+        for name, names in want.items():
+            got, fm = self.denied(ROOT / "dist" / "claude" / "agents" / f"{name}.md")
+            self.assertEqual(got, names, name)
+            self.assertNotRegex(fm, r"(?m)^tools:", name)
+        got, fm = self.denied(ROOT / "dist" / "claude" / "agents" / "tech-lead.md")
+        self.assertEqual(got, [])
+        self.assertNotRegex(fm, r"(?m)^tools:")
+
+    def test_a_tools_allowlist_fails_on_any_persona(self):
+        for name in ("reviewer", "developer", "tech-lead"):
+            agent = self.root / "dist" / "claude" / "agents" / f"{name}.md"
+            keep = agent.read_text()
+            agent.write_text(keep.replace("model: inherit\n",
+                                          "model: inherit\ntools: Read, Grep, Glob, Bash\n", 1))
+            r = self.check()
+            agent.write_text(keep)
+            self.assertEqual(r.returncode, 1, name)
+            self.assertIn("strips every MCP tool", r.stdout, name)
+
+    def test_a_denylist_missing_one_name_fails(self):
+        for name in ("reviewer", "developer", "designer"):
+            agent = self.root / "dist" / "claude" / "agents" / f"{name}.md"
+            keep = agent.read_text()
+            names, _ = self.denied(agent)
+            for tool in names:
+                line = "disallowedTools: " + ", ".join(t for t in names if t != tool) + "\n"
+                agent.write_text(re.sub(r"(?m)^disallowedTools: .*\n", line, keep, count=1))
+                r = self.check()
+                self.assertEqual(r.returncode, 1, (name, tool))
+                self.assertIn(tool, r.stdout, (name, tool))
+            agent.write_text(keep)
+
+
+class TestOpencodeReadOnlyShell(unittest.TestCase):
+    """opencode matches a shell rule against each simple command of a line, redirections
+    included, and the last matching rule decides (E35). So the order below is the rule set:
+    it is the one that refused sixteen write forms of sixteen and kept a reviewer's commands."""
+
+    RULES = [("*", "allow"), ("*>*", "deny"), ("*2>&1*", "allow"), ("*2>/dev/null*", "allow"),
+             ("*>*>*", "deny"), ("*> /dev/null 2>&1", "allow"), ("*>/dev/null 2>&1", "allow"),
+             ("*>*>*>*", "deny"), ("git commit*", "deny"), ("git stash*", "deny"),
+             ("git init*", "deny"), ("sed -i*", "deny"), ("tee*", "deny"), ("cp *", "deny"),
+             ("mv *", "deny"), ("rm *", "deny"), ("rmdir*", "deny"), ("mkdir*", "deny"),
+             ("touch*", "deny")]
+
+    @staticmethod
+    def permission(name):
+        import yaml
+        text = (ROOT / "dist" / "opencode" / "agents" / f"{name}.md").read_text()
+        return yaml.safe_load(text.split("---")[1])["permission"]
+
+    def test_the_read_only_personas_carry_the_measured_rules_in_order(self):
+        for name in ("reviewer", "security"):
+            perm = self.permission(name)
+            for key in ("bash", "shell"):
+                self.assertEqual(list(perm[key].items()), self.RULES, (name, key))
+
+    def test_a_writer_has_no_shell_rules(self):
+        for name in ("developer", "platform", "designer"):
+            perm = self.permission(name)
+            self.assertNotIn("bash", perm, name)
+            self.assertNotIn("shell", perm, name)
+
+    def test_the_tech_lead_is_told_both_names_of_the_delegation_tool(self):
+        text = (ROOT / "dist" / "opencode" / "agents" / "tech-lead.md").read_text()
+        self.assertIn("use the `subagent` tool with `agent` exactly one of:", text)
+        self.assertIn("`task` with `subagent_type`", text)

@@ -345,10 +345,12 @@ class TestBlockContent(Base):
         run(self.root, "--write")
         self.assertIn("ec-tech-lead", self.agents)
 
-    def test_block_states_the_no_external_posting_rule(self):
+    def test_block_states_that_only_the_contract_lets_a_specialist_post(self):
         self.seed(**{"AGENTS.md": "# proj\n"})
         run(self.root, "--write")
-        self.assertIn("never post externally", self.agents)
+        self.assertIn("Specialists post externally only where this file grants it to their role",
+                      self.agents)
+        self.assertNotIn("never post", self.agents)
 
     def test_signatures_match_team_json_exactly(self):
         self.seed(**{"AGENTS.md": "# proj\n"})
