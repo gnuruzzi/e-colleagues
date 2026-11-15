@@ -84,6 +84,9 @@ Then, per host, by hand — because no static check can prove a runtime behaviou
   (E32).
 - **An Antigravity persona has no search tool**, because agy has none to list (E32). It
   searches through `run_command`, which every persona has.
+- **The designer and the tech-lead have web access and a shell together.** A page either one
+  reads could try to steer it into running a command; nothing but the persona's own rules and
+  the host's approvals stands between. The other specialists have a shell and no web access.
 - **opencode's roster is per-machine too.** `bootstrap.py --scope user` writes the agents to
   `~/.config/opencode/agents/` and the five skills to `~/.config/opencode/skills/`; nothing
   writes them into a project, and there is no bundle or plugin route (E25). The global config is never written, so the tech-lead is chosen per
