@@ -39,6 +39,7 @@ Tranches: **A** automated, **B** interactive — needing a TTY or a trust dialog
 | — | B | the fleet skill on Claude Code: start, first-run prompts, states, the captured screen, end to end | **settled** (E31): all hold once the plugin is installed; without it the host exits and `fleet.py start` still reports success; trust is kept per repository, with no session-only way to pre-answer it; a session at the trust dialog is missing from the overview |
 | — | C | the 2026-11-15 Antigravity sweep: agy 1.5.3 | **settled** (E32): AG-06, AG-07, AG-11 and AG-12 changed; the desktop not driven |
 | — | A+B | do MCP tools reach the specialists on Claude Code, Codex and opencode, and can a read-only one have them and still not edit | **settled** (E33): on Claude Code the read-only allowlist stripped them and a denylist of the editing tools gives them back, now rendered; on Codex every specialist sees them and a call needs the session's approval; on opencode both have them. A spawned Codex role ran with its parent's sandbox, not its role file's |
+| — | C | the 2026-11-15 Codex sweep: codex-cli 0.167.0 | **settled** (E34): every runtime row reproduces; `CX-01` measured in part for the first time; `CX-09` and `CX-12` not re-run. No setting tried gives a spawned role a narrower sandbox than its session, on either backend; the plugin route works and its skills are `e-colleagues:<name>` |
 | — | C | the 2026-11-15 Claude Code sweep: 2.1.325 | **settled** (E36): every runtime row reproduces but `CC-06`, not re-run; `CC-15` measured for the first time; the YAML fail-open measured at runtime; what a denylist inherits read from the host's record, and a longer denylist now rendered |
 
 ---
@@ -4879,6 +4880,512 @@ The debug log has `ToolSearchTool: selected mcp__canary__canary_read` twice and 
 **Verdict**: as now rendered, the reviewer and the security persona each reach an MCP tool on Claude Code and call it. That a call to `Write` or `Edit` is refused under this frontmatter line rests on the twins above; it was not repeated with the personas, whose rule R4 declines the attempt.
 
 **Host state.** The three-line trust record Codex had written into `~/.codex/config.toml` for `<tmp>/cx-repo` was removed by hand after this session; the file parses and nothing else in it was changed. `pluginUsage["e-colleagues@inline"]` in `~/.claude.json` grew by the two delegations, and Claude Code kept one more transcript for `<tmp>/cc-repo`.
+
+---
+
+## E34 — the Codex claims at codex-cli 0.167.0: every runtime row reproduces; a spawned role takes its sandbox from its parent on the V1 backend too, and no role-file, config or profile setting tried narrows it, while a `PreToolUse` hook that is handed the `agent_type` can refuse its writes; the plugin route works, and its skills are listed as `e-colleagues:<name>`
+
+**Date** 2026-11-15. **codex-cli 0.167.0** (the standalone release under `~/.codex/packages/standalone/`), models `gpt-6-luna` and, where a row says so, `gpt-5.6-luna`, both at reasoning effort low; **tmux 3.8**; **Python 3.14.10**; this package as a clean export of commit `fd4ca07`, called `<pkg>` below. Tranche C, with one interactive step.
+
+The Codex rows of `SUPPORT-MATRIX.md` were last re-run as a set at 0.154.0 (E24), three of them never since 0.153.4, and E33 found at 0.167.0 that a spawned role ran with its parent's sandbox. This entry re-runs each runtime row at 0.167.0, as E24 did at 0.154.0 and E32 did for Antigravity, and answers three further questions:
+
+- **A.** Can anything make a spawned role run under a narrower sandbox than the session that spawned it?
+- **B.** Does the plugin route (`codex plugin marketplace add`, `codex plugin add`) still work, where does the copy land, and do the skills resolve?
+- **C.** What does Codex write by itself into `~/.codex/config.toml` and the profile file during such runs?
+
+Everything ran in throwaway repositories under `<tmp>` (each `git init`, a repository-local identity, no signing, one commit): `<tmp>/m0/proj` and `<tmp>/m0/proj-noagents` (E4's little project, with and without an `AGENTS.md` holding the canary `BLUEBIRD-7731`), `<tmp>/m0/untrusted` (E12's), `<tmp>/m0b/q10-repo` (E22's), `<tmp>/cx-repo` and `<tmp>/layers` (role files), `<tmp>/agmd` (`AGENTS.md` discovery) and `<tmp>/plug/e-colleagues` (a copy of `<pkg>`). The package's own Codex files under `~/.codex/` were read and not written. A role that had to be varied was a project role file, as in E33.
+
+Three things about the method:
+
+- **Trust.** No repository was trusted through the dialog. Where a row needs a trusted project, the command carries `-c 'projects={"<repo>"={trust_level="trusted"}}'` (E29), written `<trust>` below. It saves nothing.
+- **Other MCP servers.** Every model session carried `-c 'mcp_servers.<name>.enabled=false'` for each of the two servers the owner's `config.toml` defines (names cut), `-c 'plugins."<plugin>".enabled=false'` for each of the nine bundled plugins it enables, and `-c check_for_update_on_startup=false`; together `<iso>` below. `codex mcp list --json` with the overrides shows both servers `"enabled": false`. One server that a bundled plugin supplies still appears as a tool namespace in all 83 thread records, and a model that listed its tools was shown deferred tools of Codex's own apps server; names cut. **No MCP tool was called in this entry**: over all 83 records the calls are `spawn_agent` 35, `wait_agent` 31, `list_agents` 2 and `exec` 55, and inside `exec` only `exec_command`, `apply_patch` and the two V1 spawn tools.
+- **What needs no model.** `codex sandbox` runs a command under the sandbox. `codex debug prompt-input [PROMPT]` prints, as JSON, the list of messages a session in the current directory would send to the model, in half a second and with no model call; it takes `-c` and, placed before `debug`, `-p <profile>`. It is used below wherever the question is "does this text reach the model". It does not expand a `$skill` mention.
+
+These were real sessions on the owner's account: 51 `codex exec` sessions and 32 sub-agents, 77 turns on `gpt-6-luna` and 6 on `gpt-5.6-luna`, 4.02 million input and 9,151 output tokens by the threads' own counts, and one TUI session that sent no prompt. Evidence is Codex's own record of each thread (`~/.codex/sessions/2026/11/15/rollout-*.jsonl`: its `session_meta`, each `turn_context`, each tool call and its output) and its event stream (`--json`), not a model's account, unless a row says so. Every `codex exec` had `< /dev/null` (E24) and ran with the driving session's `CLAUDE*`, `ANTHROPIC_*` and `TMUX*` variables unset. Times are UTC.
+
+```console
+$ codex --version
+codex-cli 0.167.0
+$ tmux -V
+tmux 3.8
+```
+
+`<cheap>` below is `-m gpt-6-luna -c 'model_reasoning_effort="low"'`.
+
+| claim | at 0.167.0 | what moved |
+|---|---|---|
+| `CX-01` | **partly measured for the first time**; was docs/source only | both scopes load, the scan is recursive, the `name` key names the role |
+| `CX-02` | **reproduced**, E33's correction included | the same on the V1 backend; `model` and effort do arrive from the role file; nothing tried narrows a child (A) |
+| `CX-03` | **reproduced** | new: a role file must itself define `developer_instructions`; a project file without a `description` keeps the user-level one |
+| `CX-04` | **reproduced** | the backend follows the model's catalog entry; a V1 child had no spawn tool, a V2 child spawned a grandchild |
+| `CX-05` | **reproduced** | the V2 spawn tool's parameters and both tool sets, as delivered |
+| `CX-06` | **reproduced** | E22's trust by the override, not the dialog; `--profile` takes a plain name only |
+| `CX-07` | **reproduced** | `.codex/skills` loads untrusted too; a plugin skill is injected only under its qualified name (B) |
+| `CX-08` | **reproduced** | nothing |
+| `CX-10` | **reproduced** | nothing: the same three `source` forms resolve |
+| `CX-11` | **reproduced**, and the caveat of E9 closed | order, override file and the 32 KiB cap measured with no model |
+| `CX-09`, `CX-12` | not measured | |
+
+### 1. The sandbox with no spawn [CX-02] (E4)
+
+```console
+$ make test                                   # unsandboxed control, in <tmp>/m0/proj
+Ran 2 tests in 0.000s
+OK
+$ find . -name '*.pyc' | wc -l
+2
+$ find . -name __pycache__ -type d -exec rm -rf {} +
+$ codex sandbox -c sandbox_mode=read-only -c approval_policy=never -- make test
+python3 -m unittest discover -s tests -q
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+exit=0
+$ find . -name '*.pyc' | wc -l
+0
+```
+
+The same sandbox, one command each:
+
+| probe | result |
+|---|---|
+| `echo x > ./canary.txt` | `rc=1  sh: line 1: ./canary.txt: Read-only file system` |
+| `echo x > /tmp/m0-e34-canary.txt` | `rc=1  Read-only file system` |
+| `echo x > "$TMPDIR/m0-canary.txt"`, `TMPDIR` set to a directory under `<tmp>` | `rc=1  Read-only file system` |
+| `echo x > "$HOME/m0-e34-canary.txt"` | `rc=1  Read-only file system` |
+| `mkdir -p ./build` | `rc=1  mkdir: cannot create directory ‘./build’: Read-only file system` |
+| `head -1 src/calc.py` | `rc=0` |
+| `git status --porcelain` | `rc=0` |
+| `git commit --allow-empty -m x` | `rc=128  fatal: Unable to create '<tmp>/m0/proj/.git/index.lock': Read-only file system` |
+| `curl -m 8 -sS https://example.com` | `rc=6  curl: (6) Could not resolve host: example.com` |
+
+None of the four files and no `build` directory existed afterwards. The control at `sandbox_mode=workspace-write` wrote the two `.pyc` files, a file in `/tmp` and one in `$TMPDIR`; `$HOME` and the repository's own `.git/` stayed read-only there (`sh: line 1: .git/e34probe: Read-only file system`).
+
+**Verdict: holds.** `read-only` + `never` runs a suite that writes nothing and blocks every write, as at 0.153.4 and 0.154.0.
+
+**New: the middle ground E4 could not express exists as a permission profile.** `codex sandbox --help` at 0.167.0 lists `-P, --permission-profile <NAME>`, and each session's `turn_context` now records an `active_permission_profile` (`{"id": ":read-only"}` in an untrusted repository, `{"id": ":workspace"}` in a trusted one, `null` when `-s` is given). The built-ins `:read-only` and `:workspace` behave as their names say. A profile of one's own:
+
+```console
+$ codex sandbox -c 'permissions.probe={extends=":read-only", filesystem={"<tmp>/scratchdir"="write"}}' -P probe -- \
+    sh -c 'PYTHONPYCACHEPREFIX=<tmp>/scratchdir make test; echo rc=$?; echo x > ./canary.txt'
+python3 -m unittest discover -s tests -q
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+rc=0
+sh: line 1: ./canary.txt: Read-only file system
+$ find . -name '*.pyc' | wc -l; find <tmp>/scratchdir -name '*.pyc' | wc -l
+0
+69
+```
+
+The workspace and `/tmp` stayed read-only and the one named directory took the suite's bytecode. The same table with `-c 'default_permissions="probe"'` and no `-P` gave the same two results. `-P nosuchprofile` fails `Error: default_permissions requires a `[permissions]` table`; an access word other than those the table knows fails `data did not match any variant of untagged enum FilesystemPermissionToml`. With `-c 'default_permissions=":workspace"' -c sandbox_mode=read-only` together the write went through and nothing was said. Measured with `codex sandbox` only: no model session was started on a profile of its own, and what a profile does to `apply_patch` is not measured.
+
+### 2. Role files [CX-01] [CX-02] [CX-03] (E5)
+
+`<tmp>/layers`, trusted for the call, held six project role files; the user scope held the package's five. One turn (`codex exec <iso> <trust> -s read-only <cheap> --json "Say only the word ping."`), and the role list is read from the `spawn_agent` tool definition in the thread record, not asked of the model:
+
+```
+EVENT error: Ignoring malformed agent role definition: duplicate agent role name `probedup` discovered in <tmp>/layers/.codex/agents
+EVENT error: Ignoring malformed agent role definition: agent role file at <tmp>/layers/.codex/agents/reviewer.toml must define `developer_instructions`
+EVENT error: Ignoring malformed agent role definition: agent role `probenodesc` must define a description
+ROLE designer | Use for user-interface and user-experience work …
+ROLE developer | Use to implement a specified change and write its tests. …
+ROLE platform | Use for CI/CD, deployment, infrastructure and observability work. …
+ROLE probedeep | E34-DEEP-DESC found two directories below agents.
+ROLE probedup | E34-DUP-A
+ROLE probename | E34-NAME-DESC name key differs from the file name.
+ROLE reviewer | Use for adversarial review of an in-review change: edge cases, races, leaks, coverage. …
+ROLE security | Use to audit a change or the codebase for vulnerabilities, …
+ROLE default | Default agent.
+ROLE explorer | Use `explorer` for specific codebase questions.
+ROLE worker | Use for execution and production work.
+```
+
+| file under `<tmp>/layers/.codex/agents/` | result |
+|---|---|
+| `sub/deeper/probedeep.toml` | listed: the scan is recursive |
+| `filename-differs.toml` with `name = "probename"` | listed as `probename` |
+| `dup-a.toml` and `dup-b.toml`, both `name = "probedup"` | one warning; the role listed is `dup-a.toml`'s (`E34-DUP-A`) |
+| `nodesc.toml`, no `description` in any layer | dropped, warning |
+| `reviewer.toml` holding `name` and `description` only | dropped, warning; the user-level `reviewer` stays whole |
+| `reviewer.toml` complete, with another description and body (second turn, spawned) | listed with `E34-PROJECT-OVERRIDE-DESC`; the child answered `PROJECT-REVIEWER-BODY`; no warning |
+| `reviewer.toml` holding `name` and `developer_instructions` only (third turn, spawned) | listed with the **user-level** description; the child answered `PROJECT-REVIEWER-BODY-NO-DESC` |
+
+Each warning is an `error` item in the event stream, printed twice, and nothing on stderr. So both scopes load [CX-01], a project role of the same name outranks the user-level one [CX-03], the merge is per field for `description`, and **`developer_instructions` cannot be inherited from a lower layer: a role file without it is dropped**. That last sub-claim had not been measured before, so whether it is new at 0.167.0 is not known. A trusted project can therefore replace this package's reviewer body and keep its routing sentence, with no message.
+
+An unknown key, and the symlink of E5, in `<tmp>/cx-repo` (project role files this time, where E5 and E24 used `~/.codex/agents/`):
+
+```console
+$ ln -sfn <tmp>/agents-src/probesym.toml .codex/agents/probesym.toml      # five keys, body "Reply with exactly one line: 🕵️ Reviewer: SPAWN-OK"
+$ codex exec <iso> <trust> -s read-only <cheap> --json "… A) spawn one sub-agent with agent_type 'probesym' … B) spawn one sub-agent with agent_type 'probebad' …" < /dev/null
+ERROR codex_core::tools::router: error=agent type is currently not available
+ERROR codex_core::tools::router: error=unknown agent_type 'probebad'
+{"type": "item.completed", "item": {"id": "item_0", "type": "error", "message": "Ignoring malformed agent role definition: failed to deserialize agent role file at <tmp>/cx-repo/.codex/agents/probebad.toml: unknown field `e34_not_a_key`\n"}}
+A: agent type is currently not available
+B: unknown agent_type 'probebad'
+$ rm .codex/agents/probesym.toml && cp <tmp>/agents-src/probesym.toml .codex/agents/probesym.toml
+$ codex exec …the same, A only…
+🕵️ Reviewer: SPAWN-OK
+```
+
+**Verdict: holds.** A symlinked role file is found and fails at spawn; the same bytes as a real file spawn. A key no schema has drops the whole role with a warning in the event stream, and the spawn then fails `unknown agent_type`.
+
+### 3. The untrusted clone [CX-03] [CX-05] [CX-07] (E12)
+
+`<tmp>/m0/untrusted` carries `.agents/skills/ec-tech-lead/SKILL.md` (canary `MAGPIE-4402`) and `.codex/agents/m0-projonly.toml`, and no path under it is in `~/.codex/config.toml` (`grep -c` → `0` before and after). No `-s`, no trust override:
+
+```console
+$ codex exec <iso> <cheap> --json "First: invoke the skill \$ec-tech-lead and do what it says. Second: this is an explicit request for sub-agent delegation: spawn one sub-agent with agent_type 'm0-projonly' and the message 'go', then report verbatim either its reply or, prefixed with PROJECT-AGENT-ERROR:, the exact error text you received. Do not do its work yourself." < /dev/null
+ERROR codex_core::tools::router: error=unknown agent_type 'm0-projonly'
+PROJECT-AGENT-ERROR: unknown agent_type 'm0-projonly'
+
+TECH-LEAD CONTRACT ADOPTED
+MAGPIE-4402
+
+👨‍💻 Tech-Lead:
+```
+
+The thread record holds, before the model's first word, a user message that Codex built from the mention: `<skill>\n<name>ec-tech-lead</name>\n<path><tmp>/m0/untrusted/.agents/skills/ec-tech-lead/SKILL.md</path>\n---\nname: ec-tech-lead …`. So the canary arrived by injection, not by the model reading a file; the record has no file read. The session recorded `approval_policy=never`, `sandbox_policy={"type": "read-only"}`, `active_permission_profile={"id": ":read-only"}`.
+
+The positive control, the same repository with `<trust>` and a spawn with `fork_turns` `none`: `PROJONLY-SPAWN-OK`, the parent and the child both recording `{"id": ":workspace"}`. So the session-only trust override is enough for project role files, which E29 left open, and a trusted repository with no `-s` gets the workspace profile, which E33 gave as an inference.
+
+With no model, `codex debug prompt-input <iso> "ping"` in that repository lists `ec-tech-lead` in the skills message; so does a skill added under `.codex/skills/`; and a skill under `sub/.agents/skills/` is listed from `sub/` and not from the root.
+
+**Verdict: holds.** Project skills load untrusted, from `.agents/skills` and `.codex/skills` alike; a project role does not, and the spawn fails loudly. Nothing was written to either config file.
+
+### 4. The ceiling, the backend, and who may spawn [CX-04] [CX-05] (E11)
+
+No `[agents]` table in `~/.codex/config.toml` (`grep -c '^\[agents'` → `0`). The `m0-timer` role of E11 as a project role, five asked for at once:
+
+```console
+$ codex exec <iso> <trust> -s read-only <cheap> --json "… Spawn FIVE sub-agents at once, all with agent_type 'm0-timer' and fork_turns 'none', with the messages 'A', 'B', 'C', 'D' and 'E' …" < /dev/null
+ERROR codex_core::tools::router: error=collab spawn failed: agent thread limit reached
+ERROR codex_core::tools::router: error=collab spawn failed: agent thread limit reached
+A: TIMER A START=1794761507.742831618 END=1794761532.747155030
+B: TIMER B START=1794761509.749030127 END=1794761534.753809955
+C: TIMER C START=1794761512.615960089 END=1794761537.620513573
+D: SPAWN-ERROR: collab spawn failed: agent thread limit reached
+E: SPAWN-ERROR: collab spawn failed: agent thread limit reached
+```
+
+Each child slept 25.0 s and the three intervals overlap for 20.1 s. Between the refusals the parent's `list_agents` returned `/root`, `/root/a`, `/root/b`, `/root/c`, all `running`.
+
+**Which backend a session runs on.** `codex features list` prints `multi_agent  stable  true` and `multi_agent_v2  stable  false`, and yet every session on `gpt-6-luna` recorded `"multi_agent_version": "v2"`. `codex debug models` prints the catalog, where each model carries the field: of the ten entries seven say `v2` and three say `v1`, among them `gpt-5.6-luna`.
+
+| started with | `multi_agent_version` in the record | spawn tool delivered |
+|---|---|---|
+| `-m gpt-6-luna` | `v2` | `collaboration.spawn_agent` |
+| `-m gpt-5.6-luna` | `v1` | `multi_agent_v1__spawn_agent` |
+| `-m gpt-6-luna --disable multi_agent_v2` | `v2` | `collaboration.spawn_agent` |
+| `-m gpt-5.6-luna --enable multi_agent_v2` | `v2` | `collaboration.spawn_agent` |
+| `-m gpt-6-luna --disable multi_agent` | `v2` | `collaboration.spawn_agent`, still |
+
+So the model's catalog entry selects the backend, the flag can force V2 and cannot force V1, and V1 is still reachable at 0.167.0 by choosing a model catalogued for it.
+
+**The tools, as delivered** [CX-05]. V2, namespace `collaboration`: `followup_task`, `interrupt_agent`, `list_agents`, `send_message`, `spawn_agent`, `wait_agent`. `spawn_agent` takes `agent_type`, `fork_turns` (`all`, the default, or `none`), `message`, `model`, `reasoning_effort` and `task_name`; `task_name` and `message` are required. It has no parameter for a sandbox or an approval policy, and its description ends "The spawned agent will have the same tools as you and the ability to spawn its own subagents." V1, as a V1 session's own tool list printed them: `multi_agent_v1__spawn_agent`, `…send_input`, `…resume_agent`, `…wait_agent`, `…close_agent`; the spawn was called with `agent_type`, `message` and `fork_context`.
+
+**Who may spawn.** A neutral role was asked to spawn a role of its own:
+
+| backend | what the child's record holds |
+|---|---|
+| V2 (`gpt-6-luna`) | a `spawn_agent` call answered `{"task_name":"/root/child/grandchild"}`, and a third thread with `"depth": 2` that ran the command |
+| V1 (`gpt-5.6-luna`) | two searches of its tool list for a spawn tool, none found, and the reply `Error: no sub-agent spawn capability is available.` |
+
+On V1 the depth cap is the absence of the tools in the child, with the default `max_depth`; the refusal string `Agent depth limit reached. Solve the task yourself.` is in the binary and was not seen. A first V2 attempt proved nothing: the child ran the grandchild's command itself, and only its record showed that no spawn had happened.
+
+**Verdict: holds.** Three children at the V2 default, a fourth refused and not queued. Design §8's "specialists cannot spawn: V1 depth cap, V2 prose" is now measured on both.
+
+### 5. `AGENTS.md` [CX-11] (E9)
+
+The `m0-reviewer` role of E9 (told to read no file and run no command), as a project role, spawned with `fork_turns` `none` and the message `go`:
+
+| repository | reply | in the child's own record |
+|---|---|---|
+| `<tmp>/m0/proj` | `🕵️ Reviewer: CANARY=BLUEBIRD-7731` | a user message beginning `# AGENTS.md instructions`, holding `--- project-doc ---` and the canary; **0 tool calls** |
+| `<tmp>/m0/proj-noagents` | `🕵️ Reviewer: CANARY=NONE` | the same message without a project part; 0 tool calls |
+
+E9 could not exclude that the child had read the file. Its record can: the text is in a message Codex put there, and the child called no tool.
+
+Discovery, with no model (`codex debug prompt-input <iso> "ping"`, reading the `AGENTS.md` message), in `<tmp>/agmd`, untrusted:
+
+| run from | tokens in the project part, in order |
+|---|---|
+| the root (`AGENTS.md`) | `ROOT-A` |
+| `sub/` (`AGENTS.md`) | `ROOT-A`, `SUB-B` |
+| `over/` (`AGENTS.override.md` and `AGENTS.md`) | `ROOT-A`, `OVR-C`; the plain file's `PLAIN-D` absent |
+| `big/` (`AGENTS.md` of 40,064 bytes) | `ROOT-A`, `HEAD-E`; the last line's `TAIL-F` absent; project part 32,807 bytes |
+| `big/` with `-c project_doc_max_bytes=65536` | `ROOT-A`, `HEAD-E`, `TAIL-F` |
+
+The owner's global `~/.codex/AGENTS.md` comes first in the same message in every run, before the separator.
+
+**Verdict: holds.** `AGENTS.md` reaches the primary and a spawned child with no history, root-down, the override file winning in its directory, cut at the tail at 32 KiB by default. The global override file and `project_doc_fallback_filenames` were not tried.
+
+### 6. The tech-lead layer [CX-06] (E14, E22)
+
+`codex --help` and `codex exec --help` hold no `--agent` and no `--role` (`grep -c` → `0` for both files, with `--profile` and `--sandbox` found in them as the control). The profile rows, first with no model:
+
+| `codex … debug prompt-input <iso> "ping"`, in `<tmp>/m0/proj` | developer message holding `You are the Tech-Lead` |
+|---|---|
+| no profile | none |
+| `-p e-colleagues` | one, 5,624 characters |
+| `-p e-colleagues -c 'developer_instructions=""'` | none |
+| `-p e-colleagues -c 'developer_instructions="Begin every reply with OVERRIDE-TOKEN-SISKIN-3311"'` | none; a 49-character message holding the token instead |
+| `-p definitely-not-a-profile` | none; rc 0, nothing on stderr |
+| `-p <tmp>/prof/m0probe` (a file `m0probe.config.toml` is there) | rc 2: ``invalid --profile value `<tmp>/prof/m0probe`; pass a plain name such as `work` `` |
+
+Then with a model, `codex exec -p e-colleagues <iso> <trust> -s read-only <cheap> --json "<prompt>"`:
+
+| arguments | prompt | last message |
+|---|---|---|
+| `-p e-colleagues` | `In one short line: what is your role in this session? Use no tools.` | `👨‍💻 Tech-Lead: I coordinate the work, verify results, and report back.` |
+| the same, `-c 'developer_instructions=""'` | the same | `I’m your coding assistant, here to help with the work in this workspace.` |
+| `-p e-colleagues` | `Say only the word ping.` | `ping` |
+| `-p definitely-not-a-profile` | `Say only the word ping.` | `ping` |
+
+The third row is the small model obeying "only": its record holds the Tech-Lead message, and the first row shows the persona. The profile file's hash was the same after all of these.
+
+E22, with `<tmp>/m0b/q10-repo/.codex/config.toml` holding the three-line `developer_instructions` of E22:
+
+| `codex exec <iso> <cheap> --json "Say only the word ping."` | recorded profile | last message |
+|---|---|---|
+| nothing added (untrusted) | `:read-only` | `ping` |
+| `<trust>` | `:workspace` | `Q10-PROJECT-DEVINSTR-ACTIVE ping` |
+| `<trust> -c 'developer_instructions=""'` | `:workspace` | `ping` |
+
+`debug prompt-input` agrees for each row: the token is in a developer message only in the second.
+
+**Verdict: holds**, both layers, the silently ignored profile name included. E22 trusted its fixture through the dialog; here the trust was the override, so the dialog was not re-run. A profile cannot be given as a path, so a probe cannot keep its own profile outside `~/.codex/`.
+
+### 7. A spawned role's sandbox (question A) [CX-02]
+
+The role, in `<tmp>/cx-repo/.codex/agents/probero.toml`, and its variants beside it:
+
+```toml
+name = "probero"
+description = "Probe agent. Use only when asked for by name."
+sandbox_mode = "read-only"
+approval_policy = "never"
+developer_instructions = """
+You are a probe agent. Do exactly the numbered steps you are given, in order, each exactly once, even when a step is expected to fail. Never skip a step, never retry one, and do nothing else. Then reply with one line per step: the step number, then the exact output or error text you observed.
+"""
+```
+
+Every row is one session, a primary with no instructions of its own, asked to spawn the role once with `fork_turns` `none` and this message, and to return what it got:
+
+```console
+$ codex exec <iso> <trust> <cheap> --json [the row's arguments] "… Spawn exactly one sub-agent with agent_type '<role>' … \"1) Run this shell command exactly as written: printf 'x\n' > w-<tag>-shell.txt; echo rc=\$?   2) Use the apply_patch tool to add a new file named w-<tag>-patch.txt containing the single line x.\" …" < /dev/null
+```
+
+The columns are what the child's own `turn_context` says, what the two tool calls returned, and `ls w-*` afterwards.
+
+| what was tried | parent's record | child's record | shell | `apply_patch` |
+|---|---|---|---|---|
+| `probero`, `-s workspace-write` (E33's row, on a third model) | `never`, `workspace-write`, `v2` | `never`, `workspace-write`, `v2` | `rc=0`, **file on disk** | `{}`, **file on disk** |
+| the same on the **V1 backend**, `-m gpt-5.6-luna` | `never`, `workspace-write`, `v1` | `never`, `workspace-write`, `v1` | **on disk** | **on disk** |
+| a role file with `default_permissions = ":read-only"` in place of `sandbox_mode` | as the first row | `never`, `workspace-write`, profile `null` | **on disk** | **on disk** |
+| a role file with its own `[permissions.ro]` (`extends = ":read-only"`) and `default_permissions = "ro"` | as the first row | the same | **on disk** | **on disk** |
+| the `default_permissions` role under a parent started with `-c 'default_permissions=":workspace"'` and no `-s` | `never`, `workspace-write`, profile `:workspace` | `never`, `workspace-write`, profile `:workspace` | **on disk** | **on disk** |
+| a role declared in the project's `.codex/config.toml` as `[agents.probecfg]` with `description` and a `config_file` naming a file that holds the two keys | as the first row | `never`, `workspace-write` | **on disk** | **on disk** |
+| a role declared inline, `[agents.probeinline]` with `description`, the two keys and a body, under `--strict-config` | as the first row | `never`, `workspace-write` | **on disk** | **on disk** |
+| `probero` with `--enable subagent_thread_environments` | as the first row | `never`, `workspace-write` | **on disk** | **on disk** |
+| `probero` with `--enable runtime_agent_instances` | as the first row | `never`, `workspace-write` | **on disk** | **on disk** |
+| `probero` plus `model = "gpt-5.6-luna"` and `model_reasoning_effort = "medium"` in the role file | `gpt-6-luna`, `low` | `never`, `workspace-write`, **`gpt-5.6-luna`, `medium`**, `v2` | **on disk** | **on disk** |
+| a `workspace-write` role under `-s read-only` | `never`, `read-only` | `never`, `read-only` | `w-a9a-shell.txt: Read-only file system` | `patch rejected: writing is blocked by read-only sandbox; rejected by user approval settings` |
+| `probero` under `-s read-only` | `never`, `read-only` | `never`, `read-only` | `Read-only file system`, `rc=1` | `patch rejected: …` |
+
+```console
+$ ls w-*; git status --porcelain          # after the first row
+w-a0-patch.txt
+w-a0-shell.txt
+?? w-a0-patch.txt
+?? w-a0-shell.txt
+$ ls w-*                                  # after each -s read-only row
+ls: cannot access 'w-*': No such file or directory
+```
+
+Two things follow from the table. **The role file is read as configuration and partly applied**: its `model` and its reasoning effort reached the child, as its `developer_instructions` do (E5, E33), and that child stayed on its parent's backend, `v2`, though its model is catalogued `v1`. **Its sandbox and approval policy are not**: each child's record holds a `thread_settings_applied` event carrying the parent's approval policy and permission profile, on V1 as on V2. `[agents.<name>]` in a config layer is a second way to declare a role (`config_file`, `description`, `nickname_candidates` are the keys the binary's messages name); it changes where the role is found, not what it runs under. Whether the inline form's own `sandbox_mode` and body were read at all is not known: `--strict-config` accepted them, and the child's reply did not keep the body's one-line-per-step form. The `[agents]` table and `[features.multi_agent_v2]` hold no key for a child's sandbox among the key names in the binary (`max_concurrent_threads_per_session`, `max_depth`, `default_subagent_model`, `default_subagent_reasoning_effort`, `job_max_runtime_seconds`, `interrupt_message`; the feature table's are about waiting, hints and tool naming): that is a reading of strings, not a measurement.
+
+**No setting found gives a spawned role a narrower sandbox than its session.** What bounds a reviewer mechanically is still a session that is itself `read-only`, and it bounds the developer too.
+
+#### A hook is handed the role's name, and can refuse
+
+One thing did stop a named role and leave another alone, and it is not a sandbox. Codex hooks run a command before each tool call, and for a sub-agent's call the hook's input names the role. The hook is a logging script under `<tmp>`; `<tmp>/cx-repo/.codex/hooks.json` registers it for `PreToolUse` and `SubagentStart`. From its log, for one session:
+
+```
+PreToolUse     agent_type=None     tool_name=collaborationspawn_agent  tool_input={"agent_type": "probero", "task_name": "probe", "fork_turns": "none", …}
+SubagentStart  agent_type=probero  agent_id=…
+PreToolUse     agent_type=None     tool_name=collaborationwait_agent
+PreToolUse     agent_type=probero  tool_name=Bash         tool_input={"command": "printf 'x\\n' > w-h1-shell.txt; echo rc=$?"}
+PreToolUse     agent_type=probero  tool_name=apply_patch  tool_input={"command": "*** Begin Patch\n*** Add File: w-h1-patch.txt\n+x\n*** End Patch"}
+```
+
+The models here call their tools from inside Codex's script tool, and the hook still saw the shell command and the patch as their own calls. The input also carries `session_id`, `turn_id`, `cwd`, `model`, `tool_use_id` and `permission_mode` (`bypassPermissions` in these `never` sessions).
+
+| the hook's answer, for `agent_type` `probero` | role spawned | shell | `apply_patch` |
+|---|---|---|---|
+| none (logging only) | `probero` | on disk | on disk |
+| `{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "…"}}` when the tool is `apply_patch` or the command holds `>` | `probero` | `Command blocked by PreToolUse hook: E34 probe hook: agent_type probero may not call Bash. Command: printf 'x\n' > w-h2-shell.txt; echo rc=$?`; **no file** | `Command blocked by PreToolUse hook: … may not call apply_patch. …`; **no file** |
+| the same hook | `probeplain`, which the hook does not name | on disk | on disk |
+| `"permissionDecision": "allow"` with `"updatedInput": {"command": "echo REWRITTEN-BY-HOOK"}` | `probero` | the tool returned `REWRITTEN-BY-HOOK`; no shell file | on disk (not denied in this run) |
+
+**Hooks need trust, and without it they are skipped in silence.** All four rows carried `--dangerously-bypass-hook-trust`, which runs hooks for one invocation without a saved trust record. Without the flag the project's hooks file ran nothing (an empty log, both files written, nothing on stderr), and so did the same hook given as `-c 'hooks.PreToolUse=[{hooks=[{type="command",command="…"}]}]'`; with the flag that form blocked both writes too. The TUI asks instead. Started in that repository with `<trust>` and no prompt, in the probe's own tmux session:
+
+```
+  Hooks need review
+  2 hooks are new or changed.
+  Hooks can run outside the sandbox after you trust them.
+› 1. Review hooks
+  2. Trust all and continue
+  3. Continue without trusting (hooks won't run)
+```
+
+`1` listed each event with its installed, active and to-review counts, and the hook itself as `Source  Project config - <tmp>/cx-repo/.codex/hooks.json`, `Trust  New hook - review required`, with `t trust`. It was left untrusted (`esc`), the session opened at its input box, and nothing was saved: both config files had their hashes. Trusting was not done, so where the record goes was not seen; the owner's own seven hooks have theirs under `[hooks.state]` in `config.toml` and in the profile file (E29).
+
+What this is and is not. It is a per-role refusal that Codex enforces, measured for `apply_patch` by tool name and for one shell command by its text. It is not a sandbox: a hook judges a command line it is shown, so a write that the text does not betray passes, where `read-only` blocks the write itself. A hook can rewrite a command; wrapping it in Codex's own sandbox from inside a session's sandbox did not work when tried without a model:
+
+```console
+$ codex sandbox -c sandbox_mode=workspace-write -c approval_policy=never -- codex sandbox -c sandbox_mode=read-only -c approval_policy=never -- sh -c 'echo x > nested.txt'
+WARNING: proceeding, even though we could not create PATH aliases: Read-only file system (os error 30)
+error building bubblewrap command: app-server socket directory must be a user-owned directory with mode 0700
+exit=1
+```
+
+**Verdict on A: nothing in a role file, a config layer, a permission profile, a feature flag or the V1 backend narrowed a spawned role; a session started `read-only` does, for every role in it; and a trusted `PreToolUse` hook can refuse a named role's `apply_patch` and the shell commands it recognises.** The package ships no hook, and this entry proposes none; it records that the handle exists.
+
+### 8. The plugin route (question B) [CX-08] [CX-10] (E6)
+
+As found, `~/.codex/config.toml` already held `[marketplaces.e-colleagues]` with the repository checkout as its source, and `codex plugin list --marketplace e-colleagues` showed `e-colleagues@e-colleagues  not installed`. So that this registration stayed as it was, the export was copied to `<tmp>/plug/e-colleagues` with one change, the marketplace's `name` in `.agents/plugins/marketplace.json` set to `e34-export` (`diff -r` against `<pkg>` shows that line only). Neither command was refused.
+
+```console
+$ codex plugin marketplace add <tmp>/plug/e-colleagues
+Added marketplace `e34-export` from <tmp>/plug/e-colleagues.
+Installed marketplace root: <tmp>/plug/e-colleagues
+$ diff <copy taken before> ~/.codex/config.toml
+101a102,105
+> [marketplaces.e34-export]
+> source_type = "local"
+> source = "<tmp>/plug/e-colleagues"
+>
+$ codex plugin add e-colleagues@e34-export
+Added plugin `e-colleagues` from marketplace `e34-export`.
+Installed plugin root: ~/.codex/plugins/cache/e34-export/e-colleagues/0.1.1
+$ diff -r <tmp>/plug/e-colleagues ~/.codex/plugins/cache/e34-export/e-colleagues/0.1.1; echo "rc=$?"
+rc=0
+$ codex plugin list --marketplace e34-export
+PLUGIN                   STATUS              VERSION  SOURCE
+e-colleagues@e34-export  installed, enabled  0.1.1    <tmp>/plug/e-colleagues
+```
+
+The copy lands at `~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/`, all 88 files, `dist/` and the other hosts' manifests included, no symlink. The second command added `[plugins."e-colleagues@e34-export"]` with `enabled = true` and a blank line to `config.toml`. With the root `plugin.json` set to version `9.9.9` and `.codex-plugin/plugin.json` left at `0.1.1`, a second install landed in `…/0.1.1` again: the `.codex-plugin` manifest is the one adopted, as in E6.
+
+**The skills are listed under the plugin's name.** `codex debug prompt-input <iso> "ping"` in an empty repository:
+
+```
+### Skill roots
+- `r1` = `~/.codex/plugins/cache/e34-export/e-colleagues/0.1.1/skills`
+- e-colleagues:ec-fleet: Run several tech-leads at once, …
+- e-colleagues:ec-init: Set up the e-colleagues operating contract in this project … (file: r1/ec-init/SKILL.md)
+- e-colleagues:ec-onboard: … (file: r1/ec-onboard/SKILL.md)
+- e-colleagues:ec-status: … (file: r1/ec-status/SKILL.md)
+- e-colleagues:ec-tech-lead: … (file: r1/ec-tech-lead/SKILL.md)
+```
+
+Whether a mention resolves, read from the thread record (`codex exec <iso> <cheap> --json "<prompt>"`, the same empty repository):
+
+| prompt | `<skill>` message injected by Codex | what happened |
+|---|---|---|
+| `$e-colleagues:ec-tech-lead In one short line: what is your role in this session? Use no tools.` | **yes**: `<name>e-colleagues:ec-tech-lead</name>`, the path under the cache, 6,319 characters | `👨‍💻 Tech-Lead: I plan and delegate the work, verify the results, and report back to you.` |
+| `$ec-tech-lead In one short line: … Use no tools.` | **no** | no tool call; `My role is to act as the tech lead: …`, unsigned, from the one-line description |
+| `$ec-tech-lead` and nothing else | **no** | the model ran `cat ~/.codex/plugins/cache/e34-export/e-colleagues/0.1.1/skills/ec-tech-lead/SKILL.md` itself and then answered signed |
+| `$ec-status` and nothing else | **no** | the model ran `cat` on that skill's file, then `python3 …/skills/ec-status/scripts/status.py .`, and answered `This project isn’t bootstrapped: `.e-colleagues/lock.json` is missing. …` |
+
+So with the plugin installed, the short form the README gives (`$ec-init`) is not what Codex expands. It worked in two bare runs out of two because the model looked the file up from the list, which is the model's doing and cost a command each time; where the prompt forbade tools, the skill body never arrived. The qualified `$e-colleagues:<name>` is injected by Codex. For a project skill in `.agents/skills` the short form is the one that is injected (step 3).
+
+The `source` forms of E6, each written into the copy's `marketplace.json` with the marketplace registered, then `codex plugin list --marketplace e34-export`:
+
+| `source` value | resolves? |
+|---|---|
+| `"./"` | yes |
+| `"."` | yes |
+| `{"source": "local", "path": "./"}` | yes |
+| `{"type": "local", "path": "./"}` | no: `No plugins found in marketplace `e34-export`.` |
+| `{"local": {"path": "."}}` | no: the same line |
+
+Removal, and the state before:
+
+```console
+$ codex plugin remove e-colleagues
+Error: plugin requires --marketplace unless passed as <plugin>@<marketplace>
+$ codex plugin remove e-colleagues@e34-export
+Removed plugin `e-colleagues` from marketplace `e34-export`.
+$ codex plugin marketplace remove e34-export
+Removed marketplace `e34-export`.
+$ cmp <copy taken before> ~/.codex/config.toml; echo "rc=$?"
+rc=0
+$ ls -la ~/.codex/plugins/cache/e34-export
+total 0
+```
+
+`config.toml` was byte for byte what it had been, the table for the owner's own `e-colleagues` marketplace included. `codex plugin remove` left the empty directory `~/.codex/plugins/cache/e34-export/`, as E6 found; `rmdir` removed it, and a listing of the whole `~/.codex/plugins/` tree then matched the one taken before the first step (`diff` rc 0).
+
+**Verdict on B: it works at 0.167.0, the copy lands where E6 found it, and the skills resolve, by the name `e-colleagues:<skill>`.** Not measured: `codex plugin marketplace add` over the marketplace name that is already registered, a Git or `owner/repo` source, and whether the role files inside the plugin's `dist/` are ever read as roles (the user scope holds roles of the same names, so the list cannot tell).
+
+### 9. What Codex wrote by itself (question C)
+
+`sha256sum` of `~/.codex/config.toml` and of `~/.codex/e-colleagues.config.toml` was taken after every group of runs above, and `cmp` against copies taken before the first step at the end.
+
+| what ran | `config.toml` | profile file |
+|---|---|---|
+| `codex sandbox`, `codex debug prompt-input`, `codex debug models`, `codex mcp list`, `codex features list` | unchanged | unchanged |
+| `codex exec`, no `-s`, no trust override, seven sessions in four repositories Codex had never seen | unchanged | unchanged |
+| `codex exec -s read-only`, no trust override, in a repository it had never seen | unchanged | unchanged |
+| `codex exec` with `<trust>`, under `-s workspace-write`, `-s read-only` or neither, 38 sessions in six repositories | unchanged | unchanged |
+| `codex exec -p e-colleagues … <trust>`, five sessions | unchanged | unchanged |
+| the TUI with `<trust>`, left at the hook review and then quit | unchanged | unchanged |
+| `codex plugin marketplace add`, `codex plugin add` | the seven lines of step 8 | unchanged |
+| `codex plugin remove`, `codex plugin marketplace remove` | the seven lines gone | unchanged |
+
+**Codex added no line to either file that is still there.** The only lines it wrote were the marketplace and plugin records of step 8, and its own remove commands took them out. In particular, with the trust override on the command line, `-s workspace-write` in a new repository wrote no trust record. E33 saw one written by `codex exec -s workspace-write` with **no** override; that combination was deliberately not repeated here, since the record it leaves has to be removed by hand, so what exactly triggers it is still E33's single observation.
+
+### Consequences
+
+1. **Design §8's last open clause is answered, in the negative.** "Whether any setting narrows a child below its parent is not measured" can now read: no role-file key, no `[agents.<name>]` declaration, no permission profile, neither backend. The two keys stay in the rendered role files as written intent; they bind nothing at 0.167.0.
+2. **The V1 backend is no refuge**, and it is not gone either: a model catalogued `v1` runs on it. On V1 the child has no spawn tool, so "specialists cannot spawn" is mechanical there and prose on V2, as §8 says.
+3. **A hook is the one per-role handle Codex has today.** It needs a trust decision by the person, in the TUI, or a flag whose name begins `--dangerously`; untrusted it is skipped without a word. For the Tech-Lead and Security to weigh, not a change made here.
+4. **The README's Codex block names the skills by a form Codex does not expand for a plugin.** `$ec-init`, `$ec-onboard` and `$ec-status` should read `$e-colleagues:ec-init`, `$e-colleagues:ec-onboard` and `$e-colleagues:ec-status` for the plugin route; `hosts/codex.yaml`'s `invoke: "$ec-init"` and design §7's and §10's `$ec-init` say the same. The short form is right for project `.agents/skills`.
+5. **README line "On Codex the sandbox makes that a filesystem guarantee"** (under "Roles that hold") is true only of a session started `read-only`; the Codex block and the table further down already say so.
+6. **§8's "unprobed lead" is probed.** A `[permissions.<name>]` profile with `extends = ":read-only"` and one `filesystem` entry gives a read-only workspace with a writable directory, under `codex sandbox`. It is a session's profile, so it would bound every role alike.
+7. **`codex debug prompt-input` is a cheap gate.** Whether the profile, a project `developer_instructions`, the managed `AGENTS.md` block or a skill's listing reaches the model can be checked with no model call; `ec-status` or the release checklist could use it.
+
+### Verdicts
+
+1. **The claims.** `CX-02` to `CX-08`, `CX-10` and `CX-11` hold at 0.167.0 by re-run; `CX-01` is measured in part for the first time and holds; `CX-09` and `CX-12` were not measured.
+2. **A.** Nothing tried gives a spawned role a narrower sandbox than its session, on either backend. A `read-only` session bounds all its roles. A trusted `PreToolUse` hook can refuse a named role's tool calls.
+3. **B.** The plugin route works, lands in `~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/`, and its skills are `e-colleagues:<name>`.
+4. **C.** Nothing was left in `config.toml` or the profile file.
+
+### Not measured
+
+- **`CX-09`** (the plugin manifest's rules, the bundled validator) and **`CX-12`** (custom prompts under `~/.codex/prompts/`, which would need a file written there).
+- **E22's trust dialog**; **E24's nuance** that with no role installed anywhere the spawn tool has no `agent_type` parameter, which needs the user-level roles removed; **E6's two other manifest rows** (an `agent-plugins.org` schema, a symlinked root manifest).
+- **The V1 ceiling** (`CX-04` gives six), `max_depth` above its default, and the `[agents]` keys set to anything.
+- **For A:** `approval_policy = "untrusted"`, a granular approval policy, `approvals_reviewer` and `--approve-for-me`; a role file's `approval_policy` other than `never` (E33 has one row); a role under a TUI parent (E33 has it); the features `subagent_default_context_limits` and `multi_agent_v2_dynamic_tools`; `[agents.<name>]` given by `-c` or in the user layer; a managed `requirements.toml`; the installed personas under the hook; a hook on the V1 backend; a hook's view of an MCP call; the exit-code form of a hook's refusal; a trusted hook's saved record; a wrapper other than Codex's own sandbox.
+- **A model session on a permission profile of its own**, and `apply_patch` under one.
+- **The global `AGENTS.override.md`**, `project_doc_fallback_filenames`, and a truncated block's effect on a model.
+- **MCP**, every row of E33's Codex section: no MCP tool was called.
+- **`codex exec -s workspace-write` in a new repository with no trust override**, on purpose (step 9).
+- **Any Codex but 0.167.0** (0.169.0 is offered), and any model but the two named. The costlier models E29 and E33 used were not re-run.
+
+**Host state.** Hashes of `~/.codex/config.toml`, `~/.codex/e-colleagues.config.toml`, `hooks.json`, `version.json`, `.codex-global-state.json`, the five role files and the file behind `~/.codex/AGENTS.md` were taken before the first step and after the last: all eleven are the same, and `cmp` of the two config files against copies taken before is clean. `config.toml` has a new modification time, from the plugin commands of step 8, whose records Codex wrote and removed itself. The probe wrote no file under `~/.codex/` and installed nothing that is still there: `codex plugin list` shows the package as not installed, as found, with its marketplace entry pointing where it pointed. One thing was removed by hand, the empty `~/.codex/plugins/cache/e34-export/` that `codex plugin remove` leaves; the plugins tree then matched its earlier listing.
+
+Other probes ran Claude Code sessions on this machine at the same time and no other session ran Codex, so whatever Codex wrote under `~/.codex/` in that time is this probe's; in agreement, no thread record made since the first step has a working directory outside `<tmp>`.
+
+Codex kept its usual records, all left: 83 thread records under `~/.codex/sessions/2026/11/15/`, one empty marker for the TUI session under `~/.codex/tui-thread-reference-capabilities/`, and its own databases, logs, model cache and shell snapshots. The package's installed Codex files were found older than the export (`cmp` differs for all five role files and the profile, in the wording of rules R5 and T6 only; the two sandbox keys are the same) and were left that way.
+
+The probe's tmux session `e34-probe` was killed and no other session was touched; its TUI ran with the `TMUX*` variables unset, and workmux kept no state file for its pane. No worktree was made. `pgrep -x codex` finds nothing. Three files a sandbox probe was meant to fail to create outside `<tmp>` were checked absent, and the two the `workspace-write` control did create in `/tmp` were removed. One slip: a session whose root sat in a second `wait_agent` with a one-hour timeout, its child long finished, was ended with `kill` after 133 seconds; its records are complete up to that point and are what step 4's V2 row reads. The repository checkout was not touched. The fixtures, the captures and the hook's log are under `<tmp>`.
 
 ---
 

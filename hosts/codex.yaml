@@ -45,6 +45,8 @@ delegation:
 
 skills:
   plugin_dir: "skills/"
-  invoke: "$ec-init"                     # $ mention sigil [CX-07]
+  invoke: "$e-colleagues:ec-init"        # $ mention sigil [CX-07]; a plugin skill is injected
+                                         # only under the qualified name, a project skill
+                                         # under the short one (experiments.md E34)
   # Project skills are NOT trust-gated; project agents are (E12).
   untrusted_ok: true

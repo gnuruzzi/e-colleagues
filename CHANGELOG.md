@@ -40,7 +40,13 @@ this project uses semantic versioning from 0.1.0 onward.
   their personas say they lack.
 - **Corrected: on Codex a role file does not sandbox a spawned reviewer.** At 0.167.0 it ran
   with the session's sandbox and approval policy and wrote wherever the session could (E33).
-  Only a session started `read-only` holds, and it binds the developer too.
+  Only a session started `read-only` holds, and it binds the developer too. Nothing tried
+  narrows one role alone (E34).
+- **Corrected: on Codex the plugin's skills are `$e-colleagues:ec-init` and so on.** Codex
+  expands a plugin skill only under the plugin's name; the short `$ec-init` is for a project
+  skill (E34).
+- **The Codex and Claude Code claims are re-run at 0.167.0 and 2.1.325 (E34, E36).** None
+  flipped.
 - **The Antigravity claims are re-run at agy 1.5.3 (E32), and four changed.** `AGENTS.md` now
   reaches every agent tried. Workspace folders deliver agents, and a workspace agent replaces
   the installed one of the same name, in print mode even in an untrusted folder. Five listed

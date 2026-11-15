@@ -14,7 +14,7 @@ the feature was introduced in. Below it, nothing is promised.
 
 | host | minimum | why this floor |
 |---|---|---|
-| OpenAI Codex CLI | **0.153.4** | `read-only` + `approval_policy = "never"` blocks every write (E4); role files parse under `deny_unknown_fields` with a five-key whitelist [CX-02]. Re-verified at 0.154.0 (E24) |
+| OpenAI Codex CLI | **0.153.4** | `read-only` + `approval_policy = "never"` blocks every write (E4); role files parse under `deny_unknown_fields` with a five-key whitelist [CX-02]. Re-verified at 0.167.0 (E34) |
 | Claude Code | **2.1.263** | plugin `agents` takes a file list and replaces the default scan (E10); `subagent_type` needs the qualified name (E10). Re-verified at 2.1.325 (E36) |
 | opencode | **1.18.29** | the 15 permission keys and `AgentConfig`'s 15 properties, re-derived from the published schema (E16 C3). Re-verified at 2.0.18 (E20 addendum) |
 | Google Antigravity (`agy`) | **1.5.3** | every Antigravity claim was re-run there (E32): the ten tool names that load and give a tool, which are the only ones the rendered agents list; `AGENTS.md` reaching the default agent, a custom agent and a sub-agent; and a re-install that replaces the installed directory exactly. Versions 1.1.27 to 1.2.10 are no longer supported |
@@ -72,8 +72,8 @@ python3 -m unittest discover -s tests
 
 Then, per host, by hand — because no static check can prove a runtime behaviour:
 
-- **Codex** — `$ec-init` resolves in a session; a spawned reviewer cannot write even through
-  an approved command; a symlinked role file fails with `agent type is currently not
+- **Codex** — `$e-colleagues:ec-init` resolves in a session; the sandbox a spawned reviewer
+  ran under is read from its thread record (E33, E34); a symlinked role file fails with `agent type is currently not
   available`, so the installer must write real files.
 - **Claude** — `claude --plugin-dir . --agent tech-lead` spawns `e-colleagues:<name>` and not
   a built-in; the bare name is absent from the agent list.
