@@ -388,6 +388,25 @@ CLAUDE_SCREEN = """\u25cf \U0001f468\u200d\U0001f4bb Tech-Lead: This is a parser
   \u23f5\u23f5 auto mode on (shift+tab to cycle) \u00b7 \u2190 1 agent
 """
 
+# opencode draws a sidebar to the right of the conversation, on the same screen rows (E30).
+PAD = " " * 60
+OPENCODE_SCREEN = f"""     Reading .env was rejected, so I have no line count to report.
+{PAD}{PAD}Readiness check
+     ### RETURN{PAD}Session
+     status: needs-decision{PAD}Context
+     task: issue-17{PAD}14,020 tokens
+     changed: none{PAD}21% used
+     evidence: the read of .env was rejected
+     findings: none{PAD}MCP
+     risks: none{PAD}\u2022 a server
+     follow-ups: none
+     questions: Do you want me to retry reading `.env` so I can report its line count, or{PAD}LSP
+     should I skip it entirely?
+     knowledge: none
+
+     Tech-Lead \u00b7 <local model>{PAD}\u00b7 12.7s
+"""
+
 
 class TestLastReturn(unittest.TestCase):
     def setUp(self):
@@ -418,6 +437,13 @@ class TestLastReturn(unittest.TestCase):
         got = self.f.last_return(CLAUDE_SCREEN)
         self.assertEqual(got, {"status": "partial",
                                "questions": "Should the parser probe continue (yes or no)?"})
+
+    def test_an_opencode_capture_is_read_past_its_sidebar(self):
+        got = self.f.last_return(OPENCODE_SCREEN)
+        self.assertEqual(got, {
+            "status": "needs-decision",
+            "questions": "Do you want me to retry reading `.env` so I can report its line count, "
+                         "or should I skip it entirely?"})
 
     def test_the_last_block_wins(self):
         older = BLOCK.replace("needs-decision", "partial")

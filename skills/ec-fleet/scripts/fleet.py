@@ -180,6 +180,8 @@ NON_ALNUM = re.compile(r"^[^0-9A-Za-z]+")
 FRAMING = re.compile(r"^[\s\u2500-\u257f]+")
 # Hosts frame and bullet their lines, so only letters and digits around it disqualify a heading.
 HEADING = re.compile(r"[^0-9A-Za-z]*### RETURN[^0-9A-Za-z]*")
+# A host may draw a side panel on the same screen rows, far to the right of the text.
+BESIDE = re.compile(r"(?<=\S) {8,}\S.*$")
 STATUSES = ("done", "partial", "blocked", "needs-decision")
 NO_BLOCK = "no RETURN block on screen"
 # Not stopped: at work, or at one of its host's approvals. A block on screen would be an old one.
@@ -188,7 +190,7 @@ NO_SCREEN = "could not read its screen"
 
 
 def last_return(screen: str) -> dict | None:
-    lines = screen.splitlines()
+    lines = [BESIDE.sub("", ln) for ln in screen.splitlines()]
     heads = [i for i, ln in enumerate(lines) if HEADING.fullmatch(ln)]
     if not heads:
         return None

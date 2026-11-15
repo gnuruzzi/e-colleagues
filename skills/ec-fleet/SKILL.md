@@ -20,7 +20,8 @@ Whichever part applies, read `AGENTS.md` first if it is not in context.
 
 ### Start
 
-Run the script beside this file once per issue the person names:
+Stay in the project's directory and run the script beside this file by its full path, once
+per issue the person names:
 
 ```
 python3 scripts/fleet.py start <reference>
@@ -34,8 +35,8 @@ python3 scripts/fleet.py start <reference>
   names the worktree from the reference (`12` becomes `issue-12`), only when there is no
   naming line, or the line needs the issue's title and you cannot read the tracker.
 
-On success it prints one line, `started <name>`, naming the worktree. If it fails any other
-way, show its message; do not retry with other flags.
+On success it prints `started <name>`. If it fails any other way, show its message; do not
+retry with other flags.
 
 In a new worktree the host may first show a first-run prompt, such as whether to trust the
 folder. Where it can, the script trusts the new worktree for that one session; otherwise the
@@ -149,5 +150,5 @@ With no config file the launcher is workmux and each host uses its default start
 only that setup is tested. workmux must be installed, with its status hooks set up
 (`workmux setup`) for each host you start: the overview's states come from them. An optional
 TOML file, `~/.config/e-colleagues/fleet.toml` (or under `XDG_CONFIG_HOME`) or
-the path in `EC_FLEET_CONFIG`, can change each host's start command and `trust`, for example
-to add that host's remote flag, set `default_host`, and replace the launcher's commands.
+the path in `EC_FLEET_CONFIG`, can change each host's start command and `trust`, set
+`default_host`, and replace the launcher's commands.
