@@ -24,6 +24,7 @@ elif sys.argv[1] == "capture":
 elif sys.argv[1] == "where":
     if os.path.exists(os.path.join(d, "where.out")):
         sys.stdout.write(open(os.path.join(d, "where.out")).read())
+        sys.exit(int(os.path.exists(os.path.join(d, "where.fail"))))
     else:
         sys.stderr.write("no such repository\\n"); sys.exit(3)
 elif sys.argv[1] == "add" and os.path.exists(os.path.join(d, "fail")):
@@ -106,11 +107,17 @@ class TestStart(Base):
     def test_opencode_is_given_the_tech_lead_through_a_config_file_beside_the_script(self):
         """opencode's TUI takes no --agent at 2.2.7; a config file named in the environment
         chooses the agent, and a private server makes the session read it (E30)."""
-        r = self.run_fleet("start", "12", "--host", "opencode", "--dry-run", config=False)
+        copy = self.dir.resolve() / "scripts"
+        copy.mkdir()
+        (copy / "fleet.py").write_text(FLEET.read_text())
+        e = {**os.environ, "XDG_CONFIG_HOME": str(self.dir / "xdg")}
+        e.pop("EC_FLEET_CONFIG", None)
+        r = subprocess.run([sys.executable, str(copy / "fleet.py"), "start", "12", "--host",
+                            "opencode", "--dry-run"], capture_output=True, text=True, env=e)
         self.assertEqual(r.returncode, 0, r.stderr)
-        shipped = FLEET.resolve().parent / "opencode-tech-lead.json"
         self.assertEqual(json.loads(r.stdout)[5],
-                         f"env OPENCODE_CONFIG={shipped} opencode --standalone")
+                         f"env OPENCODE_CONFIG={copy}/opencode-tech-lead.json opencode --standalone")
+        shipped = FLEET.parent / "opencode-tech-lead.json"
         self.assertEqual(json.loads(shipped.read_text()), {"default_agent": "tech-lead"})
 
     def test_a_script_path_the_launcher_would_break_is_refused_for_such_a_start(self):
@@ -169,18 +176,51 @@ class TestStart(Base):
 
     def test_a_bare_path_from_where_is_read_too(self):
         self.write_cfg(extra=self.TRUST)
-        (self.dir / "where.out").write_text("\n/w/a b/issue-12\n")
+        (self.dir / "where.out").write_text("\n/w/issue-12\n")
         r = self.run_fleet("start", "12", "--host", "h")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertEqual(self.logged()[-1][3], "h run --trust /w/a b/issue-12")
+        self.assertEqual(self.logged()[-1][3], "h run --trust /w/issue-12")
+
+    def test_a_path_with_a_space_is_filled_only_inside_quotes(self):
+        (self.dir / "where.out").write_text("Worktree: /w/a --flag b/issue-12\n")
+        for template, want in (
+                ("--trust {worktree}", "h run"),
+                ("--trust '{worktree}'", "h run --trust '/w/a --flag b/issue-12'"),
+                ('--trust \\"{worktree}\\"', 'h run --trust "/w/a --flag b/issue-12"'),
+                ("--a 'x' --trust {worktree}", "h run")):
+            self.write_cfg(extra=f'[hosts.h]\nstart = "h run"\ntrust = "{template}"\n')
+            self.log.unlink(missing_ok=True)
+            r = self.run_fleet("start", "12", "--host", "h")
+            self.assertEqual(r.returncode, 0, (template, r.stderr))
+            self.assertEqual(self.logged()[-1][3], want, template)
+
+    def test_a_launcher_of_ones_own_is_not_asked_through_workmux(self):
+        """The default where command is workmux's; it knows nothing of another launcher."""
+        py, fake = json.dumps(sys.executable), json.dumps(str(self.fake))
+        self.cfg.write_text(f'[launcher]\nstart = [{py}, {fake}, "add", "{{name}}", "{{agent}}"]\n')
+        stub = self.dir / "bin"
+        stub.mkdir()
+        (stub / "workmux").write_text("#!/bin/sh\necho 'Worktree: /stub/path'\n")
+        (stub / "workmux").chmod(0o755)
+        r = self.run_fleet("start", "12", "--host", "antigravity",
+                           env={"PATH": f"{stub}{os.pathsep}{os.environ['PATH']}"})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.logged(), [["add", "issue-12", "agy --agent tech-lead"]])
+        self.assertIn("fleet: could not learn the worktree's path", r.stderr)
 
     def test_without_the_worktrees_path_the_start_goes_ahead_untrusted_and_says_so(self):
         self.write_cfg(extra=self.TRUST)
         outputs = [None, "", "Worktree: relative/issue-12\n", "Worktree: /w/it's/issue-12\n",
-                   'Worktree: /w/a"b/issue-12\n', "Worktree: /w/a\\b/issue-12\n"]
+                   'Worktree: /w/a"b/issue-12\n', "Worktree: /w/a\\b/issue-12\n",
+                   "Worktree: /w/a\x1bb/issue-12\n", "Worktree: /w/a\x7fb/issue-12\n",
+                   "FAILS:Worktree: /w/issue-12\n"]
         for out in outputs:
             self.log.unlink(missing_ok=True)
-            (self.dir / "where.out").unlink(missing_ok=True)
+            for name in ("where.out", "where.fail"):
+                (self.dir / name).unlink(missing_ok=True)
+            if out is not None and out.startswith("FAILS:"):
+                out = out[len("FAILS:"):]
+                (self.dir / "where.fail").write_text("")
             if out is not None:
                 (self.dir / "where.out").write_text(out)
             r = self.run_fleet("start", "12", "--host", "h")
@@ -482,8 +522,17 @@ class TestLastReturn(unittest.TestCase):
         self.assertIsNone(self.f.last_return(BLOCK.replace("### RETURN", "### RETURNS")))
         quoted = BLOCK.replace("Keep the old flag", "Is the ### RETURN block right? Keep the flag")
         self.assertEqual(self.f.last_return(quoted)["status"], "needs-decision")
-        bulleted = BLOCK.replace("### RETURN", "\u25cf ### RETURN \u2502")
-        self.assertEqual(self.f.last_return(bulleted)["status"], "needs-decision")
+        for head in ("\u25cf ### RETURN \u2502", "\u25cf Tech-Lead: ### RETURN"):
+            self.assertEqual(self.f.last_return(BLOCK.replace("### RETURN", head))["status"],
+                             "needs-decision", head)
+
+    def test_text_is_cut_at_eight_spaces_and_a_padded_frame_is_not(self):
+        gap = lambda n: BLOCK.replace("status: needs-decision",
+                                      "status: needs-decision" + " " * n + "Context")
+        self.assertEqual(self.f.last_return(gap(8))["status"], "needs-decision")
+        self.assertIsNone(self.f.last_return(gap(7)))
+        framed = "\n".join("\u2502" + " " * 10 + ln for ln in BLOCK.splitlines())
+        self.assertEqual(self.f.last_return(framed)["status"], "needs-decision")
 
     def test_a_block_cut_off_before_knowledge_is_unreadable(self):
         cut = "### RETURN\nstatus: partial\ntask: x\nquestions: Which one?\n>\n? for shortcuts\n"

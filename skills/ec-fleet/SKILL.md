@@ -150,5 +150,5 @@ With no config file the launcher is workmux and each host uses its default start
 only that setup is tested. workmux must be installed, with its status hooks set up
 (`workmux setup`) for each host you start: the overview's states come from them. An optional
 TOML file, `~/.config/e-colleagues/fleet.toml` (or under `XDG_CONFIG_HOME`) or
-the path in `EC_FLEET_CONFIG`, can change each host's start command and `trust`, set
-`default_host`, and replace the launcher's commands.
+the path in `EC_FLEET_CONFIG`, can set `default_host`, each host's `start` and `trust`
+(`trust = ""` for none), and the launcher's commands.

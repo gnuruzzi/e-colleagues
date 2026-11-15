@@ -189,3 +189,32 @@ class TestSkillsGate(unittest.TestCase):
         self.assertIn("ec-fleet", r.stdout)
         self.assertIn("the RETURN block differs from personas/_shared/return.md", r.stdout)
 
+
+
+class TestAgyValidatorGate(unittest.TestCase):
+    """agy 1.5.3 passes a plugin with a bad agent name and only warns (E32), so the gate
+    reads the warnings. A stub stands in for the binary."""
+
+    def run_with(self, output: str):
+        with tempfile.TemporaryDirectory() as tmp:
+            stub = pathlib.Path(tmp) / "agy"
+            stub.write_text(f"#!{sys.executable}\nprint({output!r})\n")
+            stub.chmod(0o755)
+            return subprocess.run([sys.executable, str(ROOT / "tools" / "check.py"), "--hosts"],
+                                  capture_output=True, text=True, env={"PATH": tmp})
+
+    def test_the_known_warning_passes(self):
+        r = self.run_with("  ⚠ AGENTS.md: never loaded: plugins load rules only from rules/.\n"
+                          "✔ Validation passed with 1 warning")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("agy plugin validate passes", r.stdout)
+
+    def test_any_other_warning_fails(self):
+        r = self.run_with("  ⚠ AGENTS.md: never loaded: plugins load rules only from rules/.\n"
+                          "  ⚠ agents/x/agent.md: missing name\n"
+                          "✔ Validation passed with 2 warnings")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("missing name", r.stdout)
+
+    def test_the_older_ok_line_still_passes(self):
+        self.assertEqual(self.run_with("  [ok]    e-colleagues").returncode, 0)

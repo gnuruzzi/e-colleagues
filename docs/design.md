@@ -567,7 +567,11 @@ prompt naming the skill and the assignment. The skill passes `--host` only when 
 names a host; E27's `start 12 --host antigravity` came from its earlier wording. For a host
 whose `trust` arguments hold `{worktree}`, it first runs `workmux add <name> --dry-run`, reads
 the path from the `Worktree:` line and appends the arguments to the start command (E28). When
-it cannot learn the path it says so on stderr and starts without them.
+it cannot learn the path it says so on stderr and starts without them. That is also what
+happens with a launcher `start` of one's own and no `where` beside it, since the default `where`
+asks workmux; and with a path holding a space when `{worktree}` is not inside quotes, where
+the launcher would split it. A host's own `start` keeps that host's default `trust` unless the
+config sets `trust = ""`.
 `fleet.py overview` reads `workmux status --json` (E26); for each session that is neither
 `working` nor `waiting`, other than its own, it runs `workmux capture <name> --lines 200` (E26) and takes
 `status` and `questions` from the last RETURN block (§4), only when the block is complete on

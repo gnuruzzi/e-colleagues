@@ -101,7 +101,11 @@ def load_config(path: pathlib.Path | None) -> dict:
     except (tomllib.TOMLDecodeError, OSError) as e:
         raise ConfigError(f"{p}: {e}")
     _check(data, {"default_host": str, "hosts": dict, "launcher": dict}, "")
-    cfg["launcher"].update(_check(data.get("launcher", {}), LAUNCHER_KEYS, "launcher"))
+    launcher = _check(data.get("launcher", {}), LAUNCHER_KEYS, "launcher")
+    cfg["launcher"].update(launcher)
+    if "start" in launcher and "where" not in launcher:
+        # The default asks workmux, which says nothing about another launcher's worktrees.
+        cfg["launcher"]["where"] = None
     for host, table in data.get("hosts", {}).items():
         _check(table, HOST_KEYS, f"hosts.{host}")
         merged = {**cfg["hosts"].get(host, {}), **table}
@@ -133,6 +137,8 @@ def check_flag(flag: str, value: str) -> None:
 
 
 def worktree_path(cfg: dict, name: str) -> str | None:
+    if not cfg["launcher"]["where"]:
+        return None
     try:
         r = run_launcher(fill(cfg["launcher"]["where"], {"name": name}))
     except LauncherError:
@@ -141,7 +147,7 @@ def worktree_path(cfg: dict, name: str) -> str | None:
     labelled = [ln for ln in lines if ln.startswith("Worktree:")]
     path = labelled[0][len("Worktree:"):].strip() if labelled else "".join(lines[:1])
     # The path lands inside quotes in the host's command, so one that could end them is refused.
-    if r.returncode or not os.path.isabs(path) or re.search(r"['\"\\\x00-\x1f]", path):
+    if r.returncode or not os.path.isabs(path) or re.search(r"['\"\\\x00-\x1f\x7f]", path):
         return None
     return path
 
@@ -168,12 +174,16 @@ def start_argv(cfg: dict, ref: str, name: str | None, host: str | None, base: st
     if "{skill}" in agent:
         here = str(pathlib.Path(__file__).resolve().parent)
         # The launcher passes this unquoted, so a space or a quote in it would split it.
-        if not re.fullmatch(r"[A-Za-z0-9_./@%+=:,~-]+", here):
+        if not re.fullmatch(r"[A-Za-z0-9_./@%+=:,-]+", here):
             raise ConfigError(f"this script's own path, {here!r}, would not survive the "
                               f"launcher; set [hosts.{host}] start in the config")
         agent = agent.replace("{skill}", here)
     if "{worktree}" in trust and not dry_run:
         path = worktree_path(cfg, name)
+        before = trust[:trust.index("{worktree}")]
+        quoted = before.count("'") % 2 or (not before.count("'") and before.count('"') % 2)
+        if path and re.search(r"\s", path) and not quoted:
+            path = None  # outside quotes the launcher would split it into arguments
         trust, trusted = (trust.replace("{worktree}", path), True) if path else ("", False)
     if trust:
         agent += " " + trust
@@ -188,10 +198,10 @@ RETURN_KEYS = ("status", "task", "changed", "evidence", "findings", "risks", "fo
 KEY_LINE = re.compile(r"^(%s):" % "|".join(RETURN_KEYS))
 NON_ALNUM = re.compile(r"^[^0-9A-Za-z]+")
 FRAMING = re.compile(r"^[\s\u2500-\u257f]+")
-# Hosts frame and bullet their lines, so only letters and digits around it disqualify a heading.
-HEADING = re.compile(r"[^0-9A-Za-z]*### RETURN[^0-9A-Za-z]*")
+# Hosts frame, bullet and sign their rows, so a heading only has to end its row.
+HEADING = re.compile(r"### RETURN[^0-9A-Za-z]*$")
 # A host may draw a side panel on the same screen rows, far to the right of the text.
-BESIDE = re.compile(r"(?<=\S) {8,}\S.*$")
+BESIDE = re.compile(r"^([^0-9A-Za-z#]*[0-9A-Za-z#].*?) {8,}\S.*$")
 STATUSES = ("done", "partial", "blocked", "needs-decision")
 NO_BLOCK = "no RETURN block on screen"
 # Not stopped: at work, or at one of its host's approvals. A block on screen would be an old one.
@@ -200,8 +210,8 @@ NO_SCREEN = "could not read its screen"
 
 
 def last_return(screen: str) -> dict | None:
-    lines = [BESIDE.sub("", ln) for ln in screen.splitlines()]
-    heads = [i for i, ln in enumerate(lines) if HEADING.fullmatch(ln)]
+    lines = [BESIDE.sub(r"\1", ln) for ln in screen.splitlines()]
+    heads = [i for i, ln in enumerate(lines) if HEADING.search(ln)]
     if not heads:
         return None
     fields: dict[str, list[str]] = {}

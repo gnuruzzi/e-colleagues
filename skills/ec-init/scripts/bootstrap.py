@@ -370,8 +370,12 @@ def install_user_scope(team: dict, a) -> int:
             print("~/.codex/e-colleagues.config.toml is current — run `codex --profile e-colleagues`")
         else:
             if old is not None:
-                profile_dst.with_name(profile_dst.name + ".bak").write_text(old)
-                print("kept the previous profile as ~/.codex/e-colleagues.config.toml.bak: "
+                bak, n = profile_dst.with_name(profile_dst.name + ".bak"), 1
+                while bak.exists():
+                    n += 1
+                    bak = profile_dst.with_name(f"{profile_dst.name}.bak{n}")
+                bak.write_text(old)
+                print(f"kept the previous profile as ~/.codex/{bak.name}: "
                       "anything Codex added to it is there, not in the new file")
             profile_dst.write_text(new)
             print("installed ~/.codex/e-colleagues.config.toml — run `codex --profile e-colleagues`")

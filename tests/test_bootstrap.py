@@ -461,6 +461,12 @@ class TestUserScopeInstall(Base):
         self.assertEqual(profile.read_text(), current)
         self.assertEqual(profile.with_name(profile.name + ".bak").read_text(), old)
         self.assertIn("e-colleagues.config.toml.bak", r.stdout)
+        profile.write_text("developer_instructions = \"older still\"\n")
+        r = self.install(home)
+        self.assertEqual(profile.with_name(profile.name + ".bak").read_text(), old)
+        self.assertEqual(profile.with_name(profile.name + ".bak2").read_text(),
+                         "developer_instructions = \"older still\"\n")
+        self.assertIn("e-colleagues.config.toml.bak2", r.stdout)
 
     def test_installs_the_opencode_agents_for_the_roster(self):
         """opencode has no bundle or plugin route for agents (E25), so the user-scope install

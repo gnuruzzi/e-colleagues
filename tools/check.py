@@ -410,6 +410,10 @@ KNOWN_CLAUDE_WARNINGS = ["CLAUDE.md at the plugin root is not loaded as project 
                          "This folder also holds a marketplace manifest"]
 
 
+# The root AGENTS.md is this repository's own contract, deliberately not a plugin rule [AG-05].
+KNOWN_AGY_WARNINGS = ["AGENTS.md: never loaded"]
+
+
 def check_hosts():
     """Run the vendors' own validators. Skips cleanly where a binary is absent, so CI on a
     bare runner reports honestly instead of passing vacuously."""
@@ -446,9 +450,12 @@ def check_hosts():
         r = subprocess.run(["agy", "plugin", "validate", "."], capture_output=True,
                            text=True, cwd=ROOT)
         out = r.stdout + r.stderr
-        # agy printed "[ok]" up to 1.2.10 and prints "Validation passed" at 1.5.3.
-        if r.returncode != 0 or not ("[ok]" in out or "Validation passed" in out):
-            fail(f"agy plugin validate did not pass: {out.strip()[:120]}")
+        # agy printed "[ok]" up to 1.2.10 and prints "Validation passed" at 1.5.3, where a
+        # bad agent name is only a warning (E32). So every warning but the known one fails.
+        unknown = [w.strip() for w in re.findall(r"⚠\s*(.+)", out)
+                   if not any(k in w for k in KNOWN_AGY_WARNINGS)]
+        if r.returncode != 0 or unknown or not ("[ok]" in out or "Validation passed" in out):
+            fail(f"agy plugin validate did not pass: {(unknown or [out.strip()])[0][:120]}")
         else:
             ok("agy plugin validate passes")
     else:
