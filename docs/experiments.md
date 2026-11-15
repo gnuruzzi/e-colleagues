@@ -34,6 +34,7 @@ Tranches: **A** automated, **B** interactive — needing a TTY or a trust dialog
 | — | B | a fleet of Antigravity tech-leads through workmux: dispatch from a session, prompt delivery, commit, status values, the captured screen | **settled** (E26): dispatch from a session, prompt delivery and commit hold, with stops that need the person; the states item holds only in part, because workmux reports only `working` and `done` for agy |
 | — | B | the fleet skill end to end on Antigravity: a dispatched tech-lead loads `ec-fleet` from its start prompt, and the overview reads its stop | **settled** (E27): both hold; a session at the first-run trust dialog read `working`, not `done`, because its first command waited for approval behind the dialog |
 | — | B | can `fleet.py` start an Antigravity tech-lead in a new worktree without agy's trust dialog | **settled** (E28): yes — it reads the path from `workmux add <name> --dry-run` and passes it in a session-only `trustedWorkspaces` setting; nothing is saved |
+| — | C | the 2026-11-15 Antigravity sweep: agy 1.5.3 | **settled** (E32): AG-06, AG-07, AG-11 and AG-12 changed; the desktop not driven |
 
 ---
 
@@ -1991,3 +1992,398 @@ $ git log --oneline --all
 - Codex, opencode and Claude Code, whose own first-run prompts were not looked at.
 
 **Host state.** Six worktrees were made and removed (`✓ Removed worktree 'issue-12' and branch 'issue-12'`, and the same for 14, 15, 16, 20 and 21). Afterwards `workmux status --json` in `<tmp>/repo` listed `"agents": []`, `git worktree list` listed only `<tmp>/repo`, both probe tmux sessions were killed and no agy process remained. `~/.gemini/antigravity-cli/settings.json` had the same hash at every step. workmux kept a state file for each of five probe panes under `~/.local/state/workmux/agents/`; all five were removed. agy kept its usual per-session records, and workmux appended to its log.
+
+---
+
+## E32 — the Antigravity claims at agy 1.5.3: `AGENTS.md` now reaches every agent, workspace roots deliver agents, five registry names resolve and give no tool, and a re-install replaces
+
+**Date** 2026-11-15. **agy 1.5.3** (`pacman -Q antigravity-cli` → `1.5.3_6604829099950080-1`), model Gemini 4 Argon (High), the configured default, for six sessions; `--model gemini-3.8-flash-low` for the 36 short ones, named where used. **Antigravity desktop 2.29.1** is installed and was **not driven**: only its `language_server` binary was read with `strings`. **tmux 3.8.** Tranche C, with one interactive step.
+
+The Antigravity rows of `SUPPORT-MATRIX.md` were last confirmed at agy 1.2.10 or older (E24), and one had already flipped in passing (E27). This entry re-runs each one's measurement at 1.5.3, as E24 did at 1.2.10. Every probe used a throwaway fixture under `<tmp>`; every plugin was installed under its own name (`e32-probe`, `e32-tools`, `e32-inherit`, and three smaller ones) and uninstalled again, except the re-install test, which E8 ran against a tree named `e-colleagues` and which was run the same way here, from a copy of the package's export at commit `754fce5`. Host state was snapshotted before and compared after; see **Host state**.
+
+A claim's desktop half is marked *not re-verified* throughout. Where a row cites the vendor changelog, that is `agy changelog`'s output, searched by keyword and quoted, not read in full: documentation, not measurement.
+
+| claim | at agy 1.5.3 | what moved |
+|---|---|---|
+| `AG-02` | **reproduced** (CLI); desktop binary inspected only | nothing: all 18 frontmatter tags are in both binaries, and the body is not sliced at its second H1 |
+| `AG-03` | **reproduced** (CLI); desktop selector not re-verified | nothing. New detail: `--agent` takes the frontmatter `name`, not the directory name, and refuses a sub-agent |
+| `AG-04` | **partly measured for the first time**; was docs/source only | `TypeName` addressing and "only `subagent: true` is invocable" now rest on a run |
+| `AG-05` | **reproduced** (CLI); desktop not re-verified | the allowlist still removes `invoke_subagent`. New: it does not bound MCP tools |
+| `AG-06` | **changed** | six names are rejected, not seven; five more resolve and deliver nothing; three arrive under new names |
+| `AG-07` | **changed** | the validator's wording and rules; and a global install is no longer the only route for agents (see `AG-12`) |
+| `AG-08` | **reproduced, with the E27 flip confirmed by a proper test** | re-install replaces; an install now writes a registry entry; the destination takes the manifest's name. Most target forms were **not re-run** |
+| `AG-10` | **partly measured for the first time**; was docs/source only | no placeholder is substituted; a workflow file was not expanded |
+| `AG-11` | **changed** | `AGENTS.md` and `GEMINI.md` reach the default agent, a custom agent and a sub-agent |
+| `AG-12` | **changed** | four workspace roots deliver agents, and a workspace definition beats a globally installed one of the same name |
+
+### 1. Install, destination, registry, re-install [AG-08]
+
+```console
+$ agy plugin install ./e32-probe                    # in <tmp>/fix
+  [ok]    e32-probe
+          ✔ skills      : 1 installed (e32-skill)
+          ✔ agents      : 5 installed (e32-fmname, e32-lead, e32-leaky, e32-nosub, e32-reviewer)
+          Installed to ~/.gemini/config/plugins/e32-probe
+$ diff -r <tmp>/fix/e32-probe ~/.gemini/config/plugins/e32-probe; echo "diff rc=$?"
+diff rc=0
+$ ls -la ~/.gemini/antigravity-cli/plugins
+ls: cannot access '~/.gemini/antigravity-cli/plugins': No such file or directory
+```
+
+The fixture carried `.claude-plugin/`, `.codex-plugin/`, `.agents/plugins/marketplace.json` and `dist/` beside the root `plugin.json`, as E7's did. The whole tree was copied verbatim, to the global root. `~/.gemini/config/config.json` had the same hash after every install and uninstall in this entry.
+
+**An install now writes a registry entry.** E8 found no registry file at 1.1.27 (`grep -rl importedAt` found none). At 1.5.3 `~/.gemini/config/import_manifest.json` gained:
+
+```json
+{ "name": "e32-probe", "source": "antigravity", "importedAt": "2026-11-15T08:16:51Z", "components": ["skills", "agents"] }
+```
+
+The listing is still derived from the directory, and the entry only supplies the `Source:` line. A plugin directory copied into `~/.gemini/config/plugins/` by hand, with no install, was listed (`- e32-handcopy (enabled, 0.0.1)` / `Components: 1 agent`, no `Source:`), delivered its agent to `agy agents`, and got no entry. An installed plugin whose directory was deleted by hand was gone from `agy plugin list` and its entry was gone from the file after that one `list` call.
+
+**The destination takes the manifest's name, not the source folder's.** A source folder `e32-srcdir/` whose `plugin.json` says `"name": "e32-manifestname"`:
+
+```console
+$ agy plugin install ./e32-srcdir
+  [ok]    e32-manifestname
+          ✔ agents      : 1 installed (sd-agent)
+          Installed to ~/.gemini/config/plugins/e32-manifestname
+```
+
+E8's addendum could not tell the two apart, because the repository's name and the manifest's name are the same string.
+
+**`agy plugin uninstall <name>`** removed the directory and the registry entry (`Uninstalled plugin "e32-tools"`, rc 0). It also printed the same line, rc 0, for a name that was not installed.
+
+**The re-install test, as E8 ran it.** `<tmp>/src/e-colleagues` is a copy of the export; `dest` is `~/.gemini/config/plugins/e-colleagues`:
+
+```console
+$ echo modified-marker > <tmp>/src/e-colleagues/skills/ec-tech-lead/MARKER.txt
+$ agy plugin install ./e-colleagues
+  [ok]    e-colleagues
+          ✔ skills      : 5 installed (ec-fleet, ec-init, ec-onboard, ec-status, ec-tech-lead)
+          ✔ agents      : 6 installed (designer, developer, platform, reviewer, security, tech-lead)
+          Installed to ~/.gemini/config/plugins/e-colleagues (replaced existing installation)
+$ ls dest/skills/ec-tech-lead/
+MARKER.txt
+SKILL.md
+$ echo dest-only > dest/DEST-ONLY.txt               # a file the source never had
+$ rm <tmp>/src/e-colleagues/skills/ec-tech-lead/MARKER.txt
+$ agy plugin install ./e-colleagues                 # the same output, "(replaced existing installation)" included
+$ ls dest/skills/ec-tech-lead/
+SKILL.md
+$ ls dest/DEST-ONLY.txt
+ls: cannot access '~/.gemini/config/plugins/e-colleagues/DEST-ONLY.txt': No such file or directory
+$ cd ~/.gemini/config/plugins && agy plugin install ./e-colleagues
+Error: failed to copy plugin: source and destination are the same directory: ~/.gemini/config/plugins/e-colleagues
+```
+
+**Verdict: at 1.5.3 a second install replaces the directory exactly.** The marker deleted from the source did not survive, and neither did a file that existed only in the destination. E8 measured the opposite at 1.1.27, and E27 saw the replacement in passing. The vendor changelog dates the change: under **1.1.28**, "Fixed plugin reinstalls keeping files that had been deleted from the source: installing a plugin now replaces its managed directory exactly, installing a plugin from its own installed directory is refused instead of corrupting it, and uninstalling a plugin no longer leaves its enabled/disabled entry behind in `config.json`." The refusal it names is the last command above. No version between 1.1.27 and 1.5.3 was run here, so 1.1.28 is the vendor's statement.
+
+**The URL install**, the one network action of this entry:
+
+```console
+$ agy plugin install https://github.com/gnuruzzi/e-colleagues
+Cloning plugin from https://github.com/gnuruzzi/e-colleagues.git...
+  [ok]    e-colleagues
+          ✔ skills      : 5 installed (ec-fleet, ec-init, ec-onboard, ec-status, ec-tech-lead)
+          ✔ agents      : 6 installed (designer, developer, platform, reviewer, security, tech-lead)
+          Installed to ~/.gemini/config/plugins/e-colleagues (replaced existing installation)
+```
+
+It holds at 1.5.3. The installed directory held 116 files, 29 of them under `.git/`: the clone's own repository data is installed with the plugin. `config.json` was untouched. The install was put back from the export afterwards.
+
+**Target forms.** Only the forms that cannot leave the machine were re-run:
+
+| target | result at 1.5.3 |
+|---|---|
+| `file://<tmp>/src/e-colleagues` | rc 1, `Error: install target must be a directory: file://<tmp>/src/e-colleagues` — as E8 |
+| a path that does not exist | rc 1, `Error: install target must be a directory: <path>` |
+| `agy plugin install --help`, `agy plugin link --help` | not flags, as in E8's second addendum: `install target must be a directory: --help`; `link requires marketplace name and target` |
+
+`agy plugin --help` now reads `install <target>       Install a plugin (supports plugin[@marketplace])`, the binary's error string is `install target must be a directory or <plugin>@<marketplace>: %s`, and `agy plugin list` gives 13 of the 15 installed plugins `Source:     antigravity-plugins-official`. A directory `~/.gemini/antigravity-cli/cache/marketplaces` exists. So E8's second addendum, "no marketplace is known", no longer describes this machine: one is. Whether a user can register another, and what `plugin@marketplace`, a bare plugin name, the `owner/repo` shorthand, the SSH form, a non-github URL and `link` do at 1.5.3, is under **Not measured**.
+
+### 2. The validator [AG-07]
+
+```console
+$ agy plugin validate <tmp>/fix/e32-probe
+Validating e32-probe (<tmp>/fix/e32-probe/plugin.json)
+
+  · plugin.json: no logo: the plugin shows a generic icon. Add "logo": "assets/logo.svg" (a .png, .svg, .jpg, .jpeg or .webp file inside the plugin)
+
+  skills 1 · agents 5 · rules 0 · hooks 0 · mcpServers 0 · sidecars 0
+
+✔ Validation passed
+rc=0
+$ agy plugin validate <export>                      # this package at 754fce5
+  ⚠ AGENTS.md: never loaded: plugins load rules only from rules/. Move it to rules/AGENTS.md
+  …
+  skills 5 · agents 6 · rules 0 · hooks 0 · mcpServers 0 · sidecars 0
+
+✔ Validation passed with 1 warning
+rc=0
+$ agy plugin validate <export> --strict
+…
+Error: validation failed in strict mode: 1 warning
+rc=1
+```
+
+The three-manifest tree still validates, with the right counts and no word about the foreign directories, as in E7; the `[ok]` line is gone, as E26 recorded. `--strict` fails this package on the root `AGENTS.md` warning. `--json` prints the same report as an object with `components` and `findings`.
+
+AG-07 quotes three errors from the binary. Two are warnings now, and a name is no longer required to validate:
+
+| tree | result |
+|---|---|
+| no `plugin.json` | rc 1, `✗ plugin.json: no plugin.json found at the plugin root or in .antigravity-plugin or .gemini-plugin` |
+| `plugin.json` with no `name` | rc 0, `⚠ plugin.json: no name: the plugin is named after its folder, "no-name", and \`plugin install\` refuses it` |
+| `"name": "bad name!"` | rc 0, `⚠ plugin.json: name "bad name!" isn't strict kebab-case (lowercase letters, digits and single hyphens), so it can't be published to the Antigravity Marketplace; try "bad-name"` |
+| an agent with `tools: [definitely_not_a_tool, view_file_outline]` and an unknown frontmatter key | rc 0, no finding about either: **the validator does not check tool names** |
+| `plugin.json` as a symlink | rc 0, validated through the link |
+
+In `strings /usr/bin/agy`, `missing plugin.json` scores 0, `plugin.json missing name` 1, `invalid plugin name` 2, and a control string 0.
+
+### 3. The registry [AG-06]
+
+The E17 probe: one agent per name, the name the sole entry of its `tools` list, installed globally as `e32-tools` (28 agents), each run once in an empty folder as `agy --agent t-<name> --model gemini-3.8-flash-low --print "Reply as your instructions say." --log-file <file>`. The body, stricter than E17's as E24 found necessary, also asks for the tool names, so each run reports what the name delivered:
+
+```
+Use no tool. Reply with exactly two lines and nothing else.
+Line 1: the single word pong
+Line 2: the word TOOLS: followed by the exact names of every tool declared to you, comma-separated, or NONE if you have no tools.
+```
+
+The control first:
+
+```console
+$ agy --agent t-definitely-not-a-tool --model gemini-3.8-flash-low --print "Reply as your instructions say."
+error: failed to construct executor: failed to resolve components: unknown component: tool "definitely_not_a_tool" not found in registry
+AGY_ERROR: {"short_error":"failed to construct executor: failed to resolve components: unknown component: tool \"definitely_not_a_tool\" not found in registry","status":"UNKNOWN","error_code":2,"code_kind":"grpc","retryable":false,"error_id":"…"}
+rc=3
+```
+
+Its log holds no `streamGenerateContent` request: the miss is still before any model call. Every run that resolved made exactly one, and answered `pong`. No 503.
+
+| name in `tools` | at 1.5.3 | the tool it delivered, by the agent's own list |
+|---|---|---|
+| `view_file` | resolves | `read_file` |
+| `run_command` | resolves | `run_command` |
+| `write_to_file` | resolves | `write_file` |
+| `replace_file_content` | resolves | `edit_file` |
+| `search_web` | resolves | `search_web` |
+| `invoke_subagent` | resolves | `invoke_subagent` |
+| `define_subagent` | resolves | `define_subagent` |
+| `manage_task` | resolves | `manage_task` |
+| `manage_subagents` | resolves | `manage_subagents` |
+| `send_message` | resolves | `send_message` |
+| `grep_search` | resolves, **no effect** | none |
+| `find_by_name` | resolves, **no effect** | none |
+| `list_dir` | resolves, **no effect** | none |
+| `multi_replace_file_content` | resolves, **no effect** | none |
+| `read_url_content` | resolves, **no effect** | none |
+| `command_status` | **resolves** (rejected up to 1.2.10) | none |
+| `view_file_outline`, `view_code_item`, `codebase_search`, `browser_subagent`, `notify_user`, `manage_inbox` | **rejected**, rc 3, `not found in registry`, no model call | — |
+| `definitely_not_a_tool` | rejected (control) | — |
+| `read_file`, `write_file`, `edit_file` (not in AG-06; tried because the lists above showed them) | resolve | themselves |
+
+"No effect" is the tool's own word. Each of those five runs logged one line, and no other run logged any:
+
+```
+registry.go:71] Tool "grep_search" is deprecated and has no effect
+registry.go:71] Tool "find_by_name" is deprecated and has no effect
+registry.go:71] Tool "list_dir" is deprecated and has no effect
+registry.go:71] Tool "multi_replace_file_content" is deprecated and has no effect
+registry.go:71] Tool "read_url_content" is deprecated and has no effect
+```
+
+`command_status` logged nothing and its agent listed no tool for it; why is not known. The "delivered" column is the model's report of its own tool list, the same in every run, and on the default model too (step 4). The log lines and the rejections are the harness's.
+
+Every agent also listed tools its `tools` key never named: `manage_task`, `call_mcp_tool`, `list_resources`, `read_resource`, and the two tools of an MCP server that an installed Google plugin ships. Two more fixtures close what E19 left open:
+
+| `tools` key | the agent's own list |
+|---|---|
+| omitted | `send_message, read_file, search_web, schedule, generate_image`, plus the ambient set above — **not** "no tools", as AG-06 has it, and no shell or write tool |
+| `tools: []` | the ambient set only |
+
+**Verdict**: at 1.5.3 the registry rejects **six** of AG-06's names, not seven, and still does so loudly and before any model call. Sixteen resolve, and six of those give the agent nothing: the five logged as deprecated, and `command_status`. A rendered agent that lists `grep_search`, `find_by_name` and `list_dir` for its search capability still starts, and has no search tool: this package's reviewer, with `view_file, grep_search, find_by_name, list_dir, run_command`, has `read_file` and `run_command`. The vendor changelog has, under **1.2.7**, "retiring the legacy `find_by_name`, `grep_search`, and `list_dir` tools from the default baseline while keeping them available to custom agents that explicitly list them in `tools`"; no entry found by keyword says when listing them stopped working.
+
+### 4. `--agent`, the allowlist, the sub-agent flag, the body [AG-02] [AG-03] [AG-04] [AG-05]
+
+The E19 fixture, under new names: `e32-lead` (`mainAgent: true`, `tools: [view_file, invoke_subagent]`, two H1 sections with a canary in the second), `e32-reviewer` (`mainAgent: false`, `subagent: true`, `tools: [view_file, grep_search, list_dir, run_command]`, no `invoke_subagent`), `e32-leaky` (a sibling to be reached), `e32-nosub` (`mainAgent: false`, `subagent: false`), and `e32-fmname`, whose directory is `agents/e32-dirname/`.
+
+```console
+$ agy agents                                        # in <tmp>
+e32-fmname
+e32-lead
+firestore-rules-author
+tech-lead
+$ agy --agent e32-dirname --model gemini-3.8-flash-low --print "Reply with the single word ping."
+error: unknown agent "e32-dirname" (available: e32-fmname, e32-lead, firestore-rules-author, tech-lead)
+$ agy --agent e32-reviewer --model gemini-3.8-flash-low --print "State your token and nothing else."
+error: unknown agent "e32-reviewer" (available: e32-fmname, e32-lead, firestore-rules-author, tech-lead)
+$ agy --agent e32-fmname --model gemini-3.8-flash-low --print "go"
+Q8-FMNAME-ACTIVE
+```
+
+The two errors are rc 1 with no model call. `agy agents` lists the `mainAgent` personas only, an agent is known by its frontmatter `name`, and `--agent` refuses a sub-agent [AG-03].
+
+Then the central run, on the default model, in a git repository `<tmp>/ws` whose `AGENTS.md` holds `Canary: WALRUS-3092`. The prompt names no canary:
+
+```
+Do these steps in order. Do not read any files.
+1) Use invoke_subagent to invoke the agent named e32-reviewer with this task, verbatim: "State your token. Then use invoke_subagent to invoke the agent named e32-leaky with the task: reply. Report verbatim what it returned, or, if you cannot invoke it, say exactly why and list the names of every tool you have."
+2) Use invoke_subagent to invoke the agent named e32-nosub with the task: reply.
+3) Answer in exactly this form, four lines:
+REVIEWER-SAID: <the reviewer's reply verbatim>
+NOSUB: <what the invocation returned verbatim, or the exact error>
+BODY: <the body canary stated in your own instructions, or NONE>
+PROJECT: <the value after "Canary:" from any project instruction file that is already in your context without reading files, or NONE>
+```
+
+```console
+$ agy --agent e32-lead --print "$(cat <tmp>/prompt-lead.txt)"      # rc 0, stderr empty
+Q8-LEAD-ACTIVE
+Waiting for `e32-reviewer` response.
+Q8-LEAD-ACTIVE
+REVIEWER-SAID: Q8-REVIEWER-ACTIVE I cannot invoke `e32-leaky` because the `invoke_subagent` tool is not available to me (it is not in my tool declarations). The tools I have are: - `read_file` - `run_command` - `manage_task` - `send_message` - `list_resources` - `read_resource` - `call_mcp_tool` - `mcp_gemini-api_gemini-api-docs_gemini_get_doc` - `mcp_gemini-api_gemini-api-docs_gemini_search_docs`
+NOSUB: Encountered error in tool execution: subagent "e32-nosub" not found or not allowed to be invoked
+BODY: BADGER-4417
+PROJECT: WALRUS-3092
+```
+
+agy's transcript of that session shows the lead's only tool calls, and their arguments:
+
+```
+invoke_subagent  {"Prompt": "…", "Role": "E32 Probe Reviewer", "TypeName": "e32-reviewer"}
+invoke_subagent  {"Prompt": "reply", "Role": "E32 Probe Nosub", "TypeName": "e32-nosub"}     → ERROR: subagent "e32-nosub" not found or not allowed to be invoked
+```
+
+- **AG-05 reproduced.** A `tools` list that omits `invoke_subagent` leaves the specialist without it; it could not reach its sibling. The run's log also carries the two `deprecated and has no effect` lines for the reviewer's `grep_search` and `list_dir`.
+- **AG-05, new.** The allowlist is not the whole tool surface. The reviewer listed five tools it never named, and two MCP tools from an installed plugin. Three one-turn runs of an agent with `tools: [view_file]` (`gemini-3.8-flash-low`, in `<tmp>/ws`) show which switch removes what, by the agent's own list:
+
+  | extra frontmatter | tools listed | `PROJECT:` |
+  |---|---|---|
+  | none | `read_file`, the plugin's two MCP tools, `call_mcp_tool`, `list_resources`, `read_resource`, `manage_task` | `WALRUS-3092` |
+  | `inheritMcp: false` | `read_file`, `list_resources`, `read_resource`, `manage_task` | `WALRUS-3092` |
+  | `inheritCustomizations: false` | `read_file`, `call_mcp_tool`, `list_resources`, `read_resource`, `manage_task` | `NONE` |
+
+  No MCP tool was called, so what a specialist can reach through `call_mcp_tool` is not measured.
+- **AG-04, measured for the first time.** A sub-agent is addressed by `TypeName`, and an agent with `subagent: false` cannot be invoked. The call carried no `Workspace` argument. The binary's strings hold `Workspace: 'inherit'` (3) and `Workspace: 'branch'` (2) and no `Workspace: 'share'`; none of the three modes was exercised, nor the clean context, nor `define_subagent`.
+- **AG-02 reproduced.** The second H1 section reached the agent: the body is not sliced. All 18 frontmatter tags of AG-02, `agents` included, score at least 1 in `strings -n 6` of `/usr/bin/agy` and of the desktop's `language_server` (2.29.1), with `yaml:"notARealKey` 0 in both; `yaml:"agents,omitempty"` is 1 in each. That is inspection of the desktop binary, not a run of the desktop.
+
+### 5. `AGENTS.md` reaches every agent [AG-11]
+
+`PROJECT: WALRUS-3092` above is the reverse of E19 and E24. The lead read no file: its two tool calls are listed above. E19's other row and a control, default model, each with no tool call in its transcript:
+
+```console
+$ cd <tmp>/ws && agy --print "Do not read any files and do not use any tool. Answer in exactly this form, one line:
+PROJECT: <the value after \"Canary:\" from any project instruction file that is already in your context, or NONE>"
+PROJECT: WALRUS-3092
+$ cd <tmp>/ws-none && agy --print "<the same prompt>"      # a git repository with no AGENTS.md
+PROJECT: NONE
+```
+
+Which files, from where. A second repository, `<tmp>/ws2`, with a different canary in each of `AGENTS.md`, `GEMINI.md`, `CLAUDE.md`, `sub/AGENTS.md` and `other/AGENTS.md`; the default agent, started in `<tmp>/ws2/sub/deep` and asked to list every canary with the file it came from:
+
+```
+CANARY: WALRUS-3092 FROM: <tmp>/ws2/AGENTS.md
+CANARY: HERON-5560 FROM: <tmp>/ws2/GEMINI.md
+CANARY: IBIS-7719 FROM: <tmp>/ws2/sub/AGENTS.md
+```
+
+`CLAUDE.md` and the sibling directory's `AGENTS.md` did not arrive. That is AG-11 as the vendor states it: the walk from the working directory up to the repository root, `AGENTS.md` and `GEMINI.md`, nothing else.
+
+A sub-agent, which E19 did not test. `e32-lead` was told to pass `e32-reviewer` a task that names no canary:
+
+```
+REVIEWER-SAID: Q8-REVIEWER-ACTIVE SUB-PROJECT: WALRUS-3092
+```
+
+The reviewer's only tool call was the `send_message` that carried its reply.
+
+Interactive mode, which E19 named as a condition it had not reproduced. One session in this probe's own tmux session, `agy --agent e32-lead --settings <tmp>/trust-ws.json -i "<a prompt asking for BODY and PROJECT>"`, with the session-only trust setting of E28. The screen, with the banner's account line cut:
+
+```
+▸ Thought for 7s, 360 tokens
+  Q8-LEAD-ACTIVE
+  BODY: BADGER-4417
+  PROJECT: WALRUS-3092
+```
+
+**Verdict: at agy 1.5.3 the workspace `AGENTS.md` is in context for the default agent, a custom primary and a sub-agent, in print mode and interactively.** The print-mode folders were not trusted, so trust is not what delivers it there. E19 (1.1.27) and E24 (1.2.10) measured the opposite with the same method, so this is a change between 1.2.10 and 1.5.3. The version is not established. The changelog's nearest entries are 1.2.7, "giving user and workspace rules a dedicated 20,000-token budget", and 1.4.4, "Fixed the system prompt's user rules wording so `GEMINI.md` and `AGENTS.md` rules explicitly override earlier built-in instructions".
+
+### 6. Workspace roots deliver agents [AG-12] [AG-07]
+
+E18's test, one git repository per root, each holding one probe agent with `mainAgent: true`, `agy agents` run inside it. Run twice: as E18 ran it, and with the folder trusted for that one call (`agy --settings '{"trustedWorkspaces":["<repo>"]}' agents`). The four global primaries appear in every row and are left out:
+
+| location | not trusted | trusted for the call |
+|---|---|---|
+| `<repo>/.agents/plugins/e32-ws1/` (a plugin; validates) | absent | **`ws1-agent`** |
+| `<repo>/_agents/plugins/e32-ws2/` | absent | **`ws2-agent`** |
+| `<repo>/.agents/agents/ws3-agent/agent.md` | absent | **`ws3-agent`** |
+| `<repo>/.agents/agents/ws6-agent.md` (a flat file) | absent | **`ws6-agent`** |
+| `<repo>/_agents/agents/ws7-agent/agent.md` | absent | **`ws7-agent`** |
+| `<repo>/.gemini/agents/ws4-agent/agent.md` | absent | absent |
+| `<repo>/.agents/e32-ws5/` (a plugin directly under `.agents/`) | absent | absent |
+
+The untrusted column is E18's result exactly. E18 and E24 do not record whether their folders were trusted. The changelog has, under **1.2.11**, one version after E24's: "Fixed project custom agents in .agents/agents/ not being found or selectable in workspaces created in the Desktop App, in already-trusted workspaces, under execution with --agent, in headless (-p / --prompt) runs, and in the /agents panel."
+
+Listing is not running. In print mode a workspace agent runs **whether or not the folder is trusted** (`gemini-3.8-flash-low`, one model call each):
+
+```console
+$ cd <repo3> && agy --agent ws3-agent --print "go"                 # no trust setting; `agy agents` here does not list it
+ws3-agent-ACTIVE
+$ cd <repo1> && agy --settings '{"trustedWorkspaces":["<repo1>"]}' --agent ws1-agent --print "go"
+ws1-agent-ACTIVE
+```
+
+And the collision AG-12 is about. A repository whose `.agents/agents/e32-fmname/agent.md` has the same `name` as the globally installed plugin's agent, and a different reply:
+
+```console
+$ agy --settings '{"trustedWorkspaces":["<repo8>"]}' agents        # the name appears once
+e32-fmname
+…
+$ agy --settings '{"trustedWorkspaces":["<repo8>"]}' --agent e32-fmname --print "go"
+WORKSPACE-DEFINITION-ACTIVE
+$ agy --agent e32-fmname --print "go"                              # the same folder, not trusted
+WORKSPACE-DEFINITION-ACTIVE
+```
+
+Outside that repository the same command answers `Q8-FMNAME-ACTIVE`, the plugin's reply (step 4).
+
+**Verdict: at 1.5.3 a workspace delivers agents from `.agents/agents/`, `_agents/agents/`, `.agents/plugins/<plugin>/` and `_agents/plugins/<plugin>/`, and a workspace definition wins over a globally installed plugin agent of the same name.** AG-12's ranking holds for that pair, and E18's "no workspace root delivers agents" does not hold at this version. In print mode the workspace definition won in a folder nobody had trusted. Interactive mode raises the trust dialog first (E26); what `--agent` resolves to after "No, exit" or before an answer was not looked at.
+
+### 7. Skills, placeholders, a workflow [AG-10]
+
+All on `gemini-3.8-flash-low`, default agent, print mode. What the harness did is read from agy's transcript of each session, not from the model's answer.
+
+| run | what reached the model | answer |
+|---|---|---|
+| `/ws9-args hello world`, a skill in `<repo>/.agents/skills/` whose body ends `ARGS: [$ARGUMENTS] FIRST: [$1] ROOT: [${CLAUDE_PLUGIN_ROOT}]` | the body, inlined by the harness as `/ws9-args is a [Slash Command]: <SKILL>…`, frontmatter removed, **the three placeholders literal** | `ARGS: [$ARGUMENTS] FIRST: [$1] ROOT: [${CLAUDE_PLUGIN_ROOT}]` |
+| `/e32-skill hello world` in an empty folder, the skill being the installed plugin's | the bare text `/e32-skill hello world`, not expanded; the model then read the plugin's `SKILL.md` with `read_file` and saw the placeholders literal | `SKILL: OTTER-6158 ARGS: [hello world] FIRST: [hello]` — the model filled them in itself |
+| `/e32-skill hello world` in a repository that has its own `.agents/skills/e32-skill/` | the workspace copy, inlined | `SKILL: WORKSPACE-COPY-TAPIR-4471` |
+| `/e32wf`, a file `<repo>/.agents/workflows/e32wf.md` beside those skills | the bare text `/e32wf`; the model went looking with `find`, which headless mode denied | no output |
+
+**Verdict.** No placeholder is substituted at 1.5.3, so the standing rule against `$ARGUMENTS`, `$N` and `${CLAUDE_PLUGIN_ROOT}` in a skill body still stands [AG-10]; the second row shows why a model's answer alone would have misled. A workspace skill beats a plugin skill of the same name. A workspace workflow file was not offered as a command in print mode, with the skills beside it as the control; the TUI was not tried. The bundled skill `~/.gemini/antigravity-cli/builtin/skills/migrate-workflows/SKILL.md`, read in full, says "Workflows (`.agents/workflows/*.md` or `_agents/workflows/*.md`) are deprecated" and lists the legacy locations AG-10 gives. The retirement date AG-10 quotes was not found: `Workflows are deprecated` and `retired on` both score 0 in the binary's strings, with the five legacy paths and manifest names scoring 2 to 5 and a control path 0.
+
+### Consequences
+
+1. **AG-11 flips back to the vendor's statement.** `SUPPORT-MATRIX.md`'s correction ("no agy agent receives it") describes 1.1.27 to 1.2.10. At 1.5.3 the managed block is visible to every Antigravity agent, sub-agents included. Bodies that carry the contract are still right for the versions between, and nothing breaks; but design §5.4's "the only mechanism", `hosts/antigravity.yaml`'s `instructions` block, the README, `acceptance.md` and the `ec-onboard` skill state as present fact what is now false at the installed version.
+2. **AG-12 and E18 flip.** Antigravity has a per-project route for agents at 1.5.3, so `global_only: true`, "the roster is per-user", and §16's "per-project rosters on Antigravity, which the host does not currently allow" are out of date. Whether the package should use the route is a design question this entry does not answer.
+3. **A workspace agent definition overrides this package's installed persona of the same name, and in print mode it did so in an untrusted folder.** A repository that carries `.agents/agents/tech-lead/agent.md` would be what `agy --agent tech-lead -p` runs there. Measured with a probe name, not with `tech-lead`; the same shape as the Claude `agent` key in §8's fail-open list. For the Tech-Lead and Security to weigh.
+4. **AG-06's list needs a 1.5.3 edition.** The rendered Antigravity agents still start. They no longer get `grep_search`, `find_by_name`, `list_dir`, `multi_replace_file_content` or `read_url_content`; they search through `run_command` if at all. `check.py --agy-tools` passes on names that now do nothing, and the registry is no longer "fifteen valid, seven rejected".
+5. **An explicit `tools` list is not a closed surface.** Ambient MCP tools and `call_mcp_tool` reach a specialist unless its frontmatter says `inheritMcp: false`. §8's cell for "specialists never post externally" is already *prose* on Antigravity; this is the path that makes it matter.
+6. **AG-08's update story is simpler than documented.** A re-install replaces, by a proper test; `agy plugin uninstall` exists; and the vendor dates the change at 1.1.28, which would put it below nothing the package supports except 1.1.27 itself.
+7. **`agy plugin validate` is not a guard for tool names** at 1.5.3, and `--strict` fails this package on a warning the don't-do list tells it to keep.
+
+### Not measured
+
+- **The desktop app**, in any half of any claim: the agent selector [AG-03], the allowlist and `AGENTS.md` [AG-05][AG-11], workspace agents, and the registry. Last driven at 2.17.0 (E19 addendum); 2.29.1 is installed.
+- **Install targets that may leave the machine**: the `owner/repo` shorthand, a non-github URL, the SSH form, `plugin@marketplace` against a known or unknown marketplace, a bare plugin name, and `agy plugin link`. A first attempt that batched them was stopped by this session's own permission layer, and they were not retried one by one. `agy plugin import`, `enable` and `disable` were not run either: the first reads another host's plugins, the other two write `config.json`. So "enablement is keyed by directory name" [AG-08] rests on nothing newer than the claim.
+- **Any agy between 1.2.10 and 1.5.3.** Each "changed" above is a difference between two measured versions; the changelog lines are the vendor's.
+- **Whether E18's and E24's folders were trusted**, and so whether trust or the version explains their result.
+- **The registry on the default model.** The sweep ran on `gemini-3.8-flash-low`; the default model agreed for the five names step 4 exercised.
+- **What an agent can do with the tools it listed.** No MCP tool, `write_file` or `edit_file` was called.
+- **`Workspace` modes of `invoke_subagent`, `define_subagent`, a sub-agent's clean context** [AG-04]; the `agents:` key at runtime [AG-02]; `commandExecutionPolicy`, `rules:`, `hidden`, `disabled` [AG-02][AG-05].
+- **The 12,000-character rule limit** [AG-11], and a plugin's `rules/` directory.
+- **Workflows in the TUI and in the global locations** [AG-10]; the plugin-skill route in the TUI.
+- **A workspace agent against an interactive session's trust dialog.**
+
+**Host state.** `~/.gemini/config/config.json`, `~/.gemini/settings.json`, `~/.gemini/config/hooks.json`, `~/.gemini/antigravity-cli/settings.json` and `~/.gemini/config/import_manifest.json` have the hashes they had before the first step; the last one changed with every install and returned to its bytes after the last uninstall. The plugins tree is file-for-file identical by hash to the listing taken before. `~/.gemini/config/plugins/e-colleagues/` was replaced four times (twice by the marker test, once by the URL install, once to put it back) and ends as the export's 87 tracked files: `diff -r` against a copy taken before the first step is clean, and against the export itself shows only a `skills/ec-fleet/scripts/__pycache__/` that another process created inside the shared export while this probe ran and that is not in the installed copy. `agy plugin list` shows `e-colleagues (enabled, 0.1.1)`, `5 skills, 6 agents`; no `e32-…` plugin remains; `agy agents` lists what it listed before. The one interactive session wrote nothing to the agy settings (session-only trust, E28); its tmux session was killed and the workmux state file for its pane was removed. agy kept its usual per-session records under `~/.gemini/antigravity-cli/` for each of the 42 sessions that reached a model. One slip: the desktop's `language_server` was started once with `--version` to read its version; it is not a version flag, and the process exited at once with `Failed to read initial metadata from stdin`. The repository checkout was not touched.

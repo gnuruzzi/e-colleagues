@@ -77,4 +77,4 @@ Six personas are authored once in `personas/` and rendered into four host dialec
 - Do not let a read-only persona be adopted as a skill in a thread that can write — that is the fail-open this redesign exists to remove (design §0 D7).
 - Do not let a specialist post to an external platform; findings return to the tech-lead (design §0 D6).
 - Do not run `/import codex` in a bootstrapped project; it appends a copy of AGENTS.md into CLAUDE.md [CC-14].
-- Do not rely on a second `agy plugin install` removing what the first one left: it merged at agy 1.1.27 (E8) and replaced at 1.5.3 (E27). Uninstall first when the roster shrinks [AG-08].
+- Do not rely on a second `agy plugin install` removing what the first one left on an agy older than 1.5.3: it merged at 1.1.27 (E8) and replaces at 1.5.3 (E32). Uninstall first there when the roster shrinks [AG-08].

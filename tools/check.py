@@ -351,9 +351,10 @@ def check_agy_tools():
     """Every emitted tool name must be in the MEASURED registry.
 
     A name outside it aborts the agent at startup with `unknown component: tool "<name>" not
-    found in registry` (experiments.md E17). Seven names AG-06 lists are invalid. The list
-    must be re-derived by running one agent per name; grepping the binary yields a superset
-    and reported all seven as present (E16 C1, superseded).
+    found in registry` (experiments.md E17). Seven names AG-06 lists are invalid up to agy
+    1.2.10, six at 1.5.3 (E32). The list must be re-derived by running one agent per name;
+    grepping the binary yields a superset and reported all seven as present (E16 C1,
+    superseded).
     """
     host = yaml.safe_load((ROOT / "hosts" / "antigravity.yaml").read_text())
     registry = set(host["tool_registry"])

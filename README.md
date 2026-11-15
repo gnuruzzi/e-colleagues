@@ -156,7 +156,7 @@ In the session:
 Audit the CI pipeline and tell me what a new contributor would trip over.
 ```
 
-Only a global install delivers agents, so the roster is per machine. A re-install merged at agy 1.1.27 (E8) and replaced at 1.5.3 (E27), so uninstall first when the roster shrinks.
+The plugin installs globally, so the roster is per machine. A re-install merged at agy 1.1.27 (E8) and replaces at 1.5.3 (E32); on an older agy, uninstall first when the roster shrinks.
 
 </details>
 
@@ -193,11 +193,11 @@ A guarantee that is really a request is worth naming.
 | Codex CLI | 0.153.4 | 0.154.0 | `developer_instructions` (prose) | **the sandbox**: the one filesystem guarantee |
 | Claude Code | 2.1.263 | 2.1.284 | `--agent` (mechanical) | the tool list; the shell can still write |
 | opencode | 1.18.29 | 2.0.18 | `default_agent` (mechanical) | permissions; the shell narrowed by patterns |
-| Antigravity | agy 1.1.27 | agy 1.2.10, desktop 2.17.0 | `mainAgent` (mechanical) | the tool list; `run_command` can still write |
+| Antigravity | agy 1.1.27 | agy 1.5.3 (E32), desktop 2.17.0 | `mainAgent` (mechanical) | the tool list; `run_command` can still write |
 
 - Codex's read-only sandbox blocks **every** write, so a test suite that writes anything needs an explicit override.
 - Antigravity and opencode have no per-project roster from this package; both install per machine.
-- `AGENTS.md` never reaches an Antigravity agent, so its personas carry the contract in their own bodies.
+- `AGENTS.md` reached no Antigravity agent up to agy 1.2.10, so its personas carry the contract in their own bodies; at 1.5.3 it arrives too (E32).
 
 The full list, with what each rests on, is in [`docs/acceptance.md`](docs/acceptance.md).
 
