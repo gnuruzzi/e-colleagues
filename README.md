@@ -203,7 +203,7 @@ The full list, with what each rests on, is in [`docs/acceptance.md`](docs/accept
 
 ## Built on evidence
 
-Every path, key and command in the design cites a fact-checked claim or says UNVERIFIED. [`docs/SUPPORT-MATRIX.md`](docs/SUPPORT-MATRIX.md) states all 52 claims with the version each was last confirmed at; [`docs/experiments.md`](docs/experiments.md) holds the 33 experiments behind them, exact command and raw output included, and an experiment outranks any claim it contradicts. That discipline caught six Antigravity tool names the vendor's documentation lists that abort an agent at startup and six more that load and give no tool (E32), and a tool registry, a keybinding and a plugin API that moved between releases.
+Every path, key and command in the design cites a fact-checked claim or says UNVERIFIED. [`docs/SUPPORT-MATRIX.md`](docs/SUPPORT-MATRIX.md) states all 52 claims with the version each was last confirmed at; [`docs/experiments.md`](docs/experiments.md) holds the 37 experiments behind them, exact command and raw output included, and an experiment outranks any claim it contradicts. That discipline caught six Antigravity tool names the vendor's documentation lists that abort an agent at startup and six more that load and give no tool (E32), and a tool registry, a keybinding and a plugin API that moved between releases.
 
 - [`docs/design.md`](docs/design.md): the decision record, and how to add a host or a persona
 - [`docs/acceptance.md`](docs/acceptance.md): minimum versions, guarantees, known limits

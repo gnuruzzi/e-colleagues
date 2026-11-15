@@ -35,14 +35,14 @@ python3 scripts/fleet.py start <reference>
   names the worktree from the reference (`12` becomes `issue-12`), only when there is no
   naming line, or the line needs the issue's title and you cannot read the tracker.
 
-On success it prints `started <name>`; show any `fleet:` line too. If it fails any other
-way, show its message; do not retry with other flags.
+It prints `started <name>` once the session is listed. `opened <name>, host not confirmed`
+means it is not: the host exited, or it waits at a first-run prompt such as a trust question.
+Say so, and show any `fleet:` line. If it fails any other way, show its message; do not
+retry with other flags.
 
-In a new worktree the host may first show a first-run prompt, such as whether to trust the
-folder. Where it can, the script trusts the new worktree for that one session; otherwise the
-person answers there. You never answer it. Until then that session reads `working` or
-`no RETURN block on screen`, or has no row. A started session with no row may also have
-exited. Say so.
+Where it can, the script trusts the new worktree for that one session; otherwise the person
+answers there. You never answer it. Until then that session reads `working` or
+`no RETURN block on screen`, or has no row.
 
 ### Overview
 

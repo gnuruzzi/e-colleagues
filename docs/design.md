@@ -579,6 +579,17 @@ happens with a launcher `start` of one's own and no `where` beside it, since the
 asks workmux; and with a path holding a space when `{worktree}` is not inside quotes, where
 the launcher would split it. A host's own `start` keeps that host's default `trust` unless the
 config sets `trust = ""`.
+
+The launcher returns before the host is up, so `start` then looks for the new session in the
+launcher's `status` list, every half second for at most `launcher.confirm_seconds` (default 10;
+`0` skips the look). Listed, it prints `started <name>`. Not listed, it prints
+`opened <name>, host not confirmed` and says on stderr that the host may have exited at once or
+waits at a first-run prompt; it cannot tell the two apart, and the exit code stays 0, because
+the worktree and the window exist. A healthy session was listed 2.5 to 3.6 seconds after the
+start on all four hosts; a host command that exits at once, Claude Code without this package's
+plugin, and Claude Code at its trust dialog each gave the second line (E37). A launcher `start`
+of one's own with neither `status` nor `confirm_seconds` beside it is not looked for, since the
+default `status` asks workmux.
 `fleet.py overview` reads `workmux status --json` (E26); for each session that is neither
 `working` nor `waiting`, other than its own, it runs `workmux capture <name> --lines 200` (E26) and takes
 `status` and `questions` from the last RETURN block (§4), only when the block is complete on
@@ -608,8 +619,8 @@ at `ready to push`.
 
 **The config** is optional: `~/.config/e-colleagues/fleet.toml` (under `$XDG_CONFIG_HOME` when
 set) or the path in `$EC_FLEET_CONFIG` or `--config`. It sets `default_host`, a `start` command,
-`trust` arguments and `prompt` per host, and the launcher's `start`, `status`, `capture`, `where`
-and `base_flag`; a mistyped key, or a named path that does not exist, is an error. The
+`trust` arguments and `prompt` per host, and the launcher's `start`, `status`, `capture`, `where`,
+`base_flag` and `confirm_seconds`; a mistyped key, or a named path that does not exist, is an error. The
 default `trust` arguments are `--settings '{"trustedWorkspaces":["{worktree}"]}'` for
 Antigravity (E28) and `-c 'projects={"{worktree}"={trust_level="trusted"}}'` for Codex (E29);
 Claude Code has none, because no session-only way to pre-answer its trust dialog was found
@@ -617,8 +628,12 @@ Claude Code has none, because no session-only way to pre-answer its trust dialog
 `--base`, passed through as workmux's own `--base` (E28). The default start commands are `agy --agent tech-lead` [AG-03],
 `codex --profile e-colleagues` (E14), `claude --agent tech-lead` [CC-10] and, for opencode,
 `env OPENCODE_CONFIG=<the skill's scripts directory>/opencode-tech-lead.json opencode --standalone`
-(E30): opencode's TUI takes no `--agent` at 2.2.7, the file holds `{"default_agent": "tech-lead"}`,
-and only a session with its own server reads the variable from its own environment. `{skill}`
+(E30): opencode's TUI takes no `--agent` at 2.2.7, and only a session with its own server reads
+the variable from its own environment. The file names `tech-lead` as `default_agent` and
+disables opencode's `build` and `plan` agents: with a prompt on the command line, which is
+how workmux delivers it, opencode sent the prompt before the default agent applied in four
+starts of eight and the session ran as `build`; with no other primary to fall back on, eight
+of eight ran as the tech-lead (E37). So a fleet session on opencode has one primary agent. `{skill}`
 in a start command stands for that directory; the launcher passes it unquoted, so a start that
 uses it is refused when the path holds a space. Only the workmux default is tested.
 
@@ -671,7 +686,8 @@ this is the reason is an inference (E27).
 - with this package's plugin installed, `claude --agent tech-lead` resolves to the plugin's
   tech-lead, the prompt arrives, and the tech-lead's first call loads `ec-fleet`;
 - without the plugin the host exits at once, `--agent 'tech-lead' not found`, and
-  `fleet.py start` still prints `started <name>`: the launcher has already returned. That
+  `fleet.py start` printed `started <name>` all the same, since the launcher had already
+  returned; it now prints `opened <name>, host not confirmed` (E37). That
   session has no row;
 - workmux reports `working`, `waiting` and `done`, and a session at an approval reads `waiting`;
 - Claude Code keeps trust per repository, recorded for the main checkout, so its dialog shows
@@ -683,7 +699,8 @@ this is the reason is an inference (E27).
 **Measured on opencode** (E30, 2.2.7, workmux 0.1.281):
 
 - `opencode --agent tech-lead`, the default start until then, is not a command at 2.2.7: the
-  pane shows a usage error, and `fleet.py start` still prints `started <name>`;
+  pane shows a usage error, and `fleet.py start` printed `started <name>` all the same (it now
+  looks for the session first, E37);
 - `env OPENCODE_CONFIG=<path>/agent.json opencode --standalone` starts the tech-lead with its
   prompt whatever the person's own config holds. Without `--standalone` the variable counts only
   if that start is the one that launches opencode's background service. The shipped file's own

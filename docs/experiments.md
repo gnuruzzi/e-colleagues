@@ -42,6 +42,7 @@ Tranches: **A** automated, **B** interactive — needing a TTY or a trust dialog
 | — | C | the 2026-11-15 Codex sweep: codex-cli 0.167.0 | **settled** (E34): every runtime row reproduces; `CX-01` measured in part for the first time; `CX-09` and `CX-12` not re-run. No setting tried gives a spawned role a narrower sandbox than its session, on either backend; the plugin route works and its skills are `e-colleagues:<name>` |
 | — | C | the 2026-11-15 opencode sweep: 2.2.7 | **settled** (E35): every runtime row holds but `OC-07`: a slash command in a `run` prompt no longer expands; `OC-04`'s delegation on a mention not reproduced in one run; `OC-10` docs/source only but for one line. A shell rule is matched per simple command and the last match decides; a project agent of an installed agent's name is merged into it; `opencode mini` uses the model the config names |
 | — | C | the 2026-11-15 Claude Code sweep: 2.1.325 | **settled** (E36): every runtime row reproduces but `CC-06`, not re-run; `CC-15` measured for the first time; the YAML fail-open measured at runtime; what a denylist inherits read from the host's record, and a longer denylist now rendered |
+| — | B | does `fleet.py start` know whether the host came up | **settled** (E37): it now looks for the session in the list; a healthy one is listed within four seconds on all four hosts, a host that exited or waits at a trust dialog is reported as not confirmed. On opencode a prompt on the command line beat the default agent in four starts of eight, and disabling `build` and `plan` in the fleet's config file ended that |
 
 ---
 
@@ -6267,3 +6268,94 @@ After the entry above the rendering was changed to what step 9 and consequence 5
 Each called `ToolSearch` and then `mcp__canary__canary_read`; the fixture's log has the two calls.
 
 **Verdict**: as now rendered, the reviewer has `probe-rec`'s list, and the developer has its editing tools, `Monitor` and the MCP tools, and neither web tool, nor `SendMessage`, nor any tool that reaches the owner's account. The `platform` and `designer` personas, the background shape for the developer, and a forced call to a denied tool from a writer were not run.
+
+---
+
+## E37 — `fleet.py start` looks for the session it started: a healthy one is listed within four seconds on all four hosts, a host that exits at once or waits at a trust dialog is not, and on opencode a prompt on the command line beat the default agent in four starts of eight
+
+**Date** 2026-11-15. **workmux 0.1.281**; **tmux 3.8**; **agy 1.5.3**; **Claude Code 2.1.325**; **codex-cli 0.167.0**; **opencode 2.2.7**, on the local model of E30, E33 and E35; **Python 3.14.10**; this package as the working tree after commit `fd4ca07`, with the change under test in `skills/ec-fleet/scripts/fleet.py`. Tranche B.
+
+E30 and E31 each saw `fleet.py start` print `started <name>` for a session whose host had exited at once: the launcher returns when the window is open, before the host is up. The change under test makes `start` look for the new session in the launcher's `status` list, every half second for at most `launcher.confirm_seconds`, and print `started <name>` only when it is there; otherwise `opened <name>, host not confirmed`, with a line on stderr. This entry asks what the wait has to be:
+
+1. How long after the start is a healthy session listed, on each host?
+2. What does a start report when the host exits at once, and when it waits at a first-run prompt?
+
+Everything ran in one throwaway repository, `<tmp>/repo` (`git init`, a repository-local identity, no signing, one commit, `bootstrap.py <tmp>/repo --write`, committed), which also carries the `opencode.json` that pins the local provider (E33 step 4), from the probe's own tmux session, `e37-probe`. A config file gave every host the start prompt `Reply with the single word ready, then stop.`, set `confirm_seconds = 60` so that the script's own wait measures the time, and defined one more host, `broken`, whose start command is `false`. Each run was `fleet.py --config <tmp>/cfg.toml start <name> --host <host>` from a pane of that session, timed, with a second loop beside it reading `workmux status --json` in `<tmp>/repo` four times a second and noting each change of the session's row. `workmux status` lists the sessions of the repository it is run in, so both ran there.
+
+```console
+$ workmux --version
+workmux 0.1.281
+$ agy --version
+1.5.3
+$ claude --version
+2.1.325 (Claude Code)
+$ codex --version
+codex-cli 0.167.0
+$ opencode --version
+opencode v2.2.7
+```
+
+### 1. A healthy session
+
+| host | start command | `start` returned after | the row, seconds after the start |
+|---|---|---|---|
+| Antigravity | the default, with the default `trust` arguments | 3.6 s, `started a2` | absent, `working` at 3.1, `done` at 16.8 |
+| Antigravity | the same | 3.6 s, `started a3` | absent, `working` at 3.2, `done` at 11.5 |
+| Claude Code | `claude --plugin-dir <pkg> --agent tech-lead`, in a repository already trusted | 2.4 s, `started c3` | absent, `-` at 2.6, `working` at 13.3, `done` at 16.5 |
+| Claude Code | the same | 2.5 s, `started c4` | absent, `-` at 2.6, `working` at 15.9, `done` at 19.8 |
+| Codex | the default, with the default `trust` arguments | 3.5 s, `started x1` | absent, `working` at 3.4, `done` at 7.4 |
+| Codex | the same | 3.6 s, `started x2` | absent, `working` at 3.6, `done` at 5.9 |
+| opencode | the default | 3.5 s, `started o1` | absent, `-` at 3.4, `working` at 3.9 |
+| opencode | the default | 3.6 s, `started o2` | absent, `-` at 3.5, `working` at 4.7 |
+
+Claude Code was started with `--plugin-dir` because this package was not installed as a Claude Code plugin on the machine (step 2). On Claude Code and opencode the row first appears with the status `-`, before `working`; the script looks for the row and not for a status.
+
+**Verdict: on all four hosts the session was listed between 2.4 and 3.6 seconds after the start, two runs each.** Ten seconds is the default wait.
+
+### 2. A host that is not there
+
+| what | `start` printed | exit code | the row | the pane afterwards |
+|---|---|---|---|---|
+| host `broken`, start command `false`, `confirm_seconds = 10` | `opened b1, host not confirmed` after 10.5 s | 0 | never | the shell |
+| Claude Code, the default `claude --agent tech-lead`, the plugin not installed | `opened c1, host not confirmed` after 10.5 s | 0 | never | `--agent 'tech-lead' not found. Available agents: …`, and the shell |
+| Claude Code with `--plugin-dir`, in a repository it had never seen | `opened c2, host not confirmed` after 10.4 s | 0 | never, while the dialog stood | `Quick safety check: Is this a project you created or one you trust?`, `No, exit` selected |
+
+and on stderr each time:
+
+```
+fleet: c1 is not in the session list after 10s: its host may have exited at once, or it waits at a first-run prompt. Look at its window
+```
+
+The second row was not planned: it is E31's case, met again because the plugin was not installed. For the third, `Yes, I trust this folder` was then chosen in the probe's own pane, as E31 did: the row appeared 0.9 seconds later with the status `-`, read `working` at 14.1 and `done` at 18.9, and the two starts of step 1 in that repository showed no dialog.
+
+**Verdict: a host that exits at once and a host at its trust dialog both give `opened <name>, host not confirmed`, and nothing the launcher reports tells them apart.** So the exit code stays 0 and the line says both.
+
+### 3. opencode: the prompt on the command line and the default agent
+
+The second opencode session of step 1 came up as opencode's `Build` agent, not as the tech-lead, though both were started by the same command, `env OPENCODE_CONFIG=<the skill's scripts directory>/opencode-tech-lead.json opencode --standalone --prompt "…"`, and both processes had the variable in their environment (`/proc/<pid>/environ`). The agent is read from the label in the session's footer, `Tech-Lead · <local model>` or `Build · <local model>`, as soon as it shows.
+
+| how it was started | sessions | came up as the tech-lead |
+|---|---|---|
+| the default command, through `fleet.py start`, so with `--prompt` (the two of step 1 and six more, each alone, each removed before the next) | 8 | **4**; the other four as `Build` |
+| the same command typed into a new window with no `--prompt`, label read at once and again two seconds later | 8 | 8 |
+| through `fleet.py start`, with a config file that also holds `"agent": {"build": {"disable": true}, "plan": {"disable": true}}` | 8 | **8** |
+
+`opencode --standalone debug agents` with that third file lists `tech-lead` as the only primary a person can choose (`compaction`, `summary` and `title` are opencode's own), and `opencode --standalone models` still lists only the local provider's models.
+
+**Verdict: at opencode 2.2.7 a prompt given on the command line can be sent before `default_agent` has applied, and the session then runs as `build`: four starts of eight. With `build` and `plan` disabled in the config file the fleet's start names, eight of eight ran as the tech-lead.** That workmux delivers the prompt with `--prompt` is E30's reading of the pane. The cause is inferred from the three rows; opencode's own log was not read for it. E30 measured this start as working; it ran it fewer times.
+
+### Consequences
+
+1. `launcher.confirm_seconds` defaults to 10, about three times the slowest listing seen. `0` skips the look.
+2. `skills/ec-fleet/scripts/opencode-tech-lead.json` disables `build` and `plan`, so a fleet session on opencode has one primary agent and Shift+Tab has nothing to cycle to.
+3. A custom launcher `start` with no `status` beside it is not looked for: the default `status` asks workmux.
+
+### Not measured
+
+- A machine under load, a cold first start of a host after a reboot, and a session over SSH: each could take longer than ten seconds to be listed, and would then read `host not confirmed` while healthy.
+- opencode's and Codex's own first-run prompts; Antigravity's trust dialog with `trust = ""`.
+- The agent a session runs as, read from its record: step 3 reads the footer's label only.
+- The opencode race with a project that defines a primary agent of its own, on any other model, and on any opencode but 2.2.7.
+- A custom launcher.
+
+**Host state.** The agy settings file, `~/.codex/config.toml`, the Codex profile file and the global opencode config have the hashes they had before. Claude Code recorded the scratch repository as trusted in `~/.claude.json` when its dialog was answered; that record was left. opencode kept its sessions in its database; its background service was never started (`stopped` before and after), every session being `--standalone`. Every worktree was removed with `workmux remove -f`, the probe's tmux session was killed, and the workmux state files of its own panes were removed; no other session was touched. The fixture is under `<tmp>`.

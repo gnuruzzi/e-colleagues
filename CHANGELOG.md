@@ -68,6 +68,13 @@ this project uses semantic versioning from 0.1.0 onward.
 
 ### Fixed
 
+- **`ec-fleet` no longer reports a start that did not happen.** `fleet.py start` now looks
+  for the new session in the session list and prints `opened <name>, host not confirmed`
+  when the host exited at once or waits at a first-run prompt (E37). `confirm_seconds` in
+  the config sets the wait; `0` turns it off.
+- **`ec-fleet` on opencode starts the tech-lead every time.** With the start prompt on the
+  command line opencode 2.2.7 ran half the sessions as its own `build` agent; the fleet's
+  config file now disables `build` and `plan` for its sessions (E37).
 - **A `--scope user` update no longer drops what Codex wrote into its profile file.** Codex
   appends a model choice, hook trust and trusted projects there (E29, E30). A profile that
   still begins with the current text is left alone, and an outdated one is kept as `.bak`.

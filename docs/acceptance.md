@@ -131,9 +131,10 @@ Then, per host, by hand — because no static check can prove a runtime behaviou
   they report the overview's states. Run by `fleet.py`, which gives it no input, it did not
   stop to ask about another agent's hooks (E27); that the missing input is why is an inference.
   The Codex plugin route is UNVERIFIED.
-- **`fleet.py start` reports success once the launcher returns.** If the host then exits, the
-  session has no row in the overview: on Claude Code without this package's plugin,
-  `claude --agent tech-lead` ends with `--agent 'tech-lead' not found` (E31).
+- **`fleet.py start` says `started` only once the session is listed.** If the host exits at
+  once, as `claude --agent tech-lead` does without this package's plugin (E31), or waits at a
+  first-run prompt, it prints `opened <name>, host not confirmed` after ten seconds; it cannot
+  tell the two apart (E37).
 - **On opencode the fleet needs workmux's current plugin and starts a private server per
   session** (E30). An earlier one-file workmux plugin does not load at opencode 2.2.7, and then
   no opencode session has a row; `workmux setup` replaces it. The start command names a config

@@ -1,1 +1,1 @@
-{"default_agent": "tech-lead"}
+{"default_agent": "tech-lead", "agent": {"build": {"disable": true}, "plan": {"disable": true}}}

@@ -8,6 +8,8 @@ import pathlib
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -57,10 +59,10 @@ class Base(unittest.TestCase):
         self.cfg = self.dir / "fleet.toml"
         (self.dir / "xdg").mkdir()
 
-    def write_cfg(self, top="", extra=""):
+    def write_cfg(self, top="", extra="", confirm=0):
         py, fake = json.dumps(sys.executable), json.dumps(str(self.fake))
         self.cfg.write_text(
-            top + f'[launcher]\n'
+            top + f'[launcher]\nconfirm_seconds = {confirm}\n'
             f'start = [{py}, {fake}, "add", "{{name}}", "--agent", "{{agent}}", "--prompt", "{{prompt}}"]\n'
             f'status = [{py}, {fake}, "status"]\n'
             f'capture = [{py}, {fake}, "capture", "{{name}}"]\n'
@@ -118,7 +120,11 @@ class TestStart(Base):
         self.assertEqual(json.loads(r.stdout)[5],
                          f"env OPENCODE_CONFIG={copy}/opencode-tech-lead.json opencode --standalone")
         shipped = FLEET.parent / "opencode-tech-lead.json"
-        self.assertEqual(json.loads(shipped.read_text()), {"default_agent": "tech-lead"})
+        # With a prompt on the command line opencode 2.2.7 sends it before the default agent
+        # applies, half the time; with no other primary to fall back on it cannot miss (E37).
+        self.assertEqual(json.loads(shipped.read_text()), {
+            "default_agent": "tech-lead",
+            "agent": {"build": {"disable": True}, "plan": {"disable": True}}})
 
     def test_a_script_path_the_launcher_would_break_is_refused_for_such_a_start(self):
         moved = self.dir / "my skills" / "scripts"
@@ -548,6 +554,91 @@ OPENCODE_SCREEN = f"""     Reading .env was rejected, so I have no line count to
 
      Tech-Lead \u00b7 <local model>{PAD}\u00b7 12.7s
 """
+
+
+class TestStartIsConfirmed(Base):
+    """The launcher returns before the host has started, so a host that exits at once looked
+    like a start (E30, E31). The script now looks for the session in the launcher's list."""
+
+    def listing(self, *names):
+        (self.dir / "status.json").write_text(json.dumps(
+            {"agents": [{"worktree": n, "status": "working"} for n in names]}))
+
+    def test_a_session_that_is_listed_is_reported_started(self):
+        self.write_cfg(confirm=5)
+        self.listing("other", "issue-12")
+        r = self.run_fleet("start", "12", "--host", "antigravity")
+        self.assertEqual((r.returncode, r.stdout), (0, "started issue-12\n"), r.stderr)
+        self.assertNotIn("session list", r.stderr)
+
+    def test_a_session_that_never_shows_is_not_reported_started(self):
+        self.write_cfg(confirm=1)
+        self.listing("other")
+        r = self.run_fleet("start", "12", "--host", "antigravity")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout, "opened issue-12, host not confirmed\n")
+        self.assertIn("fleet: issue-12 is not in the session list after 1s", r.stderr)
+        self.assertIn("exited at once", r.stderr)
+        self.assertIn("first-run prompt", r.stderr)
+
+    def test_a_session_that_shows_late_is_still_found(self):
+        self.write_cfg(confirm=20)
+        self.listing()
+        t = threading.Timer(1.2, self.listing, ("issue-12",))
+        t.start()
+        self.addCleanup(t.cancel)
+        began = time.monotonic()
+        r = self.run_fleet("start", "12", "--host", "antigravity")
+        self.assertEqual((r.returncode, r.stdout), (0, "started issue-12\n"), r.stderr)
+        self.assertLess(time.monotonic() - began, 15)
+
+    def test_a_list_that_cannot_be_read_counts_as_not_shown(self):
+        self.write_cfg(confirm=1)                  # no status.json: the fake crashes
+        r = self.run_fleet("start", "12", "--host", "antigravity")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout, "opened issue-12, host not confirmed\n")
+
+    def test_zero_seconds_asks_nothing(self):
+        self.write_cfg(confirm=0)
+        r = self.run_fleet("start", "12", "--host", "antigravity")
+        self.assertEqual((r.returncode, r.stdout), (0, "started issue-12\n"), r.stderr)
+        self.assertNotIn(["status"], self.logged())
+
+    def test_a_failed_launcher_is_not_followed_by_a_look(self):
+        self.write_cfg(confirm=5)
+        (self.dir / "fail").write_text("")
+        r = self.run_fleet("start", "12", "--host", "antigravity")
+        self.assertEqual(r.returncode, 3)
+        self.assertNotIn(["status"], self.logged())
+
+    def test_a_dry_run_does_not_look(self):
+        self.write_cfg(confirm=5)
+        r = self.run_fleet("start", "12", "--host", "antigravity", "--dry-run")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertFalse(self.log.exists())
+
+    def test_a_launcher_of_ones_own_without_a_status_command_is_not_asked(self):
+        """The default status command is workmux's; it knows nothing of another launcher."""
+        fleet = load()
+        py, fake = json.dumps(sys.executable), json.dumps(str(self.fake))
+        self.cfg.write_text(f'[launcher]\nstart = [{py}, {fake}, "add", "{{name}}"]\n')
+        self.assertEqual(fleet.load_config(self.cfg)["launcher"]["confirm_seconds"], 0)
+        self.cfg.write_text(f'[launcher]\nstart = [{py}, {fake}, "add", "{{name}}"]\n'
+                            f'status = [{py}, {fake}, "status"]\n')
+        self.assertGreater(fleet.load_config(self.cfg)["launcher"]["confirm_seconds"], 0)
+
+    def test_the_default_looks(self):
+        fleet = load()
+        self.assertGreater(fleet.DEFAULTS["launcher"]["confirm_seconds"], 0)
+
+    def test_a_negative_or_wrongly_typed_wait_is_a_config_error(self):
+        for value in ("-1", '"5"', "true", "1.5"):
+            self.write_cfg()
+            self.cfg.write_text(self.cfg.read_text().replace(
+                "confirm_seconds = 0", f"confirm_seconds = {value}"))
+            r = self.run_fleet("start", "12", "--host", "antigravity")
+            self.assertEqual(r.returncode, 2, value)
+            self.assertIn("launcher.confirm_seconds", r.stderr, value)
 
 
 class TestLastReturn(unittest.TestCase):
