@@ -299,7 +299,7 @@ def render_opencode(personas, team, host, roster):
 
 
 def render_antigravity(personas, team, host, roster):
-    """Antigravity dialect: ONLY names in the measured registry (E17)."""
+    """Antigravity dialect: ONLY names in the measured registry (E32)."""
     out = {}
     caps = host["capabilities"]
     registry = set(host["tool_registry"])
@@ -315,7 +315,7 @@ def render_antigravity(personas, team, host, roster):
         if p["capabilities"]["delegate"]:
             tools += caps["delegate"]
         bad = [t for t in tools if t not in registry]
-        if bad:                       # a name outside the registry aborts the agent (E17)
+        if bad:              # outside the registry: the agent aborts, or lacks the tool (E32)
             raise SystemExit(f"gen.py: {name} would emit tool names outside the measured "
                              f"registry: {bad}")
         primary = p["role"] == "primary"

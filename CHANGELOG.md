@@ -32,8 +32,11 @@ this project uses semantic versioning from 0.1.0 onward.
   reaches every agent tried. Workspace folders deliver agents, and a workspace agent replaces
   the installed one of the same name, in print mode even in an untrusted folder. Five listed
   tool names still load and give no tool, so a persona searches through the shell. A re-install
-  replaces the old one. The package still supports agy from 1.1.27 and renders the same agents;
-  the documents now name the version each fact was measured at.
+  replaces the old one.
+- **Antigravity needs agy 1.5.3 or later.** Versions 1.1.27 to 1.2.10 are no longer supported.
+  The rendered agents list the 1.5.3 tool names, and the checker refuses a name that loads and
+  gives no tool. agy 1.5.3 has no search tool to list: a persona with a shell searches through
+  it, and the designer, which has none, reads only the paths it is given.
 
 ### Fixed
 

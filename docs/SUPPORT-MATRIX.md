@@ -11,7 +11,7 @@ Every claim id is stated in full under [The claims themselves](#the-claims-thems
 | Claude Code | 2.1.263 | `claude -p`, `--plugin-dir`, `plugin validate`, `plugin list` — **re-verified at 2.1.283** (E24) |
 | Codex CLI | 0.153.4 | `codex exec`, `codex sandbox`, `codex plugin …` — **re-verified at 0.154.0** (E24) |
 | opencode | 1.18.29 | `opencode run`, `agent list`, `run --command` — **re-verified at 2.0.18** (E20 addendum): every runtime row holds; `agent list` is now `debug agents` and `run --command` is a slash command in the prompt |
-| agy (Antigravity CLI) | 1.1.27 | `agy --print`, `--agent`, `plugin install/validate` — **tool registry re-verified unchanged at 1.2.6 and 1.2.10** (E17 addendum, E24) — **every Antigravity claim re-run at 1.5.3** (E32): the registry, `AGENTS.md` delivery, workspace agents and re-install all differ there |
+| agy (Antigravity CLI) | 1.5.3 | `agy --print`, `--agent`, `plugin install/validate` — **every Antigravity claim re-run at 1.5.3** (E32), which is the supported floor. History: first swept at 1.1.27, with the tool registry re-verified unchanged at 1.2.6 and 1.2.10 (E17 addendum, E24); those versions are no longer supported, and the registry, `AGENTS.md` delivery, workspace agents and re-install all differed there |
 | Antigravity desktop | 2.12.2 | binary inspection only at 2.12.2; **driven once at 2.17.0** (E19 addendum): the `tools` allowlist holds, `AGENTS.md` does not arrive, and the binary carries the `agents:` tag 2.12.2 lacked (E24); 2.29.1 binary inspected, not driven (E32) |
 
 **Re-verify before relying on a version-gated claim.** Four of the five tools moved within a day of the original research (`experiments.md` E2) and one gate had already flipped (E3). A claim marked *docs/source only* has never been exercised against a running tool.
@@ -35,7 +35,7 @@ These override the digest wherever they disagree.
 
 | claim | the digest said | the sweep measured | evidence |
 |---|---|---|---|
-| `AG-06` | a list of Antigravity tool names, and that a bad name "may cause the subagent process to hang" | **seven of the names were not in the registry** up to agy 1.2.10 and aborted the agent at startup with `unknown component: tool "…" not found in registry` — loudly and before any model call, not a hang. At 1.5.3 six are rejected the same way, and five others resolve and give no tool | E17, E24, E32 |
+| `AG-06` | a list of Antigravity tool names, and that a bad name "may cause the subagent process to hang" | **seven of the names were not in the registry** up to agy 1.2.10 and aborted the agent at startup with `unknown component: tool "…" not found in registry` — loudly and before any model call, not a hang. At 1.5.3 six are rejected the same way, and six others resolve and give no tool | E17, E24, E32 |
 | `CC-07` | `claude plugin validate` catches the frontmatter fail-open | it does **not**: a colon in the value triggers a repairing sanitizer, and `memory`, unknown keys and a colon in `name` all pass | E15 |
 | `CC-03` | a bare agent name resolves | true for the `--agent` flag, **false** for `Agent(...)`'s `subagent_type`, which needs `e-colleagues:<name>` | E10 |
 | `CC-10` | the `agent` key makes a persona the default | true; it is **not trust-gated**, an unresolvable value fails silently, and **project scope beats user scope** | E21 |
@@ -49,9 +49,20 @@ These override the digest wherever they disagree.
 
 ## The Antigravity tool registry
 
-`check.py --agy-tools` validates every rendered Antigravity agent against this list, derived by installing each name as the sole entry in an agent's `tools` list and running it (E17). **Do not derive it by grepping the binary** — that yields a superset and reported all seven invalid names as present (E16 C1, superseded).
+`check.py --agy-tools` validates every rendered Antigravity agent against this list, derived by installing each name as the sole entry in an agent's `tools` list and running it (E32, by the method of E17). **Do not derive it by grepping the binary** — that yields a superset and reported all seven names then invalid as present (E16 C1, superseded).
 
-Valid at **agy 1.1.27**, and re-verified unchanged at **1.2.6** and **1.2.10** (E17 addendum, E24) — 15 names. **At 1.5.3 the list below is no longer the registry** (E32): all 15 still resolve, but `grep_search`, `find_by_name`, `list_dir`, `multi_replace_file_content` and `read_url_content` are logged `deprecated and has no effect` and give the agent no tool; `view_file`, `write_to_file` and `replace_file_content` arrive as `read_file`, `write_file` and `edit_file`, and those three new names resolve too.
+Valid at **agy 1.5.3**, the supported floor (E32) — 10 names that load and give the agent a tool:
+
+```
+read_file  run_command  write_file  edit_file  search_web
+invoke_subagent  define_subagent  manage_task  manage_subagents  send_message
+```
+
+Load and give no tool at 1.5.3, so the gate refuses them too (E32): `grep_search`, `find_by_name`, `list_dir`, `multi_replace_file_content` and `read_url_content`, each logged `deprecated and has no effect`, and `command_status`, which logs nothing.
+
+Rejected at 1.5.3 with `not found in registry` (E32): `view_file_outline`, `view_code_item`, `codebase_search`, `browser_subagent`, `notify_user`, `manage_inbox`.
+
+**History: agy 1.1.27, re-verified unchanged at 1.2.6 and 1.2.10** (E17 addendum, E24), no longer supported — 15 names were valid:
 
 ```
 view_file  run_command  write_to_file  replace_file_content  multi_replace_file_content
@@ -59,7 +70,7 @@ grep_search  find_by_name  list_dir  read_url_content  search_web
 invoke_subagent  define_subagent  manage_task  manage_subagents  send_message
 ```
 
-Rejected at 1.1.27 and again at 1.2.6, despite appearing in the binary's strings: `view_file_outline`, `view_code_item`, `command_status`, `codebase_search`, `browser_subagent`, `notify_user`, `manage_inbox`. At 1.5.3 `command_status` resolves (and gives no tool); the other six are still rejected (E32).
+All 15 still resolve at 1.5.3: `view_file`, `write_to_file` and `replace_file_content` arrive as `read_file`, `write_file` and `edit_file`, and five give no tool, as above (E32). Rejected at 1.1.27 and again at 1.2.6, despite appearing in the binary's strings: the six above and `command_status`.
 
 ## Claims by host
 

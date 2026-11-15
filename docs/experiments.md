@@ -4183,3 +4183,40 @@ All on `gemini-3.8-flash-low`, default agent, print mode. What the harness did i
 - **A workspace agent against an interactive session's trust dialog.**
 
 **Host state.** `~/.gemini/config/config.json`, `~/.gemini/settings.json`, `~/.gemini/config/hooks.json`, `~/.gemini/antigravity-cli/settings.json` and `~/.gemini/config/import_manifest.json` have the hashes they had before the first step; the last one changed with every install and returned to its bytes after the last uninstall. The plugins tree is file-for-file identical by hash to the listing taken before. `~/.gemini/config/plugins/e-colleagues/` was replaced four times (twice by the marker test, once by the URL install, once to put it back) and ends as the export's 87 tracked files: `diff -r` against a copy taken before the first step is clean, and against the export itself shows only a `skills/ec-fleet/scripts/__pycache__/` that another process created inside the shared export while this probe ran and that is not in the installed copy. `agy plugin list` shows `e-colleagues (enabled, 0.1.1)`, `5 skills, 6 agents`; no `e32-…` plugin remains; `agy agents` lists what it listed before. The one interactive session wrote nothing to the agy settings (session-only trust, E28); its tmux session was killed and the workmux state file for its pane was removed. agy kept its usual per-session records under `~/.gemini/antigravity-cli/` for each of the 42 sessions that reached a model. One slip: the desktop's `language_server` was started once with `--version` to read its version; it is not a version flag, and the process exited at once with `Failed to read initial metadata from stdin`. The repository checkout was not touched.
+
+### Addendum 2026-11-15 — the rendered agents on the 1.5.3 tool names, exercised
+
+After this sweep the package's floor moved to agy 1.5.3. The rendered agents now list `read_file`, `write_file` and `edit_file` in place of the older names, and no longer list the five names that give no tool. The sweep saw the three names resolve and did not call them. Two turns on `gemini-3.8-flash-low`, print mode, in an empty git repository `<tmp>/work` trusted for each call, with the re-rendered plugin installed:
+
+```console
+$ agy --agent tech-lead --settings '{"trustedWorkspaces":["<tmp>/work"]}' --mode accept-edits --model gemini-3.8-flash-low --log-file <log> --print "Use your file tools only, never the shell, and do not delegate. 1) Create a file named probe.txt in the current folder containing exactly the word OTTER. 2) Replace OTTER with TAPIR in that file with your editing tool. 3) Read the file back with your reading tool. Reply with exactly two lines: the file's content, then the exact names of the tools you called, in order, comma-separated."
+TAPIR
+write_file, edit_file, read_file
+$ cat <tmp>/work/probe.txt
+TAPIR
+```
+
+rc 0, and the log held no `deprecated` line and no `not found in registry`. Then one delegation, without `--mode`:
+
+```console
+$ agy --agent tech-lead --settings '{"trustedWorkspaces":["<tmp>/work"]}' --model gemini-3.8-flash-low --log-file <log> --print "Delegate exactly once to the reviewer and do nothing else yourself: ask it to read the file probe.txt in the current folder with its file-reading tool and to answer with the file's content and the exact names of every tool it has. Then reply with exactly what the reviewer returned."
+…
+### RETURN
+status: done
+task: Read probe.txt and list available tools
+changed: none
+evidence: read_file on <tmp>/work/probe.txt returned 'TAPIR'
+findings: []
+risks: none
+follow-ups: none
+questions: none
+knowledge: none
+```
+
+rc 0, the same two strings absent from the log. The reviewer's list of its tools is cut above: beside `read_file` and `run_command` it named MCP tools of servers installed on the probe machine, which its `tools` key does not list, as step 3 found.
+
+**Verdict**: the primary writes, edits and reads under the 1.5.3 names, the file on disk showing the write and the edit, and a specialist rendered with `read_file` and `run_command` loads and reads. The tool names in the first reply are the model's own report.
+
+**Not measured:** the designer, developer, platform and security agents each on their own, and `search_web`.
+
+**Host state.** The installed plugin was replaced with the re-rendered package and left that way; `diff -r` against the export is clean. The agy settings file has the same hash before and after. `<tmp>/work` holds the one probe file.

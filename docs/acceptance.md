@@ -17,8 +17,8 @@ the feature was introduced in. Below it, nothing is promised.
 | OpenAI Codex CLI | **0.153.4** | `read-only` + `approval_policy = "never"` blocks every write (E4); role files parse under `deny_unknown_fields` with a five-key whitelist [CX-02]. Re-verified at 0.154.0 (E24) |
 | Claude Code | **2.1.263** | plugin `agents` takes a file list and replaces the default scan (E10); `subagent_type` needs the qualified name (E10). Re-verified at 2.1.283 (E24) |
 | opencode | **1.18.29** | the 15 permission keys and `AgentConfig`'s 15 properties, re-derived from the published schema (E16 C3). Re-verified at 2.0.18 (E20 addendum) |
-| Google Antigravity (`agy`) | **1.1.27** | the 15-name tool registry (E17, re-verified unchanged at 1.2.6 and 1.2.10; at 1.5.3 all 15 resolve and five give no tool, E32); global install was the only delivery route up to 1.2.10 (E18, E24); at 1.5.3 workspace roots deliver agents too (E32) |
-| Antigravity desktop | 2.17.0 *(observed)* | **not a floor** — inspected at 2.12.2, driven once at 2.17.0 (E19 addendum): the `tools` allowlist holds there too and `AGENTS.md` does not arrive. At 2.12.2 it lacked the `agents:` key the CLI had (E16); at 2.17.0 it carries it (E24). The renderer still never emits the key, so that agents render the same on every version of either binary |
+| Google Antigravity (`agy`) | **1.5.3** | every Antigravity claim was re-run there (E32): the ten tool names that load and give a tool, which are the only ones the rendered agents list; `AGENTS.md` reaching the default agent, a custom agent and a sub-agent; and a re-install that replaces the installed directory exactly. Versions 1.1.27 to 1.2.10 are no longer supported |
+| Antigravity desktop | 2.17.0 *(observed)* | **not a floor** — inspected at 2.12.2, driven once at 2.17.0 (E19 addendum): the `tools` allowlist holds there too and `AGENTS.md` does not arrive. At 2.12.2 it lacked the `agents:` key the CLI had (E16); at 2.17.0 it carries it (E24). Not driven since: at 2.29.1 only its binary was read (E32). The renderer still never emits the key, so that agents render the same on every version of either binary |
 | Python | **3.11** | `tomllib` is standard library from 3.11; the shipped scripts use nothing else |
 
 `tools/gen.py` and `tools/check.py` additionally need PyYAML. Anything that ships to a user —
@@ -33,7 +33,7 @@ exists to remove.
 | rule | Codex | Claude | opencode | Antigravity |
 |---|---|---|---|---|
 | tech-lead is primary | prose (`developer_instructions`) | mechanical (`--agent`) | mechanical (`default_agent`) | mechanical (`mainAgent`) |
-| specialists cannot spawn | V1 depth cap; **V2 prose** | mechanical (tool list) | mechanical (child `task * deny`) | mechanical (`tools` omits `invoke_subagent`, E19) |
+| specialists cannot spawn | V1 depth cap; **V2 prose** | mechanical (tool list) | mechanical (child `task * deny`) | mechanical (`tools` omits `invoke_subagent`, E32) |
 | reviewer cannot edit **files** | mechanical | mechanical | mechanical | mechanical |
 | reviewer cannot edit **via the shell** | **mechanical** (read-only sandbox, E4) | prose — Bash writes (E13) | narrowed by bash patterns | prose — `run_command` writes |
 | specialists never post externally | mechanical side-effect (no network under read-only) | prose | prose | prose |
@@ -78,27 +78,30 @@ Then, per host, by hand — because no static check can prove a runtime behaviou
 
 ## Known limitations
 
-- **This package gives Antigravity no per-project roster.** It installs globally, so two
-  projects on one machine share the roster. The host itself delivers workspace agents at
-  1.5.3 (E32); it did not at 1.1.27 or 1.2.10 (E18, E24).
+- **This package gives Antigravity no per-project roster.** It installs globally only, by
+  choice, so two projects on one machine share the roster. The host itself delivers workspace
+  agents, from `.agents/agents/`, `_agents/agents/`, `.agents/plugins/` and `_agents/plugins/`
+  (E32).
+- **An Antigravity persona has no search tool**, because agy has none to list (E32). A persona
+  with a shell searches through `run_command`; the designer, which has no shell, can only read
+  paths it is given.
 - **opencode's roster is per-machine too.** `bootstrap.py --scope user` writes the agents to
   `~/.config/opencode/agents/` and the five skills to `~/.config/opencode/skills/`; nothing
   writes them into a project, and there is no bundle or plugin route (E25). The global config is never written, so the tech-lead is chosen per
   session with `--agent`, with Tab in the TUI, or by a `default_agent` the user sets.
-- **An Antigravity re-install merged at agy 1.1.27** (E8), leaving a dropped persona selectable;
-  at 1.5.3 an install over an existing one replaces it exactly (E27, E32). On an older agy,
-  uninstall first when the roster shrinks.
-- **`AGENTS.md` reached no Antigravity agent up to agy 1.2.10** (E19, E24), which is why each
-  rendered body carries the contract itself. At 1.5.3 it reaches every agent tried: the
-  default one, a custom one and a sub-agent (E32).
+- **An Antigravity re-install replaces the installed directory exactly** (E32). A persona
+  dropped from the package is gone after the next install; no uninstall is needed.
+- **`AGENTS.md` reaches every Antigravity agent tried**: the default one, a custom one and a
+  sub-agent (E32). Each rendered body still carries the contract itself, because the desktop
+  app did not receive `AGENTS.md` when last driven, at 2.17.0 (E19 addendum), and has not been
+  driven since.
 - **A project `.claude/settings.json` `agent` key is not trust-gated** (E21) and replaces the
   whole system prompt. A cloned repository can set a session's persona before its owner
   trusts the folder. That is Claude Code's behaviour, not this package's, but anyone
   recommending the key should know it.
 - **An Antigravity workspace agent replaces the installed persona of the same name** (E32).
-  At agy 1.5.3 a repository's `.agents/agents/<name>/agent.md` is what `agy --agent <name>`
-  runs there instead of the installed plugin's agent, in print mode even in a folder nobody
-  has trusted. Measured with a probe name, not with `tech-lead`. That is Antigravity's
+  A repository's `.agents/agents/<name>/agent.md` is what `agy --agent <name>` runs there
+  instead of the installed plugin's agent, in print mode even in a folder nobody has trusted. Measured with a probe name, not with `tech-lead`. That is Antigravity's
   behaviour, not this package's, which never writes such a file. `fleet.py start` names any
   agent file in the new worktree that carries the tech-lead's name, and starts all the same; it
   matches the name by pattern, so it is a warning and not a guard.
@@ -106,8 +109,8 @@ Then, per host, by hand — because no static check can prove a runtime behaviou
   does *not* skip the Claude install step: trusting the folder registers and fetches the
   marketplace, the plugin loads only after `claude plugin install`, and nothing is printed to
   say so (E23 addendum). `agy plugin install <github-url>` lands in a directory named
-  `e-colleagues` (E8 addendum, E32); at agy 1.5.3 a local install takes that name from the
-  manifest's `name`, not from the source folder (E32).
+  `e-colleagues`, and a local install takes that name from the manifest's `name`, not from the
+  source folder (E32).
 - **A user-scope install keeps no record of its profile.** `bootstrap.py --scope user --check`
   defaults to the `default` roster regardless of which profile was installed, so pass
   `--profile` to both or it will report agents missing that were never meant to be there. A

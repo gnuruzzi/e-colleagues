@@ -5,10 +5,7 @@ mainAgent: false
 subagent: true
 model: inherit
 tools:
-  - view_file
-  - grep_search
-  - find_by_name
-  - list_dir
+  - read_file
   - run_command
 ---
 
