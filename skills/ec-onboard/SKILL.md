@@ -26,8 +26,8 @@ Show which lenses have a home, which are gaps, and the roster you propose to cov
 ## 4. Dispatch one specialist per gap lens, in waves
 
 Delegate each gap lens to the persona that owns it. Every brief is a full delegation brief
-and names the files to read; knowledge is never assumed to arrive ambiently, which is
-measured — on Antigravity `AGENTS.md` reaches no agent at all.
+and names the files to read; knowledge is never assumed to arrive ambiently: whether a host
+delivers `AGENTS.md` to an agent has changed between versions (E32).
 
 **Size the waves.** On Codex the concurrency cap counts the primary, so the default of 4
 permits **three** spawned children, and a fourth is **refused** — `collab spawn failed: agent

@@ -187,5 +187,72 @@ class TestSkillsGate(unittest.TestCase):
         r = self.check()
         self.assertEqual(r.returncode, 1)
         self.assertIn("ec-fleet", r.stdout)
-        self.assertIn("RETURN", r.stdout)
+        self.assertIn("the RETURN block differs from personas/_shared/return.md", r.stdout)
 
+
+
+class TestAgyValidatorGate(unittest.TestCase):
+    """agy 1.5.3 passes a plugin with a missing or invalid name and only warns (E32), so the gate
+    reads the warnings. A stub stands in for the binary."""
+
+    def run_with(self, output: str):
+        with tempfile.TemporaryDirectory() as tmp:
+            stub = pathlib.Path(tmp) / "agy"
+            stub.write_text(f"#!{sys.executable}\nprint({output!r})\n")
+            stub.chmod(0o755)
+            return subprocess.run([sys.executable, str(ROOT / "tools" / "check.py"), "--hosts"],
+                                  capture_output=True, text=True, env={"PATH": tmp})
+
+    def test_the_known_warning_passes(self):
+        r = self.run_with("  ⚠ AGENTS.md: never loaded: plugins load rules only from rules/.\n"
+                          "✔ Validation passed with 1 warning")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("agy plugin validate passes", r.stdout)
+
+    def test_any_other_warning_fails(self):
+        r = self.run_with("  ⚠ AGENTS.md: never loaded: plugins load rules only from rules/.\n"
+                          "  ⚠ agents/x/agent.md: missing name\n"
+                          "✔ Validation passed with 2 warnings")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("missing name", r.stdout)
+
+    def test_the_older_ok_line_still_passes(self):
+        self.assertEqual(self.run_with("  [ok]    e-colleagues").returncode, 0)
+
+
+class TestAgyToolsGate(unittest.TestCase):
+    """At agy 1.5.3 some tool names still load and give the agent nothing (E32). The gate
+    passes only names that deliver a tool."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = pathlib.Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+        (self.root / "tools").mkdir()
+        shutil.copy(ROOT / "tools" / "check.py", self.root / "tools" / "check.py")
+        for d in ("personas", "hosts", "agents"):
+            shutil.copytree(ROOT / d, self.root / d)
+        self.agent = self.root / "agents" / "reviewer" / "agent.md"
+
+    def check(self):
+        return subprocess.run([sys.executable, str(self.root / "tools" / "check.py"),
+                               "--agy-tools"], capture_output=True, text=True)
+
+    def test_the_rendered_agents_pass(self):
+        r = self.check()
+        self.assertEqual(r.returncode, 0, r.stdout)
+
+    def test_a_name_that_gives_no_tool_fails(self):
+        for name in ("grep_search", "list_dir", "read_url_content", "command_status"):
+            text = (ROOT / "agents" / "reviewer" / "agent.md").read_text()
+            self.agent.write_text(text.replace("tools:\n", f"tools:\n  - {name}\n", 1))
+            r = self.check()
+            self.assertEqual(r.returncode, 1, name)
+            self.assertIn(name, r.stdout)
+
+    def test_no_rendered_agent_lists_such_a_name(self):
+        dead = {"grep_search", "find_by_name", "list_dir", "multi_replace_file_content",
+                "read_url_content", "command_status"}
+        for f in sorted((ROOT / "agents").glob("*/agent.md")):
+            fm = f.read_text().split("---")[1]
+            self.assertFalse(dead & set(re.findall(r"^  - (\S+)$", fm, re.M)), f.parent.name)

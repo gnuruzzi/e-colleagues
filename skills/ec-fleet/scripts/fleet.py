@@ -11,6 +11,7 @@ import json
 import os
 import pathlib
 import re
+import shlex
 import subprocess
 import sys
 import tomllib
@@ -18,9 +19,16 @@ import tomllib
 DEFAULTS = {
     "default_host": None,
     "hosts": {
-        "antigravity": {"start": "agy --agent tech-lead"},
-        "codex": {"start": "codex --profile e-colleagues"},
-        "opencode": {"start": "opencode --agent tech-lead"},
+        # Each trust string is for one session and saves nothing. agy keeps trust per exact
+        # path; Codex keeps it per repository and asks only in one it has never trusted.
+        "antigravity": {"start": "agy --agent tech-lead",
+                        "trust": "--settings '{\"trustedWorkspaces\":[\"{worktree}\"]}'"},
+        "codex": {"start": "codex --profile e-colleagues",
+                  "trust": "-c 'projects={\"{worktree}\"={trust_level=\"trusted\"}}'"},
+        # opencode's TUI has no --agent: a config file named in the environment chooses it,
+        # and only a private server reads that from this session's environment (E30).
+        "opencode": {"start": "env OPENCODE_CONFIG={skill}/opencode-tech-lead.json "
+                              "opencode --standalone"},
         "claude": {"start": "claude --agent tech-lead"},
     },
     "launcher": {
@@ -29,12 +37,14 @@ DEFAULTS = {
         "base_flag": "--base",
         "status": ["workmux", "status", "--json"],
         "capture": ["workmux", "capture", "{name}", "--lines", "200"],
+        "where": ["workmux", "add", "{name}", "--dry-run"],
     },
 }
 PROMPT = "Use the ec-fleet skill. Your assignment: issue {ref}."
 
-HOST_KEYS = {"start": str, "prompt": str}
-LAUNCHER_KEYS = {"start": list, "status": list, "capture": list, "base_flag": str}
+HOST_KEYS = {"start": str, "prompt": str, "trust": str}
+LAUNCHER_KEYS = {"start": list, "status": list, "capture": list, "where": list, "base_flag": str}
+NO_PATH = "could not learn the worktree's path, so the session may open at its host's trust prompt"
 
 
 class ConfigError(Exception):
@@ -92,7 +102,11 @@ def load_config(path: pathlib.Path | None) -> dict:
     except (tomllib.TOMLDecodeError, OSError) as e:
         raise ConfigError(f"{p}: {e}")
     _check(data, {"default_host": str, "hosts": dict, "launcher": dict}, "")
-    cfg["launcher"].update(_check(data.get("launcher", {}), LAUNCHER_KEYS, "launcher"))
+    launcher = _check(data.get("launcher", {}), LAUNCHER_KEYS, "launcher")
+    cfg["launcher"].update(launcher)
+    if "start" in launcher and "where" not in launcher:
+        # The default asks workmux, which says nothing about another launcher's worktrees.
+        cfg["launcher"]["where"] = None
     for host, table in data.get("hosts", {}).items():
         _check(table, HOST_KEYS, f"hosts.{host}")
         merged = {**cfg["hosts"].get(host, {}), **table}
@@ -123,8 +137,68 @@ def check_flag(flag: str, value: str) -> None:
                           "and contain no whitespace")
 
 
-def start_argv(cfg: dict, ref: str, name: str | None, host: str | None,
-               base: str | None) -> tuple[list[str], str]:
+def worktree_path(cfg: dict, name: str) -> str | None:
+    if not cfg["launcher"]["where"]:
+        return None
+    try:
+        r = run_launcher(fill(cfg["launcher"]["where"], {"name": name}))
+    except LauncherError:
+        return None
+    lines = [ln.strip() for ln in r.stdout.splitlines() if ln.strip()]
+    labelled = [ln for ln in lines if ln.startswith("Worktree:")]
+    path = labelled[0][len("Worktree:"):].strip() if labelled else "".join(lines[:1])
+    # The path lands inside quotes in the host's command, so one that could end them is refused.
+    if r.returncode or not os.path.isabs(path) or re.search(r"['\"\\\x00-\x1f\x7f]", path):
+        return None
+    return path
+
+
+AGY_AGENT_GLOBS = (".agents/agents/**/*.md", "_agents/agents/**/*.md",
+                   ".agents/plugins/*/agents/**/*.md", "_agents/plugins/*/agents/**/*.md")
+
+
+def agy_agent(start: str) -> str:
+    """The agent an agy start command names, or nothing for any other command."""
+    try:
+        words = shlex.split(start)
+    except ValueError:
+        return ""
+    if not words or pathlib.Path(words[0]).name != "agy":
+        return ""
+    agent = ""
+    for i, word in enumerate(words):
+        if word.startswith("--agent="):
+            agent = word[len("--agent="):]
+        elif word == "--agent" and i + 1 < len(words):
+            agent = words[i + 1]
+    return agent
+
+
+def shadowing_agents(agent: str, worktree: str | None) -> list[str]:
+    """Agent files that agy would run in place of the installed agent of that name: at 1.5.3
+    a workspace agent wins, by its frontmatter name (E32). A warning, not a guard: the name
+    is matched by pattern, since the standard library reads no YAML."""
+    # The session runs in the new worktree, which may hold another revision than here.
+    root = pathlib.Path(worktree) if worktree and os.path.isdir(worktree) else None
+    if root is None:
+        root = pathlib.Path.cwd()
+        root = next((d for d in (root, *root.parents) if (d / ".git").exists()), root)
+    named = re.compile(rf"^[ \t]*[\"']?name[\"']?[ \t]*:[ \t]*[\"']?{re.escape(agent)}[\"']?"
+                       rf"[ \t]*(#.*)?\r?$", re.M)
+    found = []
+    for pattern in AGY_AGENT_GLOBS:
+        for f in sorted(root.glob(pattern)):
+            try:
+                head = f.read_text(errors="replace")[:4000]
+            except OSError:
+                continue
+            if named.search(head):
+                found.append(str(f.relative_to(root)))
+    return found
+
+
+def start_argv(cfg: dict, ref: str, name: str | None, host: str | None, base: str | None,
+               dry_run: bool = False) -> tuple[list[str], str, bool, str | None]:
     if not ref.strip():
         raise ConfigError("the reference must not be empty")
     host = host or cfg["default_host"]
@@ -141,11 +215,27 @@ def start_argv(cfg: dict, ref: str, name: str | None, host: str | None,
     if base is not None:
         check_flag("--base", base)
     prompt = hosts[host].get("prompt", PROMPT).replace("{ref}", ref)
-    argv = fill(cfg["launcher"]["start"],
-                {"name": name, "agent": hosts[host]["start"], "prompt": prompt})
+    agent, trust, trusted, where = hosts[host]["start"], hosts[host].get("trust", ""), True, None
+    if "{skill}" in agent:
+        here = str(pathlib.Path(__file__).resolve().parent)
+        # The launcher passes this unquoted, so a space or a quote in it would split it.
+        if not re.fullmatch(r"[A-Za-z0-9_./@%+=:,-]+", here):
+            raise ConfigError(f"this script's own path, {here!r}, would not survive the "
+                              f"launcher; set [hosts.{host}] start in the config")
+        agent = agent.replace("{skill}", here)
+    if "{worktree}" in trust and not dry_run:
+        path = where = worktree_path(cfg, name)
+        before = trust[:trust.index("{worktree}")]
+        quoted = before.count("'") % 2 or (not before.count("'") and before.count('"') % 2)
+        if path and re.search(r"\s", path) and not quoted:
+            path = None  # outside quotes the launcher would split it into arguments
+        trust, trusted = (trust.replace("{worktree}", path), True) if path else ("", False)
+    if trust:
+        agent += " " + trust
+    argv = fill(cfg["launcher"]["start"], {"name": name, "agent": agent, "prompt": prompt})
     if base is not None:
         argv += [cfg["launcher"]["base_flag"], base]
-    return argv, name
+    return argv, name, trusted, where
 
 
 RETURN_KEYS = ("status", "task", "changed", "evidence", "findings", "risks", "follow-ups",
@@ -153,14 +243,20 @@ RETURN_KEYS = ("status", "task", "changed", "evidence", "findings", "risks", "fo
 KEY_LINE = re.compile(r"^(%s):" % "|".join(RETURN_KEYS))
 NON_ALNUM = re.compile(r"^[^0-9A-Za-z]+")
 FRAMING = re.compile(r"^[\s\u2500-\u257f]+")
+# Hosts frame, bullet and sign their rows, so a heading only has to end its row.
+HEADING = re.compile(r"### RETURN[^0-9A-Za-z]*$")
+# A host may draw a side panel on the same screen rows, far to the right of the text.
+BESIDE = re.compile(r"^([^0-9A-Za-z#]*[0-9A-Za-z#].*?) {8,}\S.*$")
 STATUSES = ("done", "partial", "blocked", "needs-decision")
 NO_BLOCK = "no RETURN block on screen"
+# Not stopped: at work, or at one of its host's approvals. A block on screen would be an old one.
+BUSY = ("working", "waiting")
 NO_SCREEN = "could not read its screen"
 
 
 def last_return(screen: str) -> dict | None:
-    lines = screen.splitlines()
-    heads = [i for i, ln in enumerate(lines) if "### RETURN" in ln]
+    lines = [BESIDE.sub(r"\1", ln) for ln in screen.splitlines()]
+    heads = [i for i, ln in enumerate(lines) if HEADING.search(ln)]
     if not heads:
         return None
     fields: dict[str, list[str]] = {}
@@ -207,7 +303,7 @@ def collect_rows(cfg: dict) -> list[dict]:
                "return_status": None, "questions": None, "captured": False}
         name = row["name"]
         usable = isinstance(name, str) and name and not name.startswith("-")
-        if row["state"] != "working" and not row["self"] and usable:
+        if row["state"] not in BUSY and not row["self"] and usable:
             c = run_launcher(fill(launcher["capture"], {"name": name}))
             if not c.returncode:
                 row["captured"] = True
@@ -227,7 +323,7 @@ def render_table(rows: list[dict]) -> str:
             q = "(this session)"
         elif r["questions"] is not None:
             q = _clip(r["questions"])
-        elif r["state"] == "working":
+        elif r["state"] in BUSY:
             q = ""
         else:
             q = NO_BLOCK if r["captured"] else NO_SCREEN
@@ -265,7 +361,8 @@ def main() -> int:
     st.add_argument("--host")
     st.add_argument("--base")
     st.add_argument("--dry-run", action="store_true",
-                    help="print the launcher argv as JSON and run nothing")
+                    help="print the launcher argv as JSON and run nothing; "
+                         "{worktree} stays unfilled")
     ov = sub.add_parser("overview", help="one table of every session and why it stopped")
     ov.add_argument("--json", action="store_true")
     a = ap.parse_args()
@@ -274,13 +371,15 @@ def main() -> int:
         cfg = load_config(a.config)
         if a.command == "overview":
             return overview(cfg, a.json)
-        argv, name = start_argv(cfg, a.ref, a.name, a.host, a.base)
+        argv, name, trusted, where = start_argv(cfg, a.ref, a.name, a.host, a.base, a.dry_run)
     except (ConfigError, ValueError) as e:
         print(f"fleet: {e}", file=sys.stderr)
         return 2
     if a.dry_run:
         print(json.dumps(argv))
         return 0
+    if not trusted:
+        print(f"fleet: {NO_PATH}", file=sys.stderr)
     try:
         r = run_launcher(argv)
     except LauncherError as e:
@@ -289,6 +388,11 @@ def main() -> int:
     if r.returncode:
         sys.stderr.write(r.stderr or r.stdout or f"fleet: launcher exited with {r.returncode}\n")
         return r.returncode if r.returncode > 0 else 1
+    agent = agy_agent(cfg["hosts"][a.host or cfg["default_host"]]["start"])
+    shadows = shadowing_agents(agent, where or worktree_path(cfg, name)) if agent else []
+    if shadows:
+        print(f"fleet: this repository has its own agent named {agent!r} ({', '.join(shadows)}); "
+              "the session runs that one, not the installed one", file=sys.stderr)
     print(f"started {name}")
     return 0
 

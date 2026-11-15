@@ -11,8 +11,15 @@ this project uses semantic versioning from 0.1.0 onward.
   workmux worktree and window, and shows one table of every session and why it stopped, read
   from its last RETURN block. Questions and approvals stay in each session. The script only
   starts, lists and reads; the dispatching session is told never to send to another session or
-  answer for the person, a rule and not a guarantee. Needs workmux; measured on Antigravity
-  only (E26, E27).
+  answer for the person, a rule and not a guarantee. Needs workmux; measured on all four hosts
+  (E26 to E31).
+- **A start does not stop at a host's trust prompt where the host allows it.** The script
+  trusts the new worktree for that one session and saves nothing: on Antigravity (E28) and on
+  Codex (E29). Claude Code asks once per repository (E31) and opencode never asks (E30).
+  `trust = ""` for a host in the config keeps its prompt.
+- **A start says when a project's own agent would replace the tech-lead.** At agy 1.5.3 a
+  repository's `.agents/agents/` file with the tech-lead's name runs in place of the installed
+  one (E32). `fleet.py start` names the file and starts all the same.
 - **`ec-init` asks whether several tech-leads will work at once**, and only on a yes asks for
   the `### Parallel work` lines: naming, where plans live, what an issue tech-lead may post,
   follow-up issues, pushing.
@@ -21,8 +28,23 @@ this project uses semantic versioning from 0.1.0 onward.
 
 - **D6 is read per assignment.** Only tech-leads speak and post externally, each within its
   own assignment; with one tech-lead nothing changes. Specialists still never post.
-- **An Antigravity re-install is version-dependent.** It merged at agy 1.1.27 (E8) and
-  replaced at 1.5.3 (E27). The advice stands: uninstall first when the roster shrinks.
+- **The Antigravity claims are re-run at agy 1.5.3 (E32), and four changed.** `AGENTS.md` now
+  reaches every agent tried. Workspace folders deliver agents, and a workspace agent replaces
+  the installed one of the same name, in print mode even in an untrusted folder. Five listed
+  tool names still load and give no tool, so a persona searches through the shell. A re-install
+  replaces the old one.
+- **Antigravity needs agy 1.5.3 or later.** Versions 1.1.27 to 1.2.10 are no longer supported.
+  The rendered agents list the 1.5.3 tool names, and the checker refuses a name that loads and
+  gives no tool. agy 1.5.3 has no search tool to list: a persona with a shell searches through
+  it, and the designer, which has none, reads only the paths it is given.
+
+### Fixed
+
+- **A `--scope user` update no longer drops what Codex wrote into its profile file.** Codex
+  appends a model choice, hook trust and trusted projects there (E29, E30). A profile that
+  still begins with the current text is left alone, and an outdated one is kept as `.bak`.
+- **The vendor validators pass again** at Claude Code 2.1.325 and agy 1.5.3, whose output
+  changed.
 
 ## [0.1.1] — 2026-10-03
 

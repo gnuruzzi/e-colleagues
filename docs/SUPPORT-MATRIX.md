@@ -2,7 +2,7 @@
 
 One row per fact-checked claim the design rests on, with the version it was last confirmed at and whether it was exercised against a running tool or still rests on documentation and source alone.
 
-Every claim id is stated in full under [The claims themselves](#the-claims-themselves) below, so a citation anywhere in this repository resolves without leaving it. Read alongside [`experiments.md`](experiments.md), which holds the evidence (E1–E23). Where a claim and an experiment disagree, **the experiment wins** — it ran against the installed binary; the claim was read from documentation and source.
+Every claim id is stated in full under [The claims themselves](#the-claims-themselves) below, so a citation anywhere in this repository resolves without leaving it. Read alongside [`experiments.md`](experiments.md), which holds the evidence (E1–E32). Where a claim and an experiment disagree, **the experiment wins** — it ran against the installed binary; the claim was read from documentation and source.
 
 ## Versions this matrix describes
 
@@ -11,8 +11,8 @@ Every claim id is stated in full under [The claims themselves](#the-claims-thems
 | Claude Code | 2.1.263 | `claude -p`, `--plugin-dir`, `plugin validate`, `plugin list` — **re-verified at 2.1.283** (E24) |
 | Codex CLI | 0.153.4 | `codex exec`, `codex sandbox`, `codex plugin …` — **re-verified at 0.154.0** (E24) |
 | opencode | 1.18.29 | `opencode run`, `agent list`, `run --command` — **re-verified at 2.0.18** (E20 addendum): every runtime row holds; `agent list` is now `debug agents` and `run --command` is a slash command in the prompt |
-| agy (Antigravity CLI) | 1.1.27 | `agy --print`, `--agent`, `plugin install/validate` — **tool registry re-verified unchanged at 1.2.6 and 1.2.10** (E17 addendum, E24) |
-| Antigravity desktop | 2.12.2 | binary inspection only at 2.12.2; **driven once at 2.17.0** (E19 addendum): the `tools` allowlist holds, `AGENTS.md` does not arrive, and the binary carries the `agents:` tag 2.12.2 lacked (E24) |
+| agy (Antigravity CLI) | 1.5.3 | `agy --print`, `--agent`, `plugin install/validate` — **every Antigravity claim re-run at 1.5.3** (E32), which is the supported floor. History: first swept at 1.1.27, with the tool registry re-verified unchanged at 1.2.6 and 1.2.10 (E17 addendum, E24); those versions are no longer supported, and the registry, `AGENTS.md` delivery, workspace agents and re-install all differed there |
+| Antigravity desktop | 2.12.2 | binary inspection only at 2.12.2; **driven once at 2.17.0** (E19 addendum): the `tools` allowlist holds, `AGENTS.md` does not arrive, and the binary carries the `agents:` tag 2.12.2 lacked (E24); 2.29.1 binary inspected, not driven (E32) |
 
 **Re-verify before relying on a version-gated claim.** Four of the five tools moved within a day of the original research (`experiments.md` E2) and one gate had already flipped (E3). A claim marked *docs/source only* has never been exercised against a running tool.
 
@@ -26,7 +26,7 @@ Every claim id is stated in full under [The claims themselves](#the-claims-thems
 ## How to read the `how` column
 
 - **runtime** — exercised against the installed binary, and it held.
-- **corrected** — the sweep contradicted or materially narrowed the digest. The design follows the experiment, not the claim text. These ten are listed again below.
+- **corrected** — the sweep contradicted or materially narrowed the digest. The design follows the experiment, not the claim text. They are listed again below; `AG-11` and `AG-12` stay there as history, since at agy 1.5.3 the experiment agrees with the claim again (E32).
 - **docs/source only** — believed on documentation or source reading. Not exercised. Treat as the weakest tier.
 
 ## Corrections the sweep forced
@@ -35,22 +35,34 @@ These override the digest wherever they disagree.
 
 | claim | the digest said | the sweep measured | evidence |
 |---|---|---|---|
-| `AG-06` | a list of Antigravity tool names, and that a bad name "may cause the subagent process to hang" | **seven of the names are not in the registry** and abort the agent at startup with `unknown component: tool "…" not found in registry` — loudly and before any model call, not a hang | E17 |
+| `AG-06` | a list of Antigravity tool names, and that a bad name "may cause the subagent process to hang" | **seven of the names were not in the registry** up to agy 1.2.10 and aborted the agent at startup with `unknown component: tool "…" not found in registry` — loudly and before any model call, not a hang. At 1.5.3 six are rejected the same way, and six others resolve and give no tool | E17, E24, E32 |
 | `CC-07` | `claude plugin validate` catches the frontmatter fail-open | it does **not**: a colon in the value triggers a repairing sanitizer, and `memory`, unknown keys and a colon in `name` all pass | E15 |
 | `CC-03` | a bare agent name resolves | true for the `--agent` flag, **false** for `Agent(...)`'s `subagent_type`, which needs `e-colleagues:<name>` | E10 |
 | `CC-10` | the `agent` key makes a persona the default | true; it is **not trust-gated**, an unresolvable value fails silently, and **project scope beats user scope** | E21 |
-| `AG-11` | Antigravity walks `AGENTS.md` cwd→root | **no agy agent receives it** — not a custom agent, not the default one | E19 |
-| `AG-12` | a workspace agent definition ranks above plugin and global | **no workspace root delivers agents at all**, so the ranking is moot | E18 |
+| `AG-11` | Antigravity walks `AGENTS.md` cwd→root | **no agy agent received it** at 1.1.27 and 1.2.10 — not a custom agent, not the default one. At 1.5.3 the claim holds: the default agent, a custom agent and a sub-agent receive it | E19, E24, E32 |
+| `AG-12` | a workspace agent definition ranks above plugin and global | **no workspace root delivered agents at all** at 1.1.27 and 1.2.10, so the ranking was moot. At 1.5.3 four roots deliver them and the workspace definition wins | E18, E24, E32 |
 | `AG-02` | the CLI and desktop share one engine | the `agents:` key exists in agy 1.1.27 and **not** in desktop 2.12.2 — and again in desktop 2.17.0, so the divergence has closed | E16, E24 |
+| `AG-07` | `plugin.json` needs a `name`, and the binary errors on a missing or invalid one | at agy 1.5.3 **a missing or non-kebab `name` is a warning**, `validate` still passes, and it checks no tool name | E32 |
 | `CX-04` | `[agents]` defaults and the V1/V2 resolution | correct, and the V2 ceiling **refuses** a spawn past the limit rather than queueing it | E11 |
 | `CC-14` | Claude Code "reads CLAUDE.md, not AGENTS.md" | at 2.1.283 an `AGENTS.md` with no `CLAUDE.md` beside it **reaches the model**; the `@AGENTS.md` import still works and is kept for older versions | E24 |
 | `OC-07` | command keys are {description, agent, model, subtask} | the schema is **{template, description, agent, model, variant, subtask}** with `template` required | E20 |
 
 ## The Antigravity tool registry
 
-`check.py --agy-tools` validates every rendered Antigravity agent against this list, derived by installing each name as the sole entry in an agent's `tools` list and running it (E17). **Do not derive it by grepping the binary** — that yields a superset and reported all seven invalid names as present (E16 C1, superseded).
+`check.py --agy-tools` validates every rendered Antigravity agent against this list, derived by installing each name as the sole entry in an agent's `tools` list and running it (E32, by the method of E17). **Do not derive it by grepping the binary** — that yields a superset and reported all seven names then invalid as present (E16 C1, superseded).
 
-Valid at **agy 1.1.27**, and re-verified unchanged at **1.2.6** (E17 addendum) — 15 names:
+Valid at **agy 1.5.3**, the supported floor (E32) — 10 names that load and give the agent a tool:
+
+```
+read_file  run_command  write_file  edit_file  search_web
+invoke_subagent  define_subagent  manage_task  manage_subagents  send_message
+```
+
+Load and give no tool at 1.5.3, so the gate refuses them too (E32): `grep_search`, `find_by_name`, `list_dir`, `multi_replace_file_content` and `read_url_content`, each logged `deprecated and has no effect`, and `command_status`, which logs nothing.
+
+Rejected at 1.5.3 with `not found in registry` (E32): `view_file_outline`, `view_code_item`, `codebase_search`, `browser_subagent`, `notify_user`, `manage_inbox`.
+
+**History: agy 1.1.27, re-verified unchanged at 1.2.6 and 1.2.10** (E17 addendum, E24), no longer supported — 15 names were valid:
 
 ```
 view_file  run_command  write_to_file  replace_file_content  multi_replace_file_content
@@ -58,7 +70,7 @@ grep_search  find_by_name  list_dir  read_url_content  search_web
 invoke_subagent  define_subagent  manage_task  manage_subagents  send_message
 ```
 
-Rejected at 1.1.27 and again at 1.2.6, despite appearing in the binary's strings: `view_file_outline`, `view_code_item`, `command_status`, `codebase_search`, `browser_subagent`, `notify_user`, `manage_inbox`.
+All 15 still resolve at 1.5.3: `view_file`, `write_to_file` and `replace_file_content` arrive as `read_file`, `write_file` and `edit_file`, and five give no tool, as above (E32). Rejected at 1.1.27 and again at 1.2.6, despite appearing in the binary's strings: the six above and `command_status`.
 
 ## Claims by host
 
@@ -105,7 +117,7 @@ Rejected at 1.1.27 and again at 1.2.6, despite appearing in the binary's strings
 |---|---|---|---|---|---|
 | `OC-01` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum, E25 addendum | project agents load from .opencode/agents; user agents load from the config home's opencode/agents (E25 addendum) |
 | `OC-02` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum | permission edit:deny holds on a subagent; `task`/`subagent` and `bash`/`shell` both accepted at 2.0.18, so the renderer emits both |
-| `OC-03` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | **corrected** | E20, E20 addenda | default_agent applies to opencode run and the TUI starts on it; modes correct; `agent list` gone at 2.0.18, use `debug agents`; the TUI agent cycle is Shift+Tab, not Tab |
+| `OC-03` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | **corrected** | E20, E20 addenda, E30 | default_agent applies to opencode run and the TUI starts on it, again at 2.2.7 (E30); modes correct; `agent list` gone at 2.0.18, use `debug agents`; the TUI agent cycle is Shift+Tab, not Tab; at 2.2.7 the TUI command takes no `--agent`, which `run` and `mini` keep (E30) |
 | `OC-04` | opencode 2.0.18 (E20 TUI addendum; first 1.18.29) | confirmed | runtime | E20 TUI addendum | `@` offers the specialists and the built-ins; a mention routes through the primary, which delegates with the task tool |
 | `OC-05` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | runtime | E20, E20 addendum | permission.task allowlist evaluated mechanically, as `subagent` at 2.0.18; nested spawns stopped by the depth limit |
 | `OC-07` | opencode 2.0.18 (E20 addendum; first 1.18.29) | confirmed | **corrected** | E20, E20 addendum | run --command as subtask; command schema keys corrected; at 2.0.18 the flag is gone, a slash command in the prompt expands, and the file form loads from `command/` not `commands/` |
@@ -118,16 +130,16 @@ Rejected at 1.1.27 and again at 1.2.6, despite appearing in the binary's strings
 
 | claim | last confirmed at | verdict | how | evidence | what was measured |
 |---|---|---|---|---|---|
-| `AG-02` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | **corrected** | E16, E19, E24 | desktop lacked agents: at 2.12.2 and carries it at 2.17.0; body is not sliced at the first H1 |
-| `AG-03` | agy 1.2.10 / desktop 2.17.0 (E19 addendum; first 1.1.27) | confirmed | runtime | E19, E19 addendum | agy --agent runs a mainAgent persona; the desktop selector lists mainAgent personas and hides sub-agents |
-| `AG-04` | agy 1.1.27 / desktop 2.12.2 | confirmed | docs/source only | — | — |
-| `AG-05` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | runtime | E19, E24, E19 addendum | a tools allowlist DOES override ambient subagent inheritance, on the CLI and on the desktop |
-| `AG-06` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | **corrected** | E17, E24 | SEVEN of the listed tool names are not in the registry |
-| `AG-07` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | runtime | E7, E18, E24 | validate [ok]; only a global install delivers agents |
-| `AG-08` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | runtime | E8, E18, E24, E27 | destination measured; re-install merged at 1.1.27 (E8) and replaced at 1.5.3 (E27); github URL works and lands in a directory named after the repo (E8 addendum, agy 1.2.6); `plugin@marketplace` is parsed at 1.2.10 but no marketplace is known or registrable (E8 addendum 2) |
-| `AG-10` | agy 1.1.27 / desktop 2.12.2 | confirmed | docs/source only | — | — |
-| `AG-11` | agy 1.2.10 / desktop 2.17.0 (E24; first 1.1.27 / 2.12.2) | confirmed | **corrected** | E19, E24, E19 addendum | AGENTS.md does NOT reach any agy agent, CLI or desktop |
-| `AG-12` | agy 1.1.27 / desktop 2.12.2 | confirmed | **corrected** | E18 | no workspace root delivers agents, so collisions are moot |
+| `AG-02` | agy 1.5.3 (E32; first 1.1.27) / desktop 2.17.0 (E24; first 2.12.2) | confirmed | **corrected** | E16, E19, E24, E32 | desktop lacked agents: at 2.12.2 and carries it at 2.17.0, and its 2.29.1 binary carries it too (inspected, not driven); body is not sliced at the first H1, again at 1.5.3 |
+| `AG-03` | agy 1.5.3 (E32; first 1.1.27) / desktop 2.17.0 (E19 addendum) | confirmed | runtime | E19, E19 addendum, E32 | agy --agent runs a mainAgent persona, takes the frontmatter `name` and refuses a sub-agent or a directory name with `unknown agent`; `agy agents` lists mainAgent personas only; the desktop selector lists mainAgent personas and hides sub-agents (2.17.0, not re-verified) |
+| `AG-04` | agy 1.5.3 (E32; first 1.1.27, docs only) / desktop 2.12.2 | confirmed | runtime | E32 | `invoke_subagent` addresses a sub-agent by `TypeName`; an agent with `subagent: false` is refused, `not found or not allowed to be invoked`; `Workspace` modes, the clean context and `define_subagent` still rest on documentation |
+| `AG-05` | agy 1.5.3 (E32; first 1.1.27) / desktop 2.17.0 (E24; first 2.12.2) | confirmed | runtime | E19, E24, E19 addendum, E32 | a tools allowlist DOES override ambient subagent inheritance, on the CLI and on the desktop; at 1.5.3 it does NOT bound MCP tools — `call_mcp_tool` and an installed plugin's MCP tools reach the agent unless `inheritMcp: false` |
+| `AG-06` | agy 1.5.3 (E32; first 1.1.27) / desktop 2.17.0 (E24; first 2.12.2) | confirmed | **corrected** | E17, E24, E32 | seven of the listed tool names were not in the registry up to 1.2.10; at 1.5.3 SIX are rejected (`command_status` resolves), and five that resolve — `grep_search`, `find_by_name`, `list_dir`, `multi_replace_file_content`, `read_url_content` — are logged `deprecated and has no effect` and give the agent no tool |
+| `AG-07` | agy 1.5.3 (E32; first 1.1.27) / desktop 2.17.0 (E24; first 2.12.2) | confirmed | **corrected** | E7, E18, E24, E26, E32 | validate passes with the expected counts, printing `Validation passed` and no `[ok]` at 1.5.3; a missing or invalid `name` is a warning there, not an error, and tool names are not checked; a global install was the only route for agents up to 1.2.10 and is not at 1.5.3 (see AG-12) |
+| `AG-08` | agy 1.5.3 (E32; first 1.1.27) / desktop 2.17.0 (E24; first 2.12.2) | confirmed | runtime | E8, E18, E24, E27, E32 | destination measured, named after the manifest's `name`, not the source folder (E32); re-install merged at 1.1.27 (E8) and replaces at 1.5.3 (marker test, E32); an install writes an entry to `import_manifest.json` and leaves `config.json` alone; `agy plugin uninstall` removes both the directory and the entry; github URL works at 1.5.3 and installs the clone's `.git/` too; `plugin@marketplace` was parsed at 1.2.10 with no marketplace known (E8 addendum 2) — at 1.5.3 one is known, `antigravity-plugins-official`, and the form was not re-run |
+| `AG-10` | agy 1.5.3 (E32; first 1.1.27, docs only) / desktop 2.12.2 | confirmed | runtime | E32 | no placeholder is substituted: `$ARGUMENTS`, `$1` and `${CLAUDE_PLUGIN_ROOT}` reached the model literally in a skill the harness expanded; a `.agents/workflows/` file was not expanded in print mode; the deprecation is stated by the bundled `migrate-workflows` skill, the retirement date still rests on documentation |
+| `AG-11` | agy 1.5.3 (E32; first 1.1.27) / desktop 2.17.0 (E24; first 2.12.2) | confirmed | runtime | E19, E24, E19 addendum, E32 | at 1.5.3 `AGENTS.md` and `GEMINI.md` DO reach the default agent, a custom agent and a sub-agent, walked from the working directory to the repository root, in print mode and interactively; `CLAUDE.md` does not. They reached no agy agent at 1.1.27 and 1.2.10 (E19, E24), nor the desktop at 2.17.0 (not re-verified) |
+| `AG-12` | agy 1.5.3 (E32; first 1.1.27) / desktop 2.12.2 | confirmed | runtime | E18, E24, E32 | at 1.5.3 a workspace delivers agents from `.agents/agents/`, `_agents/agents/`, `.agents/plugins/` and `_agents/plugins/`, and a workspace definition beats a globally installed plugin agent of the same name — in print mode even in an untrusted folder; a workspace skill beats a plugin skill. No workspace root delivered agents at 1.1.27 and 1.2.10 (E18, E24) |
 
 ### Prior art
 
@@ -229,7 +241,7 @@ Every claim id cited anywhere in this repository resolves here, so a citation ne
 
 **`OC-02`** — opencode agent frontmatter keys (`KNOWN_KEYS`): `name`, `model`, `variant`, `prompt`, `description` (docs: required), `temperature`, `top_p`, `mode` (`subagent|primary|all`, default `all` for custom agents), `hidden`, `color`, `steps`, `maxSteps` (deprecated), `options`, `permission` (object keyed by tool: read, edit … **E20 addendum (2.0.18)**: the runtime reports `task` as `subagent` and `bash` as `shell`, accepts either spelling, and the published schema still lists only the old ones; unknown permission keys are schema-valid, so the renderer emits both and `check.py` requires the pair.
 
-**`OC-03`** — opencode selects the primary agent with `opencode --agent <name>` / `opencode run --agent <name>` or config `default_agent` ('Must be a primary agent. Falls back to build if not set or if the specified agent is invalid'; errors if hidden). In the TUI the keybinds are `agent_cycle` (default `tab`) … **E20 addendum (2.0.18)**: `opencode agent list` no longer exists; `opencode debug agents` lists agents with their modes. **E20 TUI addendum (2.0.18)**: the TUI starts on `default_agent`; the agent cycle is **Shift+Tab**, not Tab, and cycles primaries only.
+**`OC-03`** — opencode selects the primary agent with `opencode --agent <name>` / `opencode run --agent <name>` or config `default_agent` ('Must be a primary agent. Falls back to build if not set or if the specified agent is invalid'; errors if hidden). In the TUI the keybinds are `agent_cycle` (default `tab`) … **E20 addendum (2.0.18)**: `opencode agent list` no longer exists; `opencode debug agents` lists agents with their modes. **E20 TUI addendum (2.0.18)**: the TUI starts on `default_agent`; the agent cycle is **Shift+Tab**, not Tab, and cycles primaries only. **E30 (opencode 2.2.7)**: `opencode --agent <name>` is refused, `Unrecognized flag: --agent in command opencode`; `opencode run` and `opencode mini` still list the flag; `default_agent` starts the TUI on the named agent, from a project config and from a file named in `$OPENCODE_CONFIG`, which is read by the server and not by the client.
 
 **`OC-04`** — opencode subagents are invoked (1) by the model calling the built-in `task` tool with `description`, `prompt`, `subagent_type` (= agent name), optional `task_id`, `command`, `background` (needs `OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=true`); the tool description appends 'Available agent types and the tools they … **E20 TUI addendum (2.0.18)**: `@` offers every specialist and the built-ins `general` and `explore` regardless of the allowlist; `@reviewer …` goes to the primary, which delegates through the task tool and relays the reply.
 
@@ -258,21 +270,21 @@ Every claim id cited anywhere in this repository resolves here, so a citation ne
 
 **`AG-03`** — An Antigravity custom agent runs as PRIMARY when `mainAgent` is true (default): 'If true, allows selection as the primary agent in chat interfaces.' CLI: `agy --agent <name>` (help: 'Agent for the current CLI session'; added in 1.1.1 with the `agent/agents` subcommand), value = frontmatter `name`; or the `/agents` … **E19 addendum (desktop 2.17.0)**: the desktop's agent selector lists the `mainAgent` personas and hides the sub-agents.
 
-**`AG-04`** — Antigravity delegation: 'The parent agent calls the invoke_subagent tool', addressing by name via `TypeName` with `Workspace` of `inherit`, `branch` (isolated git worktree) or `share`. Only agents with `subagent: true` are invocable (1.1.4 fix). Subagents start with a clean context. `define_subagent` creates transient …
+**`AG-04`** — Antigravity delegation: 'The parent agent calls the invoke_subagent tool', addressing by name via `TypeName` with `Workspace` of `inherit`, `branch` (isolated git worktree) or `share`. Only agents with `subagent: true` are invocable (1.1.4 fix). Subagents start with a clean context. `define_subagent` creates transient … **E32 (agy 1.5.3)**: measured — the call carries `TypeName`, and an agent with `subagent: false` is refused with `not found or not allowed to be invoked`.
 
-**`AG-05`** — Since 1.1.25 Markdown-defined Antigravity agents 'inherit ambient skills, rules, and subagents by default, matching the configuration of default agents.' Scoping knobs: `inheritCustomizations` (1.1.14: one switch for skills, rules, plugins, subagents and MCP servers), a `rules:` list (1.1.15: named rule files always … **E19 addendum (desktop 2.17.0)**: the explicit `tools` list holds on the desktop too — the reviewer reports no `invoke_subagent`.
+**`AG-05`** — Since 1.1.25 Markdown-defined Antigravity agents 'inherit ambient skills, rules, and subagents by default, matching the configuration of default agents.' Scoping knobs: `inheritCustomizations` (1.1.14: one switch for skills, rules, plugins, subagents and MCP servers), a `rules:` list (1.1.15: named rule files always … **E19 addendum (desktop 2.17.0)**: the explicit `tools` list holds on the desktop too — the reviewer reports no `invoke_subagent`. **E32 (agy 1.5.3)**: the list is not the whole tool surface — `manage_task`, `call_mcp_tool`, `list_resources`, `read_resource` and an installed plugin's MCP tools reach an agent that never named them; `inheritMcp: false` removes the MCP tools, `inheritCustomizations: false` removes the workspace rules.
 
-**`AG-06`** — Antigravity `tools` is an explicit allowlist ('e.g. view_file, replace_file_content, grep_search, run_command'; the blog also lists `manage_task`), with the warning 'Specifying an unmapped or misspelled tool name in the tools list may cause the subagent process to hang'. Tool names present in the binary include …
+**`AG-06`** — Antigravity `tools` is an explicit allowlist ('e.g. view_file, replace_file_content, grep_search, run_command'; the blog also lists `manage_task`), with the warning 'Specifying an unmapped or misspelled tool name in the tools list may cause the subagent process to hang'. Tool names present in the binary include … **E32 (agy 1.5.3)**: six names are rejected, five resolve with no effect, and an omitted `tools` key gives a default set (`send_message`, `read_file`, `search_web`, `schedule`, `generate_image`), not no tools.
 
-**`AG-07`** — An Antigravity plugin is `plugins/<plugin_name>/` with a ROOT `plugin.json` (required; binary errors 'missing plugin.json', 'plugin.json missing name', 'invalid plugin name: %q'; CLI docs: `name` matching `^[a-zA-Z0-9-_]+$`, optional `description`, `$schema https://antigravity.google/schemas/v1/plugin.json`; general …
+**`AG-07`** — An Antigravity plugin is `plugins/<plugin_name>/` with a ROOT `plugin.json` (required; binary errors 'missing plugin.json', 'plugin.json missing name', 'invalid plugin name: %q'; CLI docs: `name` matching `^[a-zA-Z0-9-_]+$`, optional `description`, `$schema https://antigravity.google/schemas/v1/plugin.json`; general … **E32 (agy 1.5.3)**: `validate` reports a missing manifest as `no plugin.json found at the plugin root or in .antigravity-plugin or .gemini-plugin`; a missing or non-kebab `name` is a warning, and `plugin install` names the destination after the manifest's `name`.
 
-**`AG-08`** — Antigravity plugin roots: workspace `.agents/plugins/` or `_agents/plugins/`; global `~/.gemini/config/plugins/` (9 Google plugins live there on this machine). Enablement is recorded in `~/.gemini/config/config.json` under `plugins: {<dirname>: {enabled: true}}`, keyed by DIRECTORY name, and 'config.json wins wherever … **E8 addendum 2 (agy 1.2.10)**: `install <plugin>@<marketplace>` is parsed and `link <mp> <target>` exists, but both need a marketplace agy already knows — served from a remote catalog cache that was absent here — and nothing in the CLI or the config registers one. Not a delivery route.
+**`AG-08`** — Antigravity plugin roots: workspace `.agents/plugins/` or `_agents/plugins/`; global `~/.gemini/config/plugins/` (9 Google plugins live there on this machine). Enablement is recorded in `~/.gemini/config/config.json` under `plugins: {<dirname>: {enabled: true}}`, keyed by DIRECTORY name, and 'config.json wins wherever … **E8 addendum 2 (agy 1.2.10)**: `install <plugin>@<marketplace>` is parsed and `link <mp> <target>` exists, but both need a marketplace agy already knows — served from a remote catalog cache that was absent here — and nothing in the CLI or the config registers one. Not a delivery route. **E32 (agy 1.5.3)**: a marketplace is now known to the CLI (`antigravity-plugins-official`, the `Source:` of 13 installed plugins) and the help reads `plugin[@marketplace]`; the form was not re-run. An install records itself in `~/.gemini/config/import_manifest.json`, not in `config.json`.
 
-**`AG-10`** — 'Workflows are deprecated and will be retired on November 1, 2026.' Legacy locations: workspace `.agents/workflows/<name>.md` (also `_agents/`, `.agent/`, `_agent/`), global `~/.gemini/config/workflows/*.md`, `~/.gemini/config/global_workflows/*.md`, `workflows.json`; invoked `/<name>`; 12,000-char limit. Replacement …
+**`AG-10`** — 'Workflows are deprecated and will be retired on November 1, 2026.' Legacy locations: workspace `.agents/workflows/<name>.md` (also `_agents/`, `.agent/`, `_agent/`), global `~/.gemini/config/workflows/*.md`, `~/.gemini/config/global_workflows/*.md`, `workflows.json`; invoked `/<name>`; 12,000-char limit. Replacement … **E32 (agy 1.5.3)**: no placeholder substitution, measured; a workspace workflow file was not expanded in print mode.
 
-**`AG-11`** — Antigravity reads `AGENTS.md` and `GEMINI.md` as directory-scoped rules: 'The system walks up from the current working directory to the repository root and loads these files. They apply to the directory they reside in and all its subdirectories'; they 'do not support frontmatter and are always active'. Discovery …
+**`AG-11`** — Antigravity reads `AGENTS.md` and `GEMINI.md` as directory-scoped rules: 'The system walks up from the current working directory to the repository root and loads these files. They apply to the directory they reside in and all its subdirectories'; they 'do not support frontmatter and are always active'. Discovery … **E32 (agy 1.5.3)**: this is what the CLI does at 1.5.3, for the default agent, a custom agent and a sub-agent; `CLAUDE.md` is not read.
 
-**`AG-12`** — Antigravity customization priority, highest first: 1. workspace project (hierarchical from cwd to repo root); 2. declared configurations (`skills.json` / `plugins.json` in the workspace); 3. global discovery `~/.gemini/config/`; 4. built-ins (mounted by name); 5. global declared configurations. 'If there are naming …
+**`AG-12`** — Antigravity customization priority, highest first: 1. workspace project (hierarchical from cwd to repo root); 2. declared configurations (`skills.json` / `plugins.json` in the workspace); 3. global discovery `~/.gemini/config/`; 4. built-ins (mounted by name); 5. global declared configurations. 'If there are naming … **E32 (agy 1.5.3)**: rank 1 over rank 3 holds for agents and for skills.
 
 
 ### Prior art

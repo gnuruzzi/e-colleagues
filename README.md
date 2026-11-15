@@ -9,7 +9,7 @@ and a reviewer that cannot edit your files. Installed once. Rendered for Codex C
 <a href="https://github.com/gnuruzzi/e-colleagues/actions/workflows/check.yml"><img alt="checks" src="https://github.com/gnuruzzi/e-colleagues/actions/workflows/check.yml/badge.svg"></a>
 <img alt="version" src="https://img.shields.io/badge/version-0.1.1-informational">
 <img alt="hosts" src="https://img.shields.io/badge/hosts-Codex%20%C2%B7%20Claude%20Code%20%C2%B7%20opencode%20%C2%B7%20Antigravity-5c6bc0">
-<img alt="evidence" src="https://img.shields.io/badge/claims%20measured-52%20%2F%2027%20experiments-2e7d32">
+<img alt="evidence" src="https://img.shields.io/badge/claims%20measured-52%20%2F%2032%20experiments-2e7d32">
 <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-blue"></a>
 </p>
 
@@ -156,7 +156,7 @@ In the session:
 Audit the CI pipeline and tell me what a new contributor would trip over.
 ```
 
-Only a global install delivers agents, so the roster is per machine. A re-install merged at agy 1.1.27 (E8) and replaced at 1.5.3 (E27), so uninstall first when the roster shrinks.
+The plugin installs globally, so the roster is per machine. Running the install line again replaces the installed copy exactly (E32).
 
 </details>
 
@@ -182,7 +182,7 @@ start 12 and 15
 overview
 ```
 
-Each tech-lead asks its questions and waits for approvals in its own session, and you answer there. The script only starts, lists and reads. The dispatching session is told never to send to another session or answer for you; that is a rule, not a guarantee. It needs workmux, with its status hooks set up by `workmux setup`, and so far it is measured on Antigravity only (E26). There, each new worktree first asks you to trust the folder, and the default start command trusts nothing for you: accept it in that window, or set your own start command in `~/.config/e-colleagues/fleet.toml`.
+Each tech-lead asks its questions and waits for approvals in its own session, and you answer there. The script only starts, lists and reads. The dispatching session is told never to send to another session or answer for you; that is a rule, not a guarantee. It needs workmux, with its status hooks set up by `workmux setup`, and it is measured on all four hosts (E26 to E31); for opencode workmux's current plugin is needed, the one `workmux setup` installs now. Antigravity would ask you to trust each new worktree, and Codex a repository it has never seen; the script trusts the worktree for that one session and saves nothing (E28, E29). Claude Code asks once per repository, in the new window. To keep a host's dialog, set `trust = ""` under `[hosts.<host>]` in `~/.config/e-colleagues/fleet.toml`.
 
 ## What is guaranteed, and what is only asked
 
@@ -193,17 +193,16 @@ A guarantee that is really a request is worth naming.
 | Codex CLI | 0.153.4 | 0.154.0 | `developer_instructions` (prose) | **the sandbox**: the one filesystem guarantee |
 | Claude Code | 2.1.263 | 2.1.284 | `--agent` (mechanical) | the tool list; the shell can still write |
 | opencode | 1.18.29 | 2.0.18 | `default_agent` (mechanical) | permissions; the shell narrowed by patterns |
-| Antigravity | agy 1.1.27 | agy 1.2.10, desktop 2.17.0 | `mainAgent` (mechanical) | the tool list; `run_command` can still write |
+| Antigravity | agy 1.5.3 | agy 1.5.3 (E32); desktop last driven at 2.17.0 | `mainAgent` (mechanical) | the tool list; `run_command` can still write |
 
 - Codex's read-only sandbox blocks **every** write, so a test suite that writes anything needs an explicit override.
 - Antigravity and opencode have no per-project roster from this package; both install per machine.
-- `AGENTS.md` never reaches an Antigravity agent, so its personas carry the contract in their own bodies.
-
+- `AGENTS.md` reaches every Antigravity agent tried on the CLI (E32). The personas still carry the contract in their own bodies, because the desktop app did not receive it when last driven, at 2.17.0.
 The full list, with what each rests on, is in [`docs/acceptance.md`](docs/acceptance.md).
 
 ## Built on evidence
 
-Every path, key and command in the design cites a fact-checked claim or says UNVERIFIED. [`docs/SUPPORT-MATRIX.md`](docs/SUPPORT-MATRIX.md) states all 52 claims with the version each was last confirmed at; [`docs/experiments.md`](docs/experiments.md) holds the 27 experiments behind them, exact command and raw output included, and an experiment outranks any claim it contradicts. That discipline caught seven Antigravity tool names the vendor's documentation lists that abort an agent at startup, and a tool registry, a keybinding and a plugin API that moved between releases.
+Every path, key and command in the design cites a fact-checked claim or says UNVERIFIED. [`docs/SUPPORT-MATRIX.md`](docs/SUPPORT-MATRIX.md) states all 52 claims with the version each was last confirmed at; [`docs/experiments.md`](docs/experiments.md) holds the 32 experiments behind them, exact command and raw output included, and an experiment outranks any claim it contradicts. That discipline caught six Antigravity tool names the vendor's documentation lists that abort an agent at startup and six more that load and give no tool (E32), and a tool registry, a keybinding and a plugin API that moved between releases.
 
 - [`docs/design.md`](docs/design.md): the decision record, and how to add a host or a persona
 - [`docs/acceptance.md`](docs/acceptance.md): minimum versions, guarantees, known limits

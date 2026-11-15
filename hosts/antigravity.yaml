@@ -1,7 +1,7 @@
 # Antigravity dialect. The only place Antigravity vocabulary appears.
 host: antigravity
 display: Google Antigravity
-min_version: "1.1.27"          # agy CLI; registry re-verified unchanged at 1.2.6 and 1.2.10 (E17 addendum, E24)
+min_version: "1.5.3"           # agy CLI; every claim re-run there (experiments.md E32). 1.1.27 to 1.2.10 are no longer supported
 
 agent_file:
   # Discovered by convention at the plugin root, with no manifest key [AG-07].
@@ -14,35 +14,37 @@ agent_file:
   # emit it: it would work on the CLI and be an unknown key on the desktop.
   never_emit: [agents]
 
-# THE MEASURED REGISTRY (experiments.md E17, re-verified at 1.2.6 in its addendum), not AG-06's list.
-# Seven names AG-06 gives are absent from the registry and abort the agent at startup with
-# `unknown component: tool "<name>" not found in registry`. Re-derive this by running one
-# agent per name at each supported version; grepping the binary yields a superset.
+# THE MEASURED REGISTRY at agy 1.5.3 (experiments.md E32): the names that load AND give the
+# agent a tool. Re-derive it by running one agent per name at each supported version;
+# grepping the binary yields a superset.
 tool_registry:
-  - view_file
+  - read_file
   - run_command
-  - write_to_file
-  - replace_file_content
-  - multi_replace_file_content
-  - grep_search
-  - find_by_name
-  - list_dir
-  - read_url_content
+  - write_file
+  - edit_file
   - search_web
   - invoke_subagent
   - define_subagent
   - manage_task
   - manage_subagents
   - send_message
-rejected_at_1_1_27: [view_file_outline, view_code_item, command_status, codebase_search,
-                     browser_subagent, notify_user, manage_inbox]
+# Up to 1.2.10 the first three file tools were named view_file, write_to_file and
+# replace_file_content. Those names still load at 1.5.3 and arrive under the new ones.
+# These load and give NO tool, with at most a line in --log-file, so the gate refuses them:
+no_effect: [grep_search, find_by_name, list_dir, multi_replace_file_content, read_url_content,
+            command_status]
+# These abort the agent at startup: `unknown component: tool "<name>" not found in registry`.
+rejected: [view_file_outline, view_code_item, codebase_search, browser_subagent, notify_user,
+           manage_inbox]
 
+# agy 1.5.3 has no search tool to list: a persona with a shell searches through it, and one
+# without, the designer, can only read paths it is given.
 capabilities:
-  read:   [view_file]
-  search: [grep_search, find_by_name, list_dir]
+  read:   [read_file]
+  search: []
   shell:  [run_command]
-  web:    [read_url_content, search_web]
-  edit:   [write_to_file, replace_file_content, multi_replace_file_content]
+  web:    [search_web]
+  edit:   [write_file, edit_file]
   delegate: [invoke_subagent]
 
 delegation:
@@ -58,20 +60,19 @@ manifest:
   schema: "https://antigravity.google/schemas/v1/plugin.json"
 
 install:
-  # Measured (E18): NO workspace root delivers agents at 1.1.27 — not .agents/plugins/,
-  # not _agents/plugins/, not .agents/agents/. Only a global install works, so the roster is
-  # per-user here, not per-project.
+  # At 1.5.3 a workspace delivers agents too, from .agents/agents/, _agents/agents/,
+  # .agents/plugins/ and _agents/plugins/ (E32). The package installs globally only, by
+  # choice, so its roster is per-user.
   global_only: true
   command: "agy plugin install <dir>"
   url_form: "agy plugin install https://github.com/<owner>/e-colleagues"   # github.com only (E8)
   destination: "~/.gemini/config/plugins/{name}/"
-  # A re-install merged at 1.1.27, so deleted files survived (E8); at 1.5.3 it replaced (E27).
-  # An update that drops a persona must uninstall first, or delete the stale agent
-  # directory explicitly.
+  # A re-install replaces the directory exactly (marker test, E32).
 
 instructions:
-  # Measured (E19): AGENTS.md reaches NO agy agent — not a custom one, not the default.
-  # The managed block is therefore invisible here, so each body must carry the contract.
-  file: null
-  reaches_children: false
+  # AGENTS.md reaches the default agent, a custom agent and a sub-agent at 1.5.3 (E32). The
+  # bodies still carry the contract: the desktop app did not receive AGENTS.md when last
+  # driven, at 2.17.0 (E19 addendum), and has not been driven since.
+  file: AGENTS.md
+  reaches_children: true
   body_carries_contract: true

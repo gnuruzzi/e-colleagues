@@ -77,4 +77,3 @@ Six personas are authored once in `personas/` and rendered into four host dialec
 - Do not let a read-only persona be adopted as a skill in a thread that can write — that is the fail-open this redesign exists to remove (design §0 D7).
 - Do not let a specialist post to an external platform; findings return to the tech-lead (design §0 D6).
 - Do not run `/import codex` in a bootstrapped project; it appends a copy of AGENTS.md into CLAUDE.md [CC-14].
-- Do not rely on the `agy plugin install` destination, on `agy plugin install <url>`, or on a second install overwriting the first, until Q11 and Q12 are answered [AG-08].

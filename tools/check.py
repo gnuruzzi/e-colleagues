@@ -348,18 +348,19 @@ def check_opencode():
 
 # --------------------------------------------------------------------------- antigravity
 def check_agy_tools():
-    """Every emitted tool name must be in the MEASURED registry.
+    """Every emitted tool name must be in the MEASURED registry: the names that load and
+    give the agent a tool at agy 1.5.3 (experiments.md E32).
 
-    A name outside it aborts the agent at startup with `unknown component: tool "<name>" not
-    found in registry` (experiments.md E17). Seven names AG-06 lists are invalid. The list
-    must be re-derived by running one agent per name; grepping the binary yields a superset
-    and reported all seven as present (E16 C1, superseded).
+    A rejected name aborts the agent at startup with `unknown component: tool "<name>" not
+    found in registry`. A name in `no_effect` is worse to miss: it loads, and the agent just
+    has no such tool. The list must be re-derived by running one agent per name; grepping the
+    binary yields a superset (E16 C1, superseded).
     """
     host = yaml.safe_load((ROOT / "hosts" / "antigravity.yaml").read_text())
     registry = set(host["tool_registry"])
-    rejected = set(host["rejected_at_1_1_27"])
-    if registry & rejected:
-        fail(f"hosts/antigravity.yaml: {registry & rejected} is in both lists")
+    dead = set(host["rejected"]) | set(host["no_effect"])
+    if registry & dead:
+        fail(f"hosts/antigravity.yaml: {registry & dead} is in the registry and in a dead list")
     d = ROOT / "agents"
     files = sorted(d.glob("*/agent.md")) if d.exists() else []
     if not files:
@@ -380,12 +381,12 @@ def check_agy_tools():
                      f"desktop 2.12.2 (E16); do not emit it")
         tools = fm.get("tools") or []
         if not tools:
-            fail(f"{f.parent.name}/agent.md: an omitted or empty `tools` list means no tools "
-                 f"[AG-06]")
+            fail(f"{f.parent.name}/agent.md: with `tools` omitted or empty the agent gets "
+                 f"agy's own default or ambient set, not this persona's (E32)")
         bad = [t for t in tools if t not in registry]
         if bad:
             fail(f"{f.parent.name}/agent.md: {bad} not in the measured registry — the agent "
-                 f"would abort at startup (E17)")
+                 f"would abort at startup or have no such tool (E32)")
         name = fm.get("name")
         p = yaml.safe_load((ROOT / "personas" / f"{name}.yaml").read_text())
         if not p["capabilities"]["edit"] and (set(tools) & set(host["capabilities"]["edit"])):
@@ -402,7 +403,15 @@ def check_agy_tools():
 # own CLAUDE.md sits at the plugin root. Claude warns that a plugin-root CLAUDE.md is not
 # loaded as project context — true, and irrelevant here: that file exists for the project
 # role, not the plugin role. It is the one warning this gate tolerates, by exact text.
-KNOWN_CLAUDE_WARNINGS = ["CLAUDE.md at the plugin root is not loaded as project context"]
+# The last two come from the plugin-directory checks Claude Code 2.1.325 prints beside the
+# result: this plugin ships no icon, and its folder also holds the marketplace manifest.
+KNOWN_CLAUDE_WARNINGS = ["CLAUDE.md at the plugin root is not loaded as project context",
+                         "No icon (ICON_MISSING)",
+                         "This folder also holds a marketplace manifest"]
+
+
+# The root AGENTS.md is this repository's own contract, deliberately not a plugin rule [AG-05].
+KNOWN_AGY_WARNINGS = ["AGENTS.md: never loaded"]
 
 
 def check_hosts():
@@ -427,8 +436,8 @@ def check_hosts():
                            if not any(k in c for k in KNOWN_CLAUDE_WARNINGS)]
                 has_errors = re.search(r"Found \d+ error", out) is not None
                 if complaints and not unknown and not has_errors:
-                    ok(f"claude validate {label}: passes but for the known plugin-root "
-                       f"CLAUDE.md warning")
+                    ok(f"claude validate {label}: passes but for {len(complaints)} known "
+                       f"warning(s)")
                 else:
                     fail(f"claude plugin validate --strict {' '.join(args)} failed: "
                          f"{out.strip().splitlines()[-1] if out.strip() else '(no output)'}")
@@ -440,10 +449,16 @@ def check_hosts():
     if shutil.which("agy"):
         r = subprocess.run(["agy", "plugin", "validate", "."], capture_output=True,
                            text=True, cwd=ROOT)
-        if r.returncode != 0 or "[ok]" not in (r.stdout + r.stderr):
-            fail(f"agy plugin validate did not report [ok]: {(r.stdout + r.stderr).strip()[:120]}")
+        out = r.stdout + r.stderr
+        # agy printed "[ok]" up to 1.2.10 and prints "Validation passed" at 1.5.3, where a
+        # missing or invalid plugin name is only a warning (E32). So every warning but the
+        # known one fails.
+        unknown = [w.strip() for w in re.findall(r"⚠\s*(.+)", out)
+                   if not any(k in w for k in KNOWN_AGY_WARNINGS)]
+        if r.returncode != 0 or unknown or not ("[ok]" in out or "Validation passed" in out):
+            fail(f"agy plugin validate did not pass: {(unknown or [out.strip()])[0][:120]}")
         else:
-            ok("agy plugin validate reports [ok]")
+            ok("agy plugin validate passes")
     else:
         print("  skip agy plugin validate (agy not on PATH)")
 

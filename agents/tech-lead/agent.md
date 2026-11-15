@@ -5,16 +5,11 @@ mainAgent: true
 subagent: false
 model: inherit
 tools:
-  - view_file
-  - grep_search
-  - find_by_name
-  - list_dir
+  - read_file
   - run_command
-  - read_url_content
   - search_web
-  - write_to_file
-  - replace_file_content
-  - multi_replace_file_content
+  - write_file
+  - edit_file
   - invoke_subagent
 ---
 
